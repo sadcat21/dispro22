@@ -725,12 +725,25 @@ const Customers: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Customers Map */}
-      <LazyCustomersMapView
-        customers={filteredByBranch}
-        onCustomerClick={(customer) => openEditDialog(customer)}
-        branchWilaya={activeBranch?.wilaya}
-      />
+      {/* Customers Map - Collapsible */}
+      <Collapsible>
+        <CollapsibleTrigger asChild>
+          <Button variant="outline" className="w-full justify-between">
+            <span className="flex items-center gap-2">
+              <MapPin className="w-4 h-4 text-primary" />
+              خريطة المواقع
+            </span>
+            <ChevronDown className="w-4 h-4" />
+          </Button>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="pt-2">
+          <LazyCustomersMapView
+            customers={filteredByBranch}
+            onCustomerClick={(customer) => openEditDialog(customer)}
+            branchWilaya={activeBranch?.wilaya}
+          />
+        </CollapsibleContent>
+      </Collapsible>
 
       {/* Tab Interface */}
       {isManager ? (
