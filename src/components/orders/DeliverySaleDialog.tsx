@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import ReceiptDialog from '@/components/printing/ReceiptDialog';
+import { ReceiptItem, ReceiptType } from '@/types/receipt';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -89,6 +91,8 @@ const DeliverySaleDialog: React.FC<DeliverySaleDialogProps> = ({ open, onOpenCha
   const [notes, setNotes] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
+  const [showReceiptDialog, setShowReceiptDialog] = useState(false);
+  const [receiptDataState, setReceiptDataState] = useState<any>(null);
   const [showQuantityDialog, setShowQuantityDialog] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [newProductId, setNewProductId] = useState('');
@@ -359,6 +363,37 @@ const DeliverySaleDialog: React.FC<DeliverySaleDialogProps> = ({ open, onOpenCha
       queryClient.invalidateQueries({ queryKey: ['my-worker-stock'] });
 
       setShowPaymentDialog(false);
+
+      // Build receipt data and show receipt dialog
+      const receiptItems: ReceiptItem[] = activeItems.map(item => ({
+        productId: item.productId,
+        productName: item.productName,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        totalPrice: item.totalPrice,
+        giftQuantity: item.giftQuantity > 0 ? item.giftQuantity : undefined,
+      }));
+
+      setReceiptDataState({
+        receiptType: 'delivery' as ReceiptType,
+        orderId: order.id,
+        debtId: null,
+        customerId: order.customer_id,
+        customerName: order.customer?.name || '',
+        customerPhone: order.customer?.phone || null,
+        workerId: workerId!,
+        workerName: '',
+        workerPhone: null,
+        branchId: order.branch_id || activeBranch?.id || null,
+        items: receiptItems,
+        totalAmount: totals.totalAmount,
+        discountAmount: 0,
+        paidAmount: paymentData.paidAmount,
+        remainingAmount: paymentData.remainingAmount,
+        paymentMethod: paymentData.paymentMethod,
+        notes: notes || null,
+      });
+      setShowReceiptDialog(true);
       onOpenChange(false);
     } catch (error: any) {
       console.error('Delivery sale error:', error);
@@ -627,6 +662,15 @@ const DeliverySaleDialog: React.FC<DeliverySaleDialogProps> = ({ open, onOpenCha
         customerName={order.customer?.name || ''}
         onConfirm={handlePaymentConfirm}
       />
+
+      {/* Receipt Dialog */}
+      {receiptDataState && (
+        <ReceiptDialog
+          open={showReceiptDialog}
+          onOpenChange={setShowReceiptDialog}
+          receiptData={receiptDataState}
+        />
+      )}
     </>
   );
 };

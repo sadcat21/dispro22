@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import ReceiptDialog from '@/components/printing/ReceiptDialog';
+import { ReceiptItem, ReceiptType } from '@/types/receipt';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -51,7 +53,7 @@ interface OrderItemWithPrice {
 }
 
 const DirectSaleDialog: React.FC<DirectSaleDialogProps> = ({ open, onOpenChange, stockItems, initialCustomerId }) => {
-  const { workerId, activeBranch } = useAuth();
+  const { workerId, activeBranch, user } = useAuth();
   const { t, dir } = useLanguage();
   const queryClient = useQueryClient();
   const { data: stampTiers } = useActiveStampTiers();
@@ -83,6 +85,8 @@ const DirectSaleDialog: React.FC<DirectSaleDialogProps> = ({ open, onOpenChange,
   const [showQuantityDialog, setShowQuantityDialog] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
+  const [showReceiptDialog, setShowReceiptDialog] = useState(false);
+  const [receiptData, setReceiptData] = useState<any>(null);
 
   // Derived
   const selectedCustomer = useMemo(() =>
@@ -408,6 +412,37 @@ const DirectSaleDialog: React.FC<DirectSaleDialogProps> = ({ open, onOpenChange,
       queryClient.invalidateQueries({ queryKey: ['orders'] });
       queryClient.invalidateQueries({ queryKey: ['assigned-orders'] });
       setShowPaymentDialog(false);
+
+      // Build receipt data and show receipt dialog
+      const receiptItems: ReceiptItem[] = orderItems.map(item => ({
+        productId: item.productId,
+        productName: getProductName(item.productId),
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        totalPrice: item.totalPrice,
+        giftQuantity: item.giftQuantity,
+      }));
+
+      setReceiptData({
+        receiptType: 'direct_sale' as ReceiptType,
+        orderId: order.id,
+        debtId: null,
+        customerId: selectedCustomerId,
+        customerName: selectedCustomer?.name || '',
+        customerPhone: selectedCustomer?.phone || null,
+        workerId: workerId!,
+        workerName: user?.full_name || '',
+        workerPhone: null,
+        branchId: activeBranch?.id || null,
+        items: receiptItems,
+        totalAmount: orderTotals.totalAmount,
+        discountAmount: 0,
+        paidAmount: paymentData.paidAmount,
+        remainingAmount: paymentData.remainingAmount,
+        paymentMethod: paymentData.paymentMethod,
+        notes: notes || null,
+      });
+      setShowReceiptDialog(true);
       handleClose(false);
     } catch (error: any) {
       console.error('Direct sale error:', error);
@@ -786,6 +821,15 @@ const DirectSaleDialog: React.FC<DirectSaleDialogProps> = ({ open, onOpenChange,
         frozenInvoiceMethod={frozenInvoiceMethod}
         onConfirm={handlePaymentConfirm}
       />
+
+      {/* Receipt Dialog */}
+      {receiptData && (
+        <ReceiptDialog
+          open={showReceiptDialog}
+          onOpenChange={setShowReceiptDialog}
+          receiptData={receiptData}
+        />
+      )}
     </>
   );
 };

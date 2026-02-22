@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import ReceiptDialog from '@/components/printing/ReceiptDialog';
+import { ReceiptType } from '@/types/receipt';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -40,6 +42,8 @@ const CollectDebtDialog: React.FC<CollectDebtDialogProps> = ({
   const [nextDueTime, setNextDueTime] = useState('');
   const [showScheduleWarning, setShowScheduleWarning] = useState(false);
   const [scheduleOverrideConfirmed, setScheduleOverrideConfirmed] = useState(false);
+  const [showReceiptDialog, setShowReceiptDialog] = useState(false);
+  const [receiptDataState, setReceiptDataState] = useState<any>(null);
 
   const hasSchedule = collectionType === 'daily' || collectionType === 'weekly';
 
@@ -103,6 +107,29 @@ const CollectDebtDialog: React.FC<CollectDebtDialogProps> = ({
       });
       toast.success(t('debts.payment_success'));
       trackVisit({ operationType: 'debt_collection', operationId: debtId });
+
+      // Build receipt data and show receipt dialog
+      setReceiptDataState({
+        receiptType: 'debt_payment' as ReceiptType,
+        orderId: null,
+        debtId: debtId,
+        customerId: '',
+        customerName: customerName,
+        customerPhone: null,
+        workerId: workerId!,
+        workerName: '',
+        workerPhone: null,
+        branchId: null,
+        items: [],
+        totalAmount: numAmount,
+        discountAmount: 0,
+        paidAmount: numAmount,
+        remainingAmount: remainingAmount - numAmount,
+        paymentMethod: paymentMethod,
+        notes: notes || null,
+      });
+      setShowReceiptDialog(true);
+
       setAmount('');
       setNotes('');
       setNextDueDate('');
@@ -114,6 +141,7 @@ const CollectDebtDialog: React.FC<CollectDebtDialogProps> = ({
   };
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-[95vw] sm:max-w-sm p-4 gap-3" dir={dir}>
         <DialogHeader className="pb-0">
@@ -235,6 +263,16 @@ const CollectDebtDialog: React.FC<CollectDebtDialogProps> = ({
         </div>
       </DialogContent>
     </Dialog>
+
+    {/* Receipt Dialog */}
+    {receiptDataState && (
+      <ReceiptDialog
+        open={showReceiptDialog}
+        onOpenChange={setShowReceiptDialog}
+        receiptData={receiptDataState}
+      />
+    )}
+    </>
   );
 };
 
