@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { bluetoothPrinter, PrinterStatusType } from '@/services/bluetoothPrinter';
-import { ReceiptData } from '@/services/receiptFormatter';
-import { formatReceiptAsBitmap } from '@/services/receiptBitmapPrinter';
+import { formatReceiptForPrint, ReceiptData } from '@/services/receiptFormatter';
 import { toast } from 'sonner';
 
 export const useBluetoothPrinter = () => {
@@ -36,8 +35,9 @@ export const useBluetoothPrinter = () => {
     toast.info('تم قطع الاتصال بالطابعة');
   }, []);
 
-  const printReceipt = useCallback(async (data: ReceiptData, previewHtml?: string): Promise<boolean> => {
+  const printReceipt = useCallback(async (data: ReceiptData): Promise<boolean> => {
     if (!bluetoothPrinter.isConnected) {
+      // Try reconnect
       const reconnected = await bluetoothPrinter.reconnect();
       if (!reconnected) {
         toast.error('الطابعة غير متصلة. يرجى إعادة الاتصال.');
@@ -46,10 +46,7 @@ export const useBluetoothPrinter = () => {
     }
 
     try {
-      // Use bitmap printing to support Arabic text
-      const { formatReceiptForPreview } = await import('@/services/receiptFormatter');
-      const html = previewHtml || formatReceiptForPreview(data);
-      const printData = await formatReceiptAsBitmap(html);
+      const printData = formatReceiptForPrint(data);
       await bluetoothPrinter.print(printData);
       toast.success('تمت الطباعة بنجاح');
       return true;
