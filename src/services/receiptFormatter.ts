@@ -1,9 +1,11 @@
 /**
  * ESC/POS Receipt Formatter for 58mm thermal printers
  * Generates binary commands for thermal printing
+ * Uses Windows-1256 codepage for Arabic text support
  */
 
 import { ReceiptItem, ReceiptType } from '@/types/receipt';
+import CodepageEncoder from '@point-of-sale/codepage-encoder';
 
 const ESC = 0x1B;
 const GS = 0x1D;
@@ -12,11 +14,20 @@ const LF = 0x0A;
 // 58mm printer ≈ 32 chars per line (monospace)
 const LINE_WIDTH = 32;
 
-const encoder = new TextEncoder();
+const cpEncoder = new CodepageEncoder();
 
 function textToBytes(text: string): Uint8Array {
-  return encoder.encode(text);
+  try {
+    // Use Windows-1256 for Arabic text support
+    return cpEncoder.encode(text, 'windows1256');
+  } catch {
+    // Fallback to UTF-8 for non-Arabic text
+    return new TextEncoder().encode(text);
+  }
 }
+
+// ESC/POS command to select Windows-1256 codepage (varies by printer, 46 is common for Arabic)
+const SET_CODEPAGE_WIN1256 = new Uint8Array([ESC, 0x74, 46]);
 
 function cmd(...bytes: number[]): Uint8Array {
   return new Uint8Array(bytes);
@@ -85,6 +96,12 @@ export interface ReceiptData {
   printCount: number;
   companyName?: string;
   companyAddress?: string;
+  // Debt-specific fields
+  debtTotalAmount?: number;
+  debtPaidBefore?: number;
+  collectorName?: string;
+  nextCollectionDate?: string | null;
+  nextCollectionTime?: string | null;
 }
 
 export function formatReceiptForPrint(data: ReceiptData): Uint8Array {
@@ -92,8 +109,9 @@ export function formatReceiptForPrint(data: ReceiptData): Uint8Array {
   const add = (bytes: Uint8Array) => parts.push(bytes);
   const addText = (text: string) => { add(textToBytes(text)); add(cmd(LF)); };
 
-  // Initialize
+  // Initialize and set Arabic codepage
   add(INIT);
+  add(SET_CODEPAGE_WIN1256);
 
   // Header - Company name
   add(ALIGN_CENTER);
@@ -129,81 +147,112 @@ export function formatReceiptForPrint(data: ReceiptData): Uint8Array {
   add(ALIGN_LEFT);
   addText(line('-'));
 
-  // Items header
-  const hdrArticle = padRight('Article', 14);
-  const hdrQte = padRight('Qte', 5);
-  const hdrPU = padRight('P.U', 6);
-  const hdrTotal = padLeft('Total', 7);
-  addText(`${hdrArticle}${hdrQte}${hdrPU}${hdrTotal}`);
-  addText(line('.'));
+  // Debt payment receipt - different format
+  if (data.receiptType === 'debt_payment') {
+    add(ALIGN_CENTER);
+    add(BOLD_ON);
 
-  // Items
-  let totalBoxes = 0;
-  let totalProducts = 0;
-  for (const item of data.items) {
-    const name = item.productName.length > 14 ? item.productName.substring(0, 14) : item.productName;
-    
-    let qtyStr = String(item.quantity);
-    if (item.giftQuantity && item.giftQuantity > 0) {
-      const paid = item.quantity - item.giftQuantity;
-      qtyStr = `${paid}+[${item.giftQuantity}]`;
+    if (data.debtTotalAmount != null) {
+      addText(`DETTE TOTALE: ${formatAmount(data.debtTotalAmount)} DA`);
+    }
+    if (data.debtPaidBefore != null) {
+      addText(`DEJA PAYE: ${formatAmount(data.debtPaidBefore)} DA`);
+    }
+    addText(line('-'));
+    addText(`PAIEMENT: ${formatAmount(data.paidAmount)} DA`);
+    addText(line('-'));
+    addText(`RESTANT: ${formatAmount(data.remainingAmount)} DA`);
+    add(BOLD_OFF);
+
+    if (data.collectorName) {
+      addText(`COLLECTEUR: ${data.collectorName}`);
     }
 
-    const pricePart = padRight(String(Math.round(item.unitPrice)), 6);
-    const totalPart = padLeft(String(Math.round(item.totalPrice)), 7);
-
-    // If name is long, print on two lines
-    if (item.productName.length > 14) {
-      addText(item.productName);
-      addText(`${padRight('', 14)}${padRight(qtyStr, 5)}${pricePart}${totalPart}`);
-    } else {
-      addText(`${padRight(name, 14)}${padRight(qtyStr, 5)}${pricePart}${totalPart}`);
+    if (data.paymentMethod) {
+      const methodLabels: Record<string, string> = {
+        cash: 'Especes', check: 'Cheque', transfer: 'Virement', receipt: 'Recu',
+      };
+      addText(`Mode: ${methodLabels[data.paymentMethod] || data.paymentMethod}`);
     }
 
-    if (item.giftQuantity && item.giftQuantity > 0) {
-      addText(`  [CADEAU: ${item.giftQuantity}]`);
+    if (data.nextCollectionDate) {
+      addText(line('-'));
+      addText(`PROCHAIN RDV: ${data.nextCollectionDate}${data.nextCollectionTime ? ' ' + data.nextCollectionTime : ''}`);
     }
-    if (item.isPromo) {
-      addText(`  [PROMO]`);
-    }
-
-    totalBoxes += item.quantity;
-    totalProducts++;
-  }
-
-  addText(line('-'));
-
-  // Summary
-  addText(`N COLLISAGE: ${totalBoxes}  NBR ART: ${totalProducts}`);
-  addText(line('-'));
-
-  // Totals
-  add(ALIGN_CENTER);
-  add(BOLD_ON);
-
-  if (data.discountAmount > 0) {
-    addText(`SOUS-TOTAL: ${formatAmount(data.totalAmount + data.discountAmount)} DA`);
-    addText(`REMISE: -${formatAmount(data.discountAmount)} DA`);
-  }
-
-  addText(`NET A PAYER: ${formatAmount(data.totalAmount)} DA`);
-  addText(line('-'));
-  addText(`MONTANT PAYE: ${formatAmount(data.paidAmount)} DA`);
-  addText(line('-'));
-
-  if (data.remainingAmount > 0) {
-    addText(`MONTANT RESTANT: ${formatAmount(data.remainingAmount)} DA`);
   } else {
-    addText(`MONTANT RESTANT: 0.00 DA`);
-  }
+    // Items header (for sale/delivery receipts)
+    const hdrArticle = padRight('Article', 14);
+    const hdrQte = padRight('Qte', 5);
+    const hdrPU = padRight('P.U', 6);
+    const hdrTotal = padLeft('Total', 7);
+    addText(`${hdrArticle}${hdrQte}${hdrPU}${hdrTotal}`);
+    addText(line('.'));
 
-  add(BOLD_OFF);
+    // Items
+    let totalBoxes = 0;
+    let totalProducts = 0;
+    for (const item of data.items) {
+      const name = item.productName.length > 14 ? item.productName.substring(0, 14) : item.productName;
+      
+      let qtyStr = String(item.quantity);
+      if (item.giftQuantity && item.giftQuantity > 0) {
+        const paid = item.quantity - item.giftQuantity;
+        qtyStr = `${paid}+[${item.giftQuantity}]`;
+      }
 
-  if (data.paymentMethod) {
-    const methodLabels: Record<string, string> = {
-      cash: 'Especes', check: 'Cheque', transfer: 'Virement', receipt: 'Recu',
-    };
-    addText(`Mode: ${methodLabels[data.paymentMethod] || data.paymentMethod}`);
+      const pricePart = padRight(String(Math.round(item.unitPrice)), 6);
+      const totalPart = padLeft(String(Math.round(item.totalPrice)), 7);
+
+      if (item.productName.length > 14) {
+        addText(item.productName);
+        addText(`${padRight('', 14)}${padRight(qtyStr, 5)}${pricePart}${totalPart}`);
+      } else {
+        addText(`${padRight(name, 14)}${padRight(qtyStr, 5)}${pricePart}${totalPart}`);
+      }
+
+      if (item.giftQuantity && item.giftQuantity > 0) {
+        addText(`  [CADEAU: ${item.giftQuantity}]`);
+      }
+      if (item.isPromo) {
+        addText(`  [PROMO]`);
+      }
+
+      totalBoxes += item.quantity;
+      totalProducts++;
+    }
+
+    addText(line('-'));
+    addText(`N COLLISAGE: ${totalBoxes}  NBR ART: ${totalProducts}`);
+    addText(line('-'));
+
+    // Totals
+    add(ALIGN_CENTER);
+    add(BOLD_ON);
+
+    if (data.discountAmount > 0) {
+      addText(`SOUS-TOTAL: ${formatAmount(data.totalAmount + data.discountAmount)} DA`);
+      addText(`REMISE: -${formatAmount(data.discountAmount)} DA`);
+    }
+
+    addText(`NET A PAYER: ${formatAmount(data.totalAmount)} DA`);
+    addText(line('-'));
+    addText(`MONTANT PAYE: ${formatAmount(data.paidAmount)} DA`);
+    addText(line('-'));
+
+    if (data.remainingAmount > 0) {
+      addText(`MONTANT RESTANT: ${formatAmount(data.remainingAmount)} DA`);
+    } else {
+      addText(`MONTANT RESTANT: 0.00 DA`);
+    }
+
+    add(BOLD_OFF);
+
+    if (data.paymentMethod) {
+      const methodLabels: Record<string, string> = {
+        cash: 'Especes', check: 'Cheque', transfer: 'Virement', receipt: 'Recu',
+      };
+      addText(`Mode: ${methodLabels[data.paymentMethod] || data.paymentMethod}`);
+    }
   }
 
   if (data.notes) {
@@ -273,33 +322,52 @@ export function formatReceiptForPreview(data: ReceiptData): string {
         ${data.printCount > 0 ? `<div style="color:#888;">(Copie ${data.printCount + 1})</div>` : ''}
       </div>
       <hr style="border:none;border-top:1px dashed #000;"/>
-      <table style="width:100%;border-collapse:collapse;">
-        <thead>
-          <tr style="border-bottom:1px dotted #000;">
-            <th style="text-align:left;">Article</th>
-            <th style="text-align:center;">Qte</th>
-            <th style="text-align:right;">P.U</th>
-            <th style="text-align:right;">Total</th>
-          </tr>
-        </thead>
-        <tbody>${itemsHtml}</tbody>
-      </table>
-      <hr style="border:none;border-top:1px dashed #000;"/>
-      <div style="text-align:center;">
-        <div>N COLLISAGE: ${totalBoxes} | NBR ART: ${data.items.length}</div>
-      </div>
-      <hr style="border:none;border-top:1px dashed #000;"/>
-      <div style="text-align:center;font-weight:bold;">
-        ${data.discountAmount > 0 ? `
-          <div>SOUS-TOTAL: ${formatAmount(data.totalAmount + data.discountAmount)} DA</div>
-          <div>REMISE: -${formatAmount(data.discountAmount)} DA</div>
+      ${data.receiptType === 'debt_payment' ? `
+        <div style="text-align:center;font-weight:bold;">
+          ${data.debtTotalAmount != null ? `<div>DETTE TOTALE: ${formatAmount(data.debtTotalAmount)} DA</div>` : ''}
+          ${data.debtPaidBefore != null ? `<div>DEJA PAYE: ${formatAmount(data.debtPaidBefore)} DA</div>` : ''}
+          <hr style="border:none;border-top:1px dashed #000;"/>
+          <div style="color:#16a34a;">PAIEMENT: ${formatAmount(data.paidAmount)} DA</div>
+          <hr style="border:none;border-top:1px dashed #000;"/>
+          <div style="color:#dc2626;">RESTANT: ${formatAmount(data.remainingAmount)} DA</div>
+        </div>
+        ${data.collectorName ? `<div style="text-align:center;margin-top:4px;">COLLECTEUR: ${data.collectorName}</div>` : ''}
+        ${data.paymentMethod ? `<div style="text-align:center;">Mode: ${{cash:'Especes',check:'Cheque',transfer:'Virement',receipt:'Recu'}[data.paymentMethod] || data.paymentMethod}</div>` : ''}
+        ${data.nextCollectionDate ? `
+          <hr style="border:none;border-top:1px dashed #000;"/>
+          <div style="text-align:center;font-weight:bold;">PROCHAIN RDV: ${data.nextCollectionDate}${data.nextCollectionTime ? ' ' + data.nextCollectionTime : ''}</div>
         ` : ''}
-        <div>NET A PAYER: ${formatAmount(data.totalAmount)} DA</div>
+      ` : `
+        <table style="width:100%;border-collapse:collapse;">
+          <thead>
+            <tr style="border-bottom:1px dotted #000;">
+              <th style="text-align:left;">Article</th>
+              <th style="text-align:center;">Qte</th>
+              <th style="text-align:right;">P.U</th>
+              <th style="text-align:right;">Total</th>
+            </tr>
+          </thead>
+          <tbody>${itemsHtml}</tbody>
+        </table>
         <hr style="border:none;border-top:1px dashed #000;"/>
-        <div>MONTANT PAYE: ${formatAmount(data.paidAmount)} DA</div>
+        <div style="text-align:center;">
+          <div>N COLLISAGE: ${totalBoxes} | NBR ART: ${data.items.length}</div>
+        </div>
         <hr style="border:none;border-top:1px dashed #000;"/>
-        <div>MONTANT RESTANT: ${formatAmount(data.remainingAmount)} DA</div>
-      </div>
+        <div style="text-align:center;font-weight:bold;">
+          ${data.discountAmount > 0 ? `
+            <div>SOUS-TOTAL: ${formatAmount(data.totalAmount + data.discountAmount)} DA</div>
+            <div>REMISE: -${formatAmount(data.discountAmount)} DA</div>
+          ` : ''}
+          <div>NET A PAYER: ${formatAmount(data.totalAmount)} DA</div>
+          <hr style="border:none;border-top:1px dashed #000;"/>
+          <div>MONTANT PAYE: ${formatAmount(data.paidAmount)} DA</div>
+          <hr style="border:none;border-top:1px dashed #000;"/>
+          <div>MONTANT RESTANT: ${formatAmount(data.remainingAmount)} DA</div>
+        </div>
+        ${data.paymentMethod ? `<div style="text-align:center;">Mode: ${{cash:'Especes',check:'Cheque',transfer:'Virement',receipt:'Recu'}[data.paymentMethod] || data.paymentMethod}</div>` : ''}
+      `}
+      ${data.notes ? `<div style="text-align:left;margin-top:4px;">Note: ${data.notes}</div>` : ''}
       <div style="text-align:center;margin-top:8px;">
         <div>Merci pour votre confiance</div>
       </div>
