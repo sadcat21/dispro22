@@ -18,6 +18,7 @@ import TasksPopover from '@/components/tasks/TasksPopover';
 import RequestsPopover from '@/components/tasks/RequestsPopover';
 import DebtCollectionsPopover from '@/components/debts/DebtCollectionsPopover';
 import SectorCustomersPopover from '@/components/sectors/SectorCustomersPopover';
+import ReceiptModificationsNotification from '@/components/printing/ReceiptModificationsNotification';
 import { ALGERIAN_WILAYAS } from '@/data/algerianWilayas';
 import { useNavigation } from '@/hooks/useNavigation';
 import { useNavbarPreferences } from '@/hooks/useNavbarPreferences';
@@ -108,6 +109,7 @@ const MobileLayout: React.FC<MobileLayoutProps> = ({ children }) => {
             <TasksPopover />
             <SectorCustomersPopover />
             <DebtCollectionsPopover />
+            <ReceiptModificationsNotification />
             <StockAlertsNotification />
             <OffersNotification />
             

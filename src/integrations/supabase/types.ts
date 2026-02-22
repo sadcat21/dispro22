@@ -1835,6 +1835,211 @@ export type Database = {
           },
         ]
       }
+      receipt_modifications: {
+        Row: {
+          changes_summary: string | null
+          created_at: string
+          id: string
+          is_reviewed: boolean
+          modification_type: string
+          modified_by: string
+          modified_data: Json
+          original_data: Json
+          receipt_id: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+        }
+        Insert: {
+          changes_summary?: string | null
+          created_at?: string
+          id?: string
+          is_reviewed?: boolean
+          modification_type?: string
+          modified_by: string
+          modified_data: Json
+          original_data: Json
+          receipt_id: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+        }
+        Update: {
+          changes_summary?: string | null
+          created_at?: string
+          id?: string
+          is_reviewed?: boolean
+          modification_type?: string
+          modified_by?: string
+          modified_data?: Json
+          original_data?: Json
+          receipt_id?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "receipt_modifications_modified_by_fkey"
+            columns: ["modified_by"]
+            isOneToOne: false
+            referencedRelation: "workers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receipt_modifications_modified_by_fkey"
+            columns: ["modified_by"]
+            isOneToOne: false
+            referencedRelation: "workers_safe"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receipt_modifications_receipt_id_fkey"
+            columns: ["receipt_id"]
+            isOneToOne: false
+            referencedRelation: "receipts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receipt_modifications_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "workers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receipt_modifications_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "workers_safe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      receipts: {
+        Row: {
+          branch_id: string | null
+          created_at: string
+          customer_id: string
+          customer_name: string
+          customer_phone: string | null
+          debt_id: string | null
+          discount_amount: number
+          id: string
+          is_modified: boolean
+          items: Json
+          last_printed_at: string | null
+          notes: string | null
+          order_id: string | null
+          original_data: Json | null
+          paid_amount: number
+          payment_method: string | null
+          print_count: number
+          receipt_number: number
+          receipt_type: string
+          remaining_amount: number
+          total_amount: number
+          updated_at: string
+          worker_id: string
+          worker_name: string
+          worker_phone: string | null
+        }
+        Insert: {
+          branch_id?: string | null
+          created_at?: string
+          customer_id: string
+          customer_name: string
+          customer_phone?: string | null
+          debt_id?: string | null
+          discount_amount?: number
+          id?: string
+          is_modified?: boolean
+          items?: Json
+          last_printed_at?: string | null
+          notes?: string | null
+          order_id?: string | null
+          original_data?: Json | null
+          paid_amount?: number
+          payment_method?: string | null
+          print_count?: number
+          receipt_number?: number
+          receipt_type?: string
+          remaining_amount?: number
+          total_amount?: number
+          updated_at?: string
+          worker_id: string
+          worker_name: string
+          worker_phone?: string | null
+        }
+        Update: {
+          branch_id?: string | null
+          created_at?: string
+          customer_id?: string
+          customer_name?: string
+          customer_phone?: string | null
+          debt_id?: string | null
+          discount_amount?: number
+          id?: string
+          is_modified?: boolean
+          items?: Json
+          last_printed_at?: string | null
+          notes?: string | null
+          order_id?: string | null
+          original_data?: Json | null
+          paid_amount?: number
+          payment_method?: string | null
+          print_count?: number
+          receipt_number?: number
+          receipt_type?: string
+          remaining_amount?: number
+          total_amount?: number
+          updated_at?: string
+          worker_id?: string
+          worker_name?: string
+          worker_phone?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "receipts_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receipts_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receipts_debt_id_fkey"
+            columns: ["debt_id"]
+            isOneToOne: false
+            referencedRelation: "customer_debts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receipts_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receipts_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "workers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receipts_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "workers_safe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       role_permissions: {
         Row: {
           created_at: string
