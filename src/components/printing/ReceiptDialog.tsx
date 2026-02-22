@@ -31,6 +31,12 @@ interface ReceiptDialogProps {
     remainingAmount: number;
     paymentMethod?: string | null;
     notes?: string | null;
+    // Debt-specific
+    debtTotalAmount?: number;
+    debtPaidBefore?: number;
+    collectorName?: string;
+    nextCollectionDate?: string | null;
+    nextCollectionTime?: string | null;
   };
 }
 
@@ -60,6 +66,12 @@ const ReceiptDialog: React.FC<ReceiptDialogProps> = ({ open, onOpenChange, recei
     notes: receiptData.notes,
     date: new Date(),
     printCount: 0,
+    // Debt-specific
+    debtTotalAmount: receiptData.debtTotalAmount,
+    debtPaidBefore: receiptData.debtPaidBefore,
+    collectorName: receiptData.collectorName,
+    nextCollectionDate: receiptData.nextCollectionDate,
+    nextCollectionTime: receiptData.nextCollectionTime,
   };
 
   const previewHtml = formatReceiptForPreview(receiptDataForFormatter);

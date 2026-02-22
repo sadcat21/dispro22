@@ -20,19 +20,22 @@ interface CollectDebtDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   debtId: string;
+  totalDebtAmount: number;
+  paidAmountBefore: number;
   remainingAmount: number;
   customerName: string;
+  customerId?: string;
   defaultAmount?: number;
   collectionType?: string | null;
   collectionDays?: string[] | null;
 }
 
 const CollectDebtDialog: React.FC<CollectDebtDialogProps> = ({
-  open, onOpenChange, debtId, remainingAmount, customerName, defaultAmount,
-  collectionType, collectionDays,
+  open, onOpenChange, debtId, totalDebtAmount, paidAmountBefore, remainingAmount, customerName, customerId,
+  defaultAmount, collectionType, collectionDays,
 }) => {
   const { t, dir } = useLanguage();
-  const { workerId } = useAuth();
+  const { workerId, user } = useAuth();
   const updatePayment = useUpdateDebtPayment();
   const { trackVisit } = useTrackVisit();
   const [amount, setAmount] = useState(defaultAmount ? String(defaultAmount) : '');
@@ -108,16 +111,16 @@ const CollectDebtDialog: React.FC<CollectDebtDialogProps> = ({
       toast.success(t('debts.payment_success'));
       trackVisit({ operationType: 'debt_collection', operationId: debtId });
 
-      // Build receipt data and show receipt dialog
+      // Build receipt data with debt-specific fields
       setReceiptDataState({
         receiptType: 'debt_payment' as ReceiptType,
         orderId: null,
         debtId: debtId,
-        customerId: '',
+        customerId: customerId || '',
         customerName: customerName,
         customerPhone: null,
         workerId: workerId!,
-        workerName: '',
+        workerName: user?.full_name || '',
         workerPhone: null,
         branchId: null,
         items: [],
@@ -127,6 +130,12 @@ const CollectDebtDialog: React.FC<CollectDebtDialogProps> = ({
         remainingAmount: remainingAmount - numAmount,
         paymentMethod: paymentMethod,
         notes: notes || null,
+        // Debt-specific
+        debtTotalAmount: totalDebtAmount,
+        debtPaidBefore: paidAmountBefore,
+        collectorName: user?.full_name || '',
+        nextCollectionDate: nextDueDate || null,
+        nextCollectionTime: nextDueTime || null,
       });
       setShowReceiptDialog(true);
 
