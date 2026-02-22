@@ -125,6 +125,24 @@ function getReceiptTypeName(type: ReceiptType): string {
   }
 }
 
+/**
+ * Build a short payment/pricing label for the receipt
+ * e.g. "F-1 Especes" or "F-2 Cheque" or "SG" or "Gros"
+ */
+function getPaymentLabel(data: ReceiptData): string | null {
+  const parts: string[] = [];
+  if (data.orderPaymentType === 'with_invoice') {
+    const methodMap: Record<string, string> = { cash: 'Especes', check: 'Cheque', transfer: 'Virement', receipt: 'Recu' };
+    const method = data.orderInvoicePaymentMethod ? (methodMap[data.orderInvoicePaymentMethod] || data.orderInvoicePaymentMethod) : '';
+    parts.push(`F-1 ${method}`.trim());
+  } else if (data.orderPaymentType === 'without_invoice') {
+    const subtypeMap: Record<string, string> = { super_gros: 'SG', gros: 'Gros', retail: 'Detail' };
+    const sub = data.orderPriceSubtype ? (subtypeMap[data.orderPriceSubtype] || data.orderPriceSubtype) : '';
+    parts.push(`F-2 ${sub}`.trim());
+  }
+  return parts.length > 0 ? parts.join(' ') : null;
+}
+
 export interface ReceiptData {
   receiptNumber: number;
   receiptType: ReceiptType;
@@ -143,6 +161,10 @@ export interface ReceiptData {
   printCount: number;
   companyName?: string;
   companyAddress?: string;
+  // Payment/pricing info
+  orderPaymentType?: string;
+  orderPriceSubtype?: string;
+  orderInvoicePaymentMethod?: string;
   // Debt-specific fields
   debtTotalAmount?: number;
   debtPaidBefore?: number;
@@ -188,6 +210,14 @@ export function formatReceiptForPrint(data: ReceiptData): Uint8Array {
   // Print count
   if (data.printCount > 0) {
     addText(`(Copie ${data.printCount + 1})`);
+  }
+
+  // Payment type label
+  const payLabel = getPaymentLabel(data);
+  if (payLabel) {
+    add(BOLD_ON);
+    addText(`TYPE: ${payLabel}`);
+    add(BOLD_OFF);
   }
 
   add(ALIGN_LEFT);
@@ -257,10 +287,7 @@ export function formatReceiptForPrint(data: ReceiptData): Uint8Array {
       }
 
       if (item.giftQuantity && item.giftQuantity > 0) {
-        addText(`  [CADEAU: ${item.giftQuantity}]`);
-      }
-      if (item.isPromo) {
-        addText(`  [PROMO]`);
+        addText(`  [PROMO: ${item.giftQuantity}]`);
       }
 
       totalBoxes += item.quantity;
@@ -341,9 +368,8 @@ export function formatReceiptForPreview(data: ReceiptData): string {
     if (item.giftQuantity && item.giftQuantity > 0) {
       const paid = item.quantity - item.giftQuantity;
       qtyStr = `${paid}+${item.giftQuantity}`;
-      badges.push('🎁');
+      badges.push('🎁 PROMO');
     }
-    if (item.isPromo) badges.push('🔥');
     
     itemsHtml += `
       <tr>
@@ -354,6 +380,8 @@ export function formatReceiptForPreview(data: ReceiptData): string {
       </tr>`;
     totalBoxes += item.quantity;
   }
+
+  const payLabel = getPaymentLabel(data);
 
   return `
     <div style="font-family:monospace;max-width:280px;margin:0 auto;font-size:12px;line-height:1.4;">
@@ -366,6 +394,7 @@ export function formatReceiptForPreview(data: ReceiptData): string {
         <div>CLIENT: ${data.customerName}</div>
         ${data.customerPhone ? `<div>TEL: ${data.customerPhone}</div>` : ''}
         ${data.printCount > 0 ? `<div style="color:#888;">(Copie ${data.printCount + 1})</div>` : ''}
+        ${payLabel ? `<div style="font-weight:bold;margin-top:2px;">TYPE: ${payLabel}</div>` : ''}
       </div>
       <hr style="border:none;border-top:1px dashed #000;"/>
       ${data.receiptType === 'debt_payment' ? `

@@ -31,6 +31,10 @@ interface ReceiptDialogProps {
     remainingAmount: number;
     paymentMethod?: string | null;
     notes?: string | null;
+    // Payment/pricing info
+    orderPaymentType?: string;
+    orderPriceSubtype?: string;
+    orderInvoicePaymentMethod?: string;
     // Debt-specific
     debtTotalAmount?: number;
     debtPaidBefore?: number;
@@ -66,6 +70,10 @@ const ReceiptDialog: React.FC<ReceiptDialogProps> = ({ open, onOpenChange, recei
     notes: receiptData.notes,
     date: new Date(),
     printCount: 0,
+    // Payment/pricing info
+    orderPaymentType: receiptData.orderPaymentType,
+    orderPriceSubtype: receiptData.orderPriceSubtype,
+    orderInvoicePaymentMethod: receiptData.orderInvoicePaymentMethod,
     // Debt-specific
     debtTotalAmount: receiptData.debtTotalAmount,
     debtPaidBefore: receiptData.debtPaidBefore,
