@@ -8,6 +8,9 @@ export interface ReceiptItem {
   totalPrice: number;
   giftQuantity?: number;
   isPromo?: boolean;
+  paymentType?: string;
+  priceSubtype?: string;
+  invoicePaymentMethod?: string;
 }
 
 export interface Receipt {

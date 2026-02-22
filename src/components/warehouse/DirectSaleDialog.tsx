@@ -441,6 +441,9 @@ const DirectSaleDialog: React.FC<DirectSaleDialogProps> = ({ open, onOpenChange,
         remainingAmount: paymentData.remainingAmount,
         paymentMethod: paymentData.paymentMethod,
         notes: notes || null,
+        orderPaymentType: frozenPaymentType,
+        orderPriceSubtype: priceSubType,
+        orderInvoicePaymentMethod: frozenInvoiceMethod || undefined,
       });
       setShowReceiptDialog(true);
       handleClose(false);

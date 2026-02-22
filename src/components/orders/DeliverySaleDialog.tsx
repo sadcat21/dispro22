@@ -392,6 +392,9 @@ const DeliverySaleDialog: React.FC<DeliverySaleDialogProps> = ({ open, onOpenCha
         remainingAmount: paymentData.remainingAmount,
         paymentMethod: paymentData.paymentMethod,
         notes: notes || null,
+        orderPaymentType: order.payment_type || undefined,
+        orderPriceSubtype: order.customer?.default_price_subtype || undefined,
+        orderInvoicePaymentMethod: order.invoice_payment_method || undefined,
       });
       setShowReceiptDialog(true);
       onOpenChange(false);
