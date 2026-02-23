@@ -549,6 +549,7 @@ const SectionCard: React.FC<{
       color === 'green' ? 'text-green-600' : 
       color === 'red' ? 'text-destructive' : 
       color === 'orange' ? 'text-orange-600' : 
+      color === 'purple' ? 'text-purple-600' :
       'text-primary'
     }`}>
       {fmt(value)} DA
