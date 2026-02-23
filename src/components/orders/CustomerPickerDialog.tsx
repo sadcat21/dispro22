@@ -43,6 +43,27 @@ const CustomerPickerDialog: React.FC<CustomerPickerDialogProps> = ({
   const [search, setSearch] = useState('');
   const [openGroups, setOpenGroups] = useState<Set<string>>(new Set());
 
+  // Fetch active debts for all customers
+  const { data: customerDebtsMap } = useQuery({
+    queryKey: ['customer-debts-summary-all'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('customer_debts')
+        .select('customer_id, remaining_amount, updated_at')
+        .in('status', ['active', 'partially_paid']);
+      const map: Record<string, { total: number; lastDate: string | null }> = {};
+      (data || []).forEach(d => {
+        if (!map[d.customer_id]) map[d.customer_id] = { total: 0, lastDate: null };
+        map[d.customer_id].total += Number(d.remaining_amount || 0);
+        if (d.updated_at && (!map[d.customer_id].lastDate || d.updated_at > map[d.customer_id].lastDate!)) {
+          map[d.customer_id].lastDate = d.updated_at;
+        }
+      });
+      return map;
+    },
+    enabled: open,
+  });
+
   const toggleGroup = (key: string) => {
     setOpenGroups(prev => {
       const next = new Set(prev);
