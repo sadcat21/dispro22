@@ -599,8 +599,8 @@ const Customers: React.FC = () => {
         </CollapsibleTrigger>
         <CollapsibleContent className="pt-2">
           <LazyCustomersMapView
-            customers={filteredByBranch}
-            onCustomerClick={(customer) => openEditDialog(customer)}
+            customers={filteredCustomers}
+            onCustomerClick={(customer) => { setProfileCustomer(customer); setIsProfileOpen(true); }}
             branchWilaya={activeBranch?.wilaya}
           />
         </CollapsibleContent>

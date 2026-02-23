@@ -2,13 +2,14 @@ import React, { useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Customer } from '@/types/database';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
     User, Phone, MapPin, Building2, ShoppingCart, Package,
-    CreditCard, TrendingUp, Info
+    CreditCard, TrendingUp, Info, Navigation
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -82,6 +83,12 @@ const CustomerProfileDialog: React.FC<CustomerProfileDialogProps> = ({
 
     if (!customer) return null;
 
+    const openGoogleMaps = () => {
+        if (customer.latitude && customer.longitude) {
+            window.open(`https://www.google.com/maps/dir/?api=1&destination=${customer.latitude},${customer.longitude}`, '_blank');
+        }
+    };
+
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="max-w-2xl w-[95vw] max-h-[85vh] overflow-hidden flex flex-col p-0" dir={language === 'ar' ? 'rtl' : 'ltr'}>
@@ -90,10 +97,16 @@ const CustomerProfileDialog: React.FC<CustomerProfileDialogProps> = ({
                         <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
                             <User className="w-5 h-5" />
                         </div>
-                        <div className="min-w-0">
+                        <div className="min-w-0 flex-1">
                             <p className="truncate">{customer.name}</p>
                             <p className="text-xs font-normal text-muted-foreground truncate">{customer.store_name || t('common.none')}</p>
                         </div>
+                        {customer.latitude && customer.longitude && (
+                            <Button size="sm" variant="outline" className="shrink-0 gap-1.5 text-xs" onClick={openGoogleMaps}>
+                                <Navigation className="w-3.5 h-3.5" />
+                                الانتقال للموقع
+                            </Button>
+                        )}
                     </DialogTitle>
                 </DialogHeader>
 

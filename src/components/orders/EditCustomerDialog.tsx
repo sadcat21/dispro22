@@ -48,7 +48,7 @@ const EditCustomerDialog: React.FC<EditCustomerDialogProps> = ({
   const { data: debtSummary } = useCustomerDebtSummary(customer?.id || null);
   const createDebt = useCreateDebt();
   const updateDebtPayment = useUpdateDebtPayment();
-  const { workerId } = useAuth();
+  const { workerId, role } = useAuth();
   const [name, setName] = useState('');
   const [nameFr, setNameFr] = useState('');
   const [translatingName, setTranslatingName] = useState(false);
@@ -280,36 +280,56 @@ const EditCustomerDialog: React.FC<EditCustomerDialogProps> = ({
         default_payment_type: defaultPaymentType,
         default_price_subtype: defaultPriceSubtype,
       };
-      const { data, error } = await supabase.from('customers').update(payload).eq('id', customer.id).select().single();
-      if (error) throw error;
+      // Workers must go through approval for updates, admins can update directly
+      const isManager = role === 'admin' || role === 'branch_admin';
 
-      // Handle debt changes
-      const currentDebt = debtSummary?.totalDebt || 0;
-      const newDebt = parseFloat(debtAmount) || 0;
-      const difference = newDebt - currentDebt;
+      if (isManager) {
+        const { data, error } = await supabase.from('customers').update(payload).eq('id', customer.id).select().single();
+        if (error) throw error;
 
-      if (difference > 0 && workerId) {
-        await createDebt.mutateAsync({ customer_id: customer.id, worker_id: workerId, total_amount: difference, paid_amount: 0, notes: 'تعديل دين من بيانات العميل' });
-      } else if (difference < 0 && workerId) {
-        const absDiff = Math.abs(difference);
-        const { data: activeDebts } = await supabase.from('customer_debts').select('id, total_amount, paid_amount, remaining_amount').eq('customer_id', customer.id).eq('status', 'active').order('created_at', { ascending: true });
-        if (activeDebts && activeDebts.length > 0) {
-          let remainingPayment = absDiff;
-          for (const debt of activeDebts) {
-            if (remainingPayment <= 0) break;
-            const debtRemaining = Number(debt.remaining_amount) || (Number(debt.total_amount) - Number(debt.paid_amount));
-            const payAmount = Math.min(remainingPayment, debtRemaining);
-            if (payAmount > 0) {
-              await updateDebtPayment.mutateAsync({ debtId: debt.id, amount: payAmount, workerId, paymentMethod: 'cash', notes: 'تخفيض دين من بيانات العميل' });
-              remainingPayment -= payAmount;
+        // Handle debt changes
+        const currentDebt = debtSummary?.totalDebt || 0;
+        const newDebt = parseFloat(debtAmount) || 0;
+        const difference = newDebt - currentDebt;
+
+        if (difference > 0 && workerId) {
+          await createDebt.mutateAsync({ customer_id: customer.id, worker_id: workerId, total_amount: difference, paid_amount: 0, notes: 'تعديل دين من بيانات العميل' });
+        } else if (difference < 0 && workerId) {
+          const absDiff = Math.abs(difference);
+          const { data: activeDebts } = await supabase.from('customer_debts').select('id, total_amount, paid_amount, remaining_amount').eq('customer_id', customer.id).eq('status', 'active').order('created_at', { ascending: true });
+          if (activeDebts && activeDebts.length > 0) {
+            let remainingPayment = absDiff;
+            for (const debt of activeDebts) {
+              if (remainingPayment <= 0) break;
+              const debtRemaining = Number(debt.remaining_amount) || (Number(debt.total_amount) - Number(debt.paid_amount));
+              const payAmount = Math.min(remainingPayment, debtRemaining);
+              if (payAmount > 0) {
+                await updateDebtPayment.mutateAsync({ debtId: debt.id, amount: payAmount, workerId, paymentMethod: 'cash', notes: 'تخفيض دين من بيانات العميل' });
+                remainingPayment -= payAmount;
+              }
             }
           }
         }
-      }
 
-      toast.success('تم تحديث بيانات العميل بنجاح');
-      onSuccess(data);
-      onOpenChange(false);
+        toast.success('تم تحديث بيانات العميل بنجاح');
+        onSuccess(data);
+        onOpenChange(false);
+      } else {
+        // Worker: create approval request for update
+        const { error } = await supabase
+          .from('customer_approval_requests')
+          .insert({
+            operation_type: 'update',
+            customer_id: customer.id,
+            payload: { ...payload, new_debt_amount: parseFloat(debtAmount) || 0 },
+            requested_by: workerId,
+            branch_id: customer.branch_id || null,
+            status: 'pending'
+          } as any);
+        if (error) throw error;
+        toast.success('تم إرسال طلب تعديل العميل للمراجعة');
+        onOpenChange(false);
+      }
     } catch (error) {
       console.error('Error updating customer:', error);
       toast.error('فشل في تحديث بيانات العميل');

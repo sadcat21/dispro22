@@ -10,6 +10,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import {
   Popover, PopoverContent, PopoverTrigger,
 } from '@/components/ui/popover';
+import { useNavigate } from 'react-router-dom';
 
 interface WorkerRequestSummary {
   workerId: string;
@@ -23,12 +24,12 @@ interface WorkerRequestSummary {
 const WorkerRequestsPopover: React.FC = () => {
   const { t } = useLanguage();
   const { role, activeBranch } = useAuth();
+  const navigate = useNavigate();
   const [selectedWorker, setSelectedWorker] = useState<string | null>(null);
+  const [isOpen, setIsOpen] = useState(false);
 
-  // Only show for admin/branch_admin
   const isAdmin = role === 'admin' || role === 'branch_admin';
 
-  // Fetch all pending requests grouped by worker
   const { data: workerSummaries } = useQuery({
     queryKey: ['worker-request-summaries', activeBranch?.id],
     queryFn: async (): Promise<WorkerRequestSummary[]> => {
@@ -37,7 +38,7 @@ const WorkerRequestsPopover: React.FC = () => {
       // 1. Customer approval requests
       let custQuery = supabase
         .from('customer_approval_requests')
-        .select('requested_by, workers!requested_by(id, full_name)')
+        .select('requested_by, workers!customer_approval_requests_requested_by_fkey(id, full_name)')
         .eq('status', 'pending');
       if (role === 'branch_admin' && activeBranch) {
         custQuery = custQuery.eq('branch_id', activeBranch.id);
@@ -93,7 +94,6 @@ const WorkerRequestsPopover: React.FC = () => {
     refetchInterval: 30000,
   });
 
-  // Detail query for selected worker
   const { data: workerDetails } = useQuery({
     queryKey: ['worker-request-details', selectedWorker],
     queryFn: async () => {
@@ -133,8 +133,29 @@ const WorkerRequestsPopover: React.FC = () => {
 
   const totalCount = workerSummaries?.reduce((s, w) => s + w.total, 0) || 0;
 
+  const navigateToAction = (type: 'customers' | 'expenses' | 'debts') => {
+    setIsOpen(false);
+    setSelectedWorker(null);
+    switch (type) {
+      case 'customers':
+        navigate('/customers');
+        // Small delay to let page load, then switch to requests tab
+        setTimeout(() => {
+          const tabTrigger = document.querySelector('[value="requests"]') as HTMLElement;
+          tabTrigger?.click();
+        }, 300);
+        break;
+      case 'expenses':
+        navigate('/expenses-management');
+        break;
+      case 'debts':
+        navigate('/customer-debts');
+        break;
+    }
+  };
+
   return (
-    <Popover>
+    <Popover open={isOpen} onOpenChange={(open) => { setIsOpen(open); if (!open) setSelectedWorker(null); }}>
       <PopoverTrigger asChild>
         <button
           className="relative flex items-center justify-center w-8 h-8 rounded-lg bg-orange-500/10 hover:bg-orange-500/20 transition-colors"
@@ -226,7 +247,11 @@ const WorkerRequestsPopover: React.FC = () => {
 
                 <TabsContent value="customers" className="mt-2 space-y-1.5">
                   {(workerDetails?.customers || []).map((req: any) => (
-                    <div key={req.id} className="border rounded-lg p-2.5 text-xs space-y-1">
+                    <button
+                      key={req.id}
+                      className="w-full border rounded-lg p-2.5 text-xs space-y-1 text-start hover:bg-muted/50 transition-colors cursor-pointer"
+                      onClick={() => navigateToAction('customers')}
+                    >
                       <div className="flex items-center gap-1.5">
                         {req.operation_type === 'insert' ? (
                           <UserPlus className="w-3 h-3 text-green-600" />
@@ -244,7 +269,7 @@ const WorkerRequestsPopover: React.FC = () => {
                         <Clock className="w-2.5 h-2.5" />
                         {new Date(req.created_at).toLocaleDateString('ar-DZ')}
                       </p>
-                    </div>
+                    </button>
                   ))}
                   {(!workerDetails?.customers || workerDetails.customers.length === 0) && (
                     <p className="text-center text-muted-foreground py-3 text-xs">لا توجد طلبات</p>
@@ -253,7 +278,11 @@ const WorkerRequestsPopover: React.FC = () => {
 
                 <TabsContent value="expenses" className="mt-2 space-y-1.5">
                   {(workerDetails?.expenses || []).map((exp: any) => (
-                    <div key={exp.id} className="border rounded-lg p-2.5 text-xs space-y-1">
+                    <button
+                      key={exp.id}
+                      className="w-full border rounded-lg p-2.5 text-xs space-y-1 text-start hover:bg-muted/50 transition-colors cursor-pointer"
+                      onClick={() => navigateToAction('expenses')}
+                    >
                       <div className="flex items-center justify-between">
                         <span className="font-medium">{(exp as any).category?.name || 'مصروف'}</span>
                         <span className="font-bold text-primary">{Number(exp.amount).toLocaleString()} DA</span>
@@ -262,7 +291,7 @@ const WorkerRequestsPopover: React.FC = () => {
                       <p className="text-muted-foreground flex items-center gap-1">
                         <Clock className="w-2.5 h-2.5" />{exp.expense_date}
                       </p>
-                    </div>
+                    </button>
                   ))}
                   {(!workerDetails?.expenses || workerDetails.expenses.length === 0) && (
                     <p className="text-center text-muted-foreground py-3 text-xs">لا توجد طلبات</p>
@@ -271,7 +300,11 @@ const WorkerRequestsPopover: React.FC = () => {
 
                 <TabsContent value="debts" className="mt-2 space-y-1.5">
                   {(workerDetails?.debts || []).map((d: any) => (
-                    <div key={d.id} className="border rounded-lg p-2.5 text-xs space-y-1">
+                    <button
+                      key={d.id}
+                      className="w-full border rounded-lg p-2.5 text-xs space-y-1 text-start hover:bg-muted/50 transition-colors cursor-pointer"
+                      onClick={() => navigateToAction('debts')}
+                    >
                       <div className="flex items-center justify-between">
                         <span className="font-medium">{(d as any).debt?.customer?.name || '-'}</span>
                         <span className="font-bold text-orange-600">{Number(d.amount_collected).toLocaleString()} DA</span>
@@ -279,7 +312,7 @@ const WorkerRequestsPopover: React.FC = () => {
                       <p className="text-muted-foreground flex items-center gap-1">
                         <Clock className="w-2.5 h-2.5" />{d.collection_date}
                       </p>
-                    </div>
+                    </button>
                   ))}
                   {(!workerDetails?.debts || workerDetails.debts.length === 0) && (
                     <p className="text-center text-muted-foreground py-3 text-xs">لا توجد طلبات</p>
