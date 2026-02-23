@@ -79,7 +79,7 @@ const SalesDetailsSummary: React.FC<SalesDetailsSummaryProps> = ({ workerId, per
     queryFn: async (): Promise<CustomerSummary[]> => {
       const { data: deliveredOrders } = await supabase
         .from('orders')
-        .select('id, customer_id, total_amount, payment_status, payment_type, partial_amount, notes, updated_at, customer:customers(name)')
+        .select('id, customer_id, total_amount, payment_status, payment_type, invoice_payment_method, partial_amount, notes, updated_at, customer:customers(name), order_items(price_subtype)')
         .eq('assigned_worker_id', workerId)
         .eq('status', 'delivered')
         .gte('updated_at', toTz(periodStart, false))
