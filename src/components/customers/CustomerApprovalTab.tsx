@@ -178,6 +178,10 @@ const CustomerApprovalTab: React.FC = () => {
 
             setReviewRequest(null);
             fetchRequests();
+            // Real-time invalidation
+            queryClient.invalidateQueries({ queryKey: ['customers'] });
+            queryClient.invalidateQueries({ queryKey: ['customer-approval-requests'] });
+            queryClient.invalidateQueries({ queryKey: ['worker-request-summaries'] });
         } catch (error: any) {
             console.error('Error approving request:', error);
             toast.error('فشل في تنفيذ الموافقة: ' + error.message);
