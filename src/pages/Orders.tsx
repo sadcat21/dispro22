@@ -609,7 +609,15 @@ const OrdersContent: React.FC = () => {
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
                       <User className="w-4 h-4 text-muted-foreground" />
-                      <span className="font-bold">{order.customer?.name}</span>
+                      <button
+                        className="font-bold hover:text-primary hover:underline transition-colors text-right"
+                        onClick={() => {
+                          setSelectedCustomer(order.customer as Customer);
+                          setShowCreateDialog(true);
+                        }}
+                      >
+                        {order.customer?.name}
+                      </button>
                     </div>
 
                     <div className="flex items-center gap-2 flex-wrap">
