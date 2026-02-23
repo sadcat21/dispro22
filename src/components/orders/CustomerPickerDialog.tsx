@@ -223,6 +223,7 @@ const CustomerPickerDialog: React.FC<CustomerPickerDialogProps> = ({
                         {group.customers.map((customer) => {
                           const isSelected = selectedCustomerId === customer.id;
                           const subtitle = [customer.store_name, customer.phone].filter(Boolean).join(' • ');
+                          const debtInfo = customerDebtsMap?.[customer.id];
                           return (
                             <button
                               key={customer.id}
@@ -242,10 +243,23 @@ const CustomerPickerDialog: React.FC<CustomerPickerDialogProps> = ({
                                 {subtitle && (
                                   <p className="text-xs text-muted-foreground truncate mt-0.5">{subtitle}</p>
                                 )}
+                                {debtInfo && debtInfo.total > 0 && (
+                                  <div className="flex items-center gap-1 mt-0.5">
+                                    <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-4 gap-0.5">
+                                      <Banknote className="w-2.5 h-2.5" />
+                                      دين: {debtInfo.total.toLocaleString()} DA
+                                    </Badge>
+                                    {debtInfo.lastDate && (
+                                      <span className="text-[10px] text-muted-foreground">
+                                        آخر: {new Date(debtInfo.lastDate).toLocaleDateString('ar-DZ')}
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
                               </div>
                               <div className={cn(
                                 "w-10 h-10 rounded-full flex items-center justify-center shrink-0",
-                                isSelected ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
+                                isSelected ? "bg-primary/10 text-primary" : debtInfo && debtInfo.total > 0 ? "bg-destructive/10 text-destructive" : "bg-muted text-muted-foreground"
                               )}>
                                 <User className="w-5 h-5" />
                               </div>
