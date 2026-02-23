@@ -69,6 +69,7 @@ const CustomersMapView: React.FC<CustomersMapViewProps> = ({
   onCustomerClick,
   branchWilaya,
 }) => {
+  // Note: customers are already filtered by sector in the parent component
   const { t } = useLanguage();
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);

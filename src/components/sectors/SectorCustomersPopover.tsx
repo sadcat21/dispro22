@@ -1,5 +1,5 @@
-import React, { useMemo } from 'react';
-import { MapPin, User, Truck, ShoppingCart } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { MapPin, User, Truck, ShoppingCart, MapPinOff, Navigation } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQuery } from '@tanstack/react-query';
@@ -8,8 +8,12 @@ import {
   Popover, PopoverContent, PopoverTrigger,
 } from '@/components/ui/popover';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useNavigate } from 'react-router-dom';
+import { useTrackVisit } from '@/hooks/useVisitTracking';
+import { toast } from 'sonner';
 
 const DAY_NAMES: Record<string, string> = {
   saturday: 'السبت',
@@ -32,7 +36,10 @@ const JS_DAY_TO_NAME: Record<number, string> = {
 const SectorCustomersPopover: React.FC = () => {
   const { t } = useLanguage();
   const { workerId, activeBranch } = useAuth();
+  const navigate = useNavigate();
+  const { trackVisit } = useTrackVisit();
   const todayName = JS_DAY_TO_NAME[new Date().getDay()] || '';
+  const [isOpen, setIsOpen] = useState(false);
 
   const { data: sectors = [] } = useQuery({
     queryKey: ['sectors-with-customers', workerId, activeBranch?.id],
@@ -49,7 +56,7 @@ const SectorCustomersPopover: React.FC = () => {
   const { data: customers = [] } = useQuery({
     queryKey: ['sector-customers', activeBranch?.id],
     queryFn: async () => {
-      let query = supabase.from('customers').select('id, name, phone, wilaya, sector_id, store_name').not('sector_id', 'is', null);
+      let query = supabase.from('customers').select('id, name, phone, wilaya, sector_id, store_name, latitude, longitude').not('sector_id', 'is', null);
       if (activeBranch) query = query.eq('branch_id', activeBranch.id);
       const { data, error } = await query;
       if (error) throw error;
@@ -58,7 +65,6 @@ const SectorCustomersPopover: React.FC = () => {
     enabled: !!workerId,
   });
 
-  // Get sectors where this worker is assigned for delivery or sales today
   const mySectors = useMemo(() => {
     return sectors.filter(s => 
       s.delivery_worker_id === workerId || s.sales_worker_id === workerId
@@ -87,8 +93,29 @@ const SectorCustomersPopover: React.FC = () => {
 
   if (mySectors.length === 0) return null;
 
+  const handleCustomerClick = (customer: any, tab: 'delivery' | 'sales') => {
+    setIsOpen(false);
+    if (tab === 'sales') {
+      // Navigate to create order for this customer
+      navigate('/orders', { state: { customerId: customer.id } });
+    }
+  };
+
+  const handleVisitWithoutOrder = async (customer: any) => {
+    try {
+      await trackVisit({
+        customerId: customer.id,
+        operationType: 'visit',
+        notes: `زيارة بدون طلبية - ${customer.name}`,
+      });
+      toast.success(`تم تسجيل زيارة ${customer.name} بنجاح`);
+    } catch {
+      toast.error('فشل في تسجيل الزيارة');
+    }
+  };
+
   return (
-    <Popover>
+    <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
         <button
           className="relative flex items-center justify-center w-8 h-8 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 transition-colors"
@@ -108,8 +135,8 @@ const SectorCustomersPopover: React.FC = () => {
           عملاء اليوم — {DAY_NAMES[todayName] || todayName}
         </div>
 
-        <Tabs defaultValue="delivery" className="flex flex-col h-full">
-          <TabsList className="w-full rounded-none border-b">
+        <Tabs defaultValue="delivery" className="flex flex-col flex-1 overflow-hidden">
+          <TabsList className="w-full rounded-none border-b shrink-0">
             <TabsTrigger value="delivery" className="flex-1 gap-1 text-xs">
               <Truck className="w-3.5 h-3.5" />
               توصيل
@@ -121,11 +148,23 @@ const SectorCustomersPopover: React.FC = () => {
               {salesCustomers.length > 0 && <Badge variant="secondary" className="text-[10px] px-1">{salesCustomers.length}</Badge>}
             </TabsTrigger>
           </TabsList>
-          <TabsContent value="delivery" className="m-0 flex-1">
-            <CustomerList customers={deliveryCustomers} emptyMessage="لا توجد عمليات توصيل اليوم" />
+          <TabsContent value="delivery" className="m-0 flex-1 overflow-hidden">
+            <CustomerList
+              customers={deliveryCustomers}
+              emptyMessage="لا توجد عمليات توصيل اليوم"
+              onCustomerClick={(c) => handleCustomerClick(c, 'delivery')}
+              onVisitWithoutOrder={handleVisitWithoutOrder}
+              showVisitButton={false}
+            />
           </TabsContent>
-          <TabsContent value="sales" className="m-0 flex-1">
-            <CustomerList customers={salesCustomers} emptyMessage="لا توجد طلبات لجمعها اليوم" />
+          <TabsContent value="sales" className="m-0 flex-1 overflow-hidden">
+            <CustomerList
+              customers={salesCustomers}
+              emptyMessage="لا توجد طلبات لجمعها اليوم"
+              onCustomerClick={(c) => handleCustomerClick(c, 'sales')}
+              onVisitWithoutOrder={handleVisitWithoutOrder}
+              showVisitButton={true}
+            />
           </TabsContent>
         </Tabs>
       </PopoverContent>
@@ -133,7 +172,13 @@ const SectorCustomersPopover: React.FC = () => {
   );
 };
 
-const CustomerList: React.FC<{ customers: any[]; emptyMessage: string }> = ({ customers, emptyMessage }) => {
+const CustomerList: React.FC<{
+  customers: any[];
+  emptyMessage: string;
+  onCustomerClick: (c: any) => void;
+  onVisitWithoutOrder: (c: any) => void;
+  showVisitButton: boolean;
+}> = ({ customers, emptyMessage, onCustomerClick, onVisitWithoutOrder, showVisitButton }) => {
   if (customers.length === 0) {
     return <div className="p-6 text-center text-sm text-muted-foreground">{emptyMessage}</div>;
   }
@@ -143,7 +188,10 @@ const CustomerList: React.FC<{ customers: any[]; emptyMessage: string }> = ({ cu
       <div className="divide-y">
         {customers.map(c => (
           <div key={c.id} className="p-3 hover:bg-muted/50 transition-colors">
-            <div className="flex items-center gap-2">
+            <button
+              className="w-full flex items-center gap-2 text-start"
+              onClick={() => onCustomerClick(c)}
+            >
               <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
                 <User className="w-4 h-4 text-primary" />
               </div>
@@ -155,6 +203,31 @@ const CustomerList: React.FC<{ customers: any[]; emptyMessage: string }> = ({ cu
                   {c.wilaya && <span>• {c.wilaya}</span>}
                 </div>
               </div>
+            </button>
+            {/* Action buttons */}
+            <div className="flex items-center gap-1 mt-1.5 justify-end">
+              {c.latitude && c.longitude && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 text-[10px] px-1.5 gap-0.5"
+                  onClick={() => window.open(`https://www.google.com/maps/dir/?api=1&destination=${c.latitude},${c.longitude}`, '_blank')}
+                >
+                  <Navigation className="w-3 h-3" />
+                  الموقع
+                </Button>
+              )}
+              {showVisitButton && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 text-[10px] px-1.5 gap-0.5 text-orange-600"
+                  onClick={() => onVisitWithoutOrder(c)}
+                >
+                  <MapPinOff className="w-3 h-3" />
+                  زيارة بدون طلبية
+                </Button>
+              )}
             </div>
           </div>
         ))}
