@@ -174,7 +174,7 @@ const DailyReceipts: React.FC = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">كل العمال</SelectItem>
-                {workers?.map(w => (
+                {workers?.filter(w => w.id).map(w => (
                   <SelectItem key={w.id} value={w.id}>{w.full_name}</SelectItem>
                 ))}
               </SelectContent>
@@ -189,7 +189,7 @@ const DailyReceipts: React.FC = () => {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">كل العملاء</SelectItem>
-              {customers?.map(c => (
+              {customers?.filter(c => c.id).map(c => (
                 <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
               ))}
             </SelectContent>
