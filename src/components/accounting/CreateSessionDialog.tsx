@@ -16,6 +16,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import ProductStockSummary from './ProductStockSummary';
 import SalesDetailsSummary from './SalesDetailsSummary';
+import PromoTrackingSummary from './PromoTrackingSummary';
 
 interface CreateSessionDialogProps {
   open: boolean;
