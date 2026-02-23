@@ -133,6 +133,8 @@ const SalesDetailsSummary: React.FC<SalesDetailsSummaryProps> = ({ workerId, per
           };
         }
         const orderItems = itemsByOrder[o.id] || [];
+        // Detect price_subtype from first order item
+        const priceSubtype = (o as any).order_items?.[0]?.price_subtype || null;
         const order: OrderDetail = {
           id: o.id,
           customer_id: custId,
@@ -140,6 +142,8 @@ const SalesDetailsSummary: React.FC<SalesDetailsSummaryProps> = ({ workerId, per
           total_amount: Number(o.total_amount || 0),
           payment_status: o.payment_status || 'pending',
           payment_type: o.payment_type || '',
+          invoice_payment_method: (o as any).invoice_payment_method || null,
+          price_subtype: priceSubtype,
           partial_amount: Number(o.partial_amount || 0),
           notes: o.notes,
           updated_at: o.updated_at,
