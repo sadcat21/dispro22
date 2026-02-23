@@ -301,7 +301,30 @@ const SalesDetailsSummary: React.FC<SalesDetailsSummaryProps> = ({ workerId, per
                         <Badge className={`text-[10px] ${paymentStatusColor[order.payment_status] || ''}`}>
                           {t(`orders.payment_${order.payment_status}`)}
                         </Badge>
+                        {/* Payment type: Invoice 1 or 2 */}
+                        <Badge variant="outline" className="text-[10px]">
+                          {order.payment_type === 'with_invoice' ? 'فاتورة 1' : 'فاتورة 2'}
+                        </Badge>
                         <span className="font-bold text-sm">{order.total_amount.toLocaleString()} DA</span>
+                      </div>
+
+                      {/* Invoice method or price subtype */}
+                      <div className="flex flex-wrap gap-1.5">
+                        {order.payment_type === 'with_invoice' && order.invoice_payment_method && (
+                          <Badge variant="secondary" className="text-[9px]">
+                            {order.invoice_payment_method === 'check' ? 'شيك' :
+                             order.invoice_payment_method === 'transfer' ? 'تحويل بنكي' :
+                             order.invoice_payment_method === 'receipt' ? 'تسبيق' :
+                             order.invoice_payment_method === 'cash' ? 'نقدي' : order.invoice_payment_method}
+                          </Badge>
+                        )}
+                        {order.payment_type !== 'with_invoice' && order.price_subtype && (
+                          <Badge variant="secondary" className="text-[9px]">
+                            {order.price_subtype === 'super_gros' ? 'سوبر جملة' :
+                             order.price_subtype === 'gros' ? 'جملة' :
+                             order.price_subtype === 'retail' ? 'تجزئة' : order.price_subtype}
+                          </Badge>
+                        )}
                       </div>
 
                       {order.payment_status === 'partial' && order.partial_amount > 0 && (

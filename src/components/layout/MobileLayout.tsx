@@ -108,7 +108,7 @@ const MobileLayout: React.FC<MobileLayoutProps> = ({ children }) => {
           </div>
           
           <div className="flex items-center gap-1 shrink-0">
-            <RequestsPopover />
+            <WorkerRequestsPopover />
             <TasksPopover />
             <SectorCustomersPopover />
             <DebtCollectionsPopover />
