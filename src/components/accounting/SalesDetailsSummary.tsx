@@ -27,6 +27,8 @@ interface OrderDetail {
   total_amount: number;
   payment_status: string;
   payment_type: string;
+  invoice_payment_method: string | null;
+  price_subtype: string | null;
   partial_amount: number;
   notes: string | null;
   updated_at: string;
