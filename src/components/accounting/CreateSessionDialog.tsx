@@ -474,6 +474,19 @@ const CreateSessionDialog: React.FC<CreateSessionDialogProps> = ({ open, onOpenC
                     periodEnd={periodEnd}
                   />
                 </div>
+                {/* Promo Tracking */}
+                {calc && calc.promoTracking.length > 0 && (
+                  <div className="border-2 rounded-xl p-3.5">
+                    <SectionDividerWithIcon
+                      icon={<Tag className="w-4 h-4 text-purple-600" />}
+                      label="تتبع العروض"
+                    />
+                    <PromoTrackingSummary
+                      items={calc.promoTracking}
+                      totalGiftValue={calc.giftOfferValue}
+                    />
+                  </div>
+                )}
               </>
             )}
 
