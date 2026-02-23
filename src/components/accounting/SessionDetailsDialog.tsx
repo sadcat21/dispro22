@@ -44,6 +44,14 @@ const SessionDetailsDialog: React.FC<SessionDetailsDialogProps> = ({ open, onOpe
   const createWorkerDebt = useCreateWorkerDebt();
   const [deficitAdded, setDeficitAdded] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
+  
+  // Fetch live calculations for promo tracking
+  const { data: liveCalc } = useSessionCalculations({
+    workerId: session.worker_id,
+    branchId: session.branch_id || undefined,
+    periodStart: session.period_start,
+    periodEnd: session.period_end,
+  });
 
   const handleAddDeficit = async (amount: number) => {
     try {
