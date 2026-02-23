@@ -201,6 +201,7 @@ const CustomerApprovalTab: React.FC = () => {
             toast.info('تم رفض الطلب');
             setReviewRequest(null);
             fetchRequests();
+            queryClient.invalidateQueries({ queryKey: ['worker-request-summaries'] });
         } catch (error: any) {
             toast.error('فشل في رفض الطلب');
         } finally {
