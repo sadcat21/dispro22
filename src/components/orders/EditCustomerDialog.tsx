@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,12 +15,19 @@ import LazyLocationPicker from '@/components/map/LazyLocationPicker';
 import { useSectors } from '@/hooks/useSectors';
 import { useCustomerDebtSummary, useCreateDebt, useUpdateDebtPayment } from '@/hooks/useCustomerDebts';
 import { useAuth } from '@/contexts/AuthContext';
+import { reverseGeocode } from '@/utils/geoUtils';
 
 interface EditCustomerDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   customer: Customer | null;
   onSuccess: (customer: Customer) => void;
+}
+
+interface SectorZone {
+  id: string;
+  name: string;
+  sector_id: string;
 }
 
 const EditCustomerDialog: React.FC<EditCustomerDialogProps> = ({
@@ -39,8 +46,11 @@ const EditCustomerDialog: React.FC<EditCustomerDialogProps> = ({
   const [translatingName, setTranslatingName] = useState(false);
   const [storeName, setStoreName] = useState('');
   const [sectorId, setSectorId] = useState('');
+  const [zoneId, setZoneId] = useState('');
+  const [zones, setZones] = useState<SectorZone[]>([]);
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
+  const [addressLoading, setAddressLoading] = useState(false);
   const [wilaya, setWilaya] = useState('');
   const [latitude, setLatitude] = useState<number | null>(null);
   const [longitude, setLongitude] = useState<number | null>(null);
@@ -50,6 +60,22 @@ const EditCustomerDialog: React.FC<EditCustomerDialogProps> = ({
   const [salesRepName, setSalesRepName] = useState('');
   const [salesRepPhone, setSalesRepPhone] = useState('');
   const [debtAmount, setDebtAmount] = useState('');
+
+  // Fetch zones when sector changes
+  useEffect(() => {
+    if (!sectorId) {
+      setZones([]);
+      return;
+    }
+    supabase.from('sector_zones').select('id, name, sector_id').eq('sector_id', sectorId).order('name')
+      .then(({ data }) => {
+        setZones(data || []);
+        // Reset zone if current zone doesn't belong to new sector
+        if (data && !data.find(z => z.id === zoneId)) {
+          setZoneId('');
+        }
+      });
+  }, [sectorId]);
 
   // Completion percentage
   const completionPercent = useMemo(() => {
@@ -65,13 +91,13 @@ const EditCustomerDialog: React.FC<EditCustomerDialogProps> = ({
       !!wilaya,
       !!nameFr.trim(),
       !!salesRepName.trim(),
+      !!zoneId,
     ];
     const total = requiredFields.length + optionalFields.length;
     const filled = [...requiredFields, ...optionalFields].filter(Boolean).length;
     return Math.round((filled / total) * 100);
-  }, [name, phone, storeName, sectorId, latitude, longitude, address, wilaya, nameFr, salesRepName]);
+  }, [name, phone, storeName, sectorId, latitude, longitude, address, wilaya, nameFr, salesRepName, zoneId]);
 
-  // Sync debt amount when summary loads
   useEffect(() => {
     if (debtSummary) {
       setDebtAmount(debtSummary.totalDebt.toString());
@@ -84,6 +110,7 @@ const EditCustomerDialog: React.FC<EditCustomerDialogProps> = ({
       setNameFr(customer.name_fr || '');
       setStoreName(customer.store_name || '');
       setSectorId(customer.sector_id || '');
+      setZoneId(customer.zone_id || '');
       setPhone(customer.phone || '');
       setAddress(customer.address || '');
       setWilaya(customer.wilaya || '');
@@ -93,10 +120,28 @@ const EditCustomerDialog: React.FC<EditCustomerDialogProps> = ({
       setSalesRepName(customer.sales_rep_name || '');
       setSalesRepPhone(customer.sales_rep_phone || '');
       setShowMap(!!(customer.latitude && customer.longitude));
+
+      // If customer has coordinates but no address, auto-fetch address
+      if (customer.latitude && customer.longitude && !customer.address) {
+        fetchAddressFromCoords(customer.latitude, customer.longitude);
+      }
     }
   }, [open, customer]);
 
-  // Auto-translate Arabic name to French on blur
+  const fetchAddressFromCoords = useCallback(async (lat: number, lng: number) => {
+    setAddressLoading(true);
+    try {
+      const addr = await reverseGeocode(lat, lng);
+      if (addr && addr !== 'عنوان غير معروف') {
+        setAddress(addr);
+      }
+    } catch {
+      // Silent fail
+    } finally {
+      setAddressLoading(false);
+    }
+  }, []);
+
   const handleNameBlur = async () => {
     if (!name.trim() || nameFr.trim()) return;
     setTranslatingName(true);
@@ -107,9 +152,7 @@ const EditCustomerDialog: React.FC<EditCustomerDialogProps> = ({
       if (!error && data?.translations?.fr) {
         setNameFr(data.translations.fr);
       }
-    } catch {
-      // Silent fail
-    } finally {
+    } catch { /* Silent */ } finally {
       setTranslatingName(false);
     }
   };
@@ -119,38 +162,22 @@ const EditCustomerDialog: React.FC<EditCustomerDialogProps> = ({
     setLongitude(lng);
     if (addressText) {
       const parts = addressText.split(',').map(p => p.trim()).filter(Boolean);
-      const formattedAddress = parts.join(' - ');
-      setAddress(formattedAddress);
+      setAddress(parts.join(' - '));
+    } else {
+      fetchAddressFromCoords(lat, lng);
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     if (!customer) return;
-    if (!name.trim()) {
-      toast.error('الرجاء إدخال اسم العميل');
-      return;
-    }
-    if (!phone.trim()) {
-      toast.error('الرجاء إدخال رقم هاتف العميل');
-      return;
-    }
-    if (!storeName.trim()) {
-      toast.error('الرجاء إدخال اسم المحل');
-      return;
-    }
-    if (!sectorId || sectorId === 'none') {
-      toast.error('الرجاء اختيار السكتور');
-      return;
-    }
-    if (!latitude || !longitude) {
-      toast.error('يرجى تحديد الموقع الجغرافي على الخريطة');
-      return;
-    }
+    if (!name.trim()) { toast.error('الرجاء إدخال اسم العميل'); return; }
+    if (!phone.trim()) { toast.error('الرجاء إدخال رقم هاتف العميل'); return; }
+    if (!storeName.trim()) { toast.error('الرجاء إدخال اسم المحل'); return; }
+    if (!sectorId || sectorId === 'none') { toast.error('الرجاء اختيار السكتور'); return; }
+    if (!latitude || !longitude) { toast.error('يرجى تحديد الموقع الجغرافي على الخريطة'); return; }
 
     setIsLoading(true);
-
     try {
       const payload = {
         name: name.trim(),
@@ -159,20 +186,14 @@ const EditCustomerDialog: React.FC<EditCustomerDialogProps> = ({
         phone: phone.trim() || null,
         address: address.trim() || null,
         wilaya: wilaya || null,
-        latitude,
-        longitude,
+        latitude, longitude,
         location_type: locationType,
         sector_id: sectorId,
+        zone_id: zoneId || null,
         sales_rep_name: salesRepName.trim() || null,
         sales_rep_phone: salesRepPhone.trim() || null,
       };
-      const { data, error } = await supabase
-        .from('customers')
-        .update(payload)
-        .eq('id', customer.id)
-        .select()
-        .single();
-
+      const { data, error } = await supabase.from('customers').update(payload).eq('id', customer.id).select().single();
       if (error) throw error;
 
       // Handle debt changes
@@ -181,22 +202,10 @@ const EditCustomerDialog: React.FC<EditCustomerDialogProps> = ({
       const difference = newDebt - currentDebt;
 
       if (difference > 0 && workerId) {
-        await createDebt.mutateAsync({
-          customer_id: customer.id,
-          worker_id: workerId,
-          total_amount: difference,
-          paid_amount: 0,
-          notes: 'تعديل دين من بيانات العميل',
-        });
+        await createDebt.mutateAsync({ customer_id: customer.id, worker_id: workerId, total_amount: difference, paid_amount: 0, notes: 'تعديل دين من بيانات العميل' });
       } else if (difference < 0 && workerId) {
         const absDiff = Math.abs(difference);
-        const { data: activeDebts } = await supabase
-          .from('customer_debts')
-          .select('id, total_amount, paid_amount, remaining_amount')
-          .eq('customer_id', customer.id)
-          .eq('status', 'active')
-          .order('created_at', { ascending: true });
-
+        const { data: activeDebts } = await supabase.from('customer_debts').select('id, total_amount, paid_amount, remaining_amount').eq('customer_id', customer.id).eq('status', 'active').order('created_at', { ascending: true });
         if (activeDebts && activeDebts.length > 0) {
           let remainingPayment = absDiff;
           for (const debt of activeDebts) {
@@ -204,13 +213,7 @@ const EditCustomerDialog: React.FC<EditCustomerDialogProps> = ({
             const debtRemaining = Number(debt.remaining_amount) || (Number(debt.total_amount) - Number(debt.paid_amount));
             const payAmount = Math.min(remainingPayment, debtRemaining);
             if (payAmount > 0) {
-              await updateDebtPayment.mutateAsync({
-                debtId: debt.id,
-                amount: payAmount,
-                workerId,
-                paymentMethod: 'cash',
-                notes: 'تخفيض دين من بيانات العميل',
-              });
+              await updateDebtPayment.mutateAsync({ debtId: debt.id, amount: payAmount, workerId, paymentMethod: 'cash', notes: 'تخفيض دين من بيانات العميل' });
               remainingPayment -= payAmount;
             }
           }
@@ -253,15 +256,7 @@ const EditCustomerDialog: React.FC<EditCustomerDialogProps> = ({
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="edit-name">اسم العميل *</Label>
-            <Input
-              id="edit-name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              onBlur={handleNameBlur}
-              placeholder="أدخل اسم العميل"
-              className="text-right"
-              required
-            />
+            <Input id="edit-name" value={name} onChange={(e) => setName(e.target.value)} onBlur={handleNameBlur} placeholder="أدخل اسم العميل" className="text-right" required />
           </div>
 
           <div className="space-y-2">
@@ -270,26 +265,12 @@ const EditCustomerDialog: React.FC<EditCustomerDialogProps> = ({
               اسم العميل بالفرنسية
               {translatingName && <Loader2 className="w-3 h-3 animate-spin text-muted-foreground" />}
             </Label>
-            <Input
-              id="edit-name-fr"
-              value={nameFr}
-              onChange={(e) => setNameFr(e.target.value)}
-              placeholder="Nom du client (Français)"
-              className="text-left"
-              dir="ltr"
-            />
+            <Input id="edit-name-fr" value={nameFr} onChange={(e) => setNameFr(e.target.value)} placeholder="Nom du client (Français)" className="text-left" dir="ltr" />
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="edit-store-name">اسم المحل *</Label>
-            <Input
-              id="edit-store-name"
-              value={storeName}
-              onChange={(e) => setStoreName(e.target.value)}
-              placeholder="اسم المحل التجاري"
-              className="text-right"
-              required
-            />
+            <Input id="edit-store-name" value={storeName} onChange={(e) => setStoreName(e.target.value)} placeholder="اسم المحل التجاري" className="text-right" required />
           </div>
 
           {sectors.length > 0 && (
@@ -309,17 +290,27 @@ const EditCustomerDialog: React.FC<EditCustomerDialogProps> = ({
             </div>
           )}
 
+          {/* Zone selection */}
+          {zones.length > 0 && (
+            <div className="space-y-2">
+              <Label>المنطقة داخل السكتور</Label>
+              <Select value={zoneId || 'none'} onValueChange={(val) => setZoneId(val === 'none' ? '' : val)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="اختر المنطقة" />
+                </SelectTrigger>
+                <SelectContent className="bg-popover z-[100]">
+                  <SelectItem value="none">بدون تحديد</SelectItem>
+                  {zones.map(z => (
+                    <SelectItem key={z.id} value={z.id}>{z.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           <div className="space-y-2">
             <Label htmlFor="edit-phone">هاتف العميل *</Label>
-            <Input
-              id="edit-phone"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="0XXX XXX XXX"
-              className="text-right"
-              dir="ltr"
-              required
-            />
+            <Input id="edit-phone" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="0XXX XXX XXX" className="text-right" dir="ltr" required />
           </div>
 
           {/* Sales Representative */}
@@ -329,19 +320,8 @@ const EditCustomerDialog: React.FC<EditCustomerDialogProps> = ({
               مسؤول المبيعات
             </Label>
             <div className="grid grid-cols-2 gap-2">
-              <Input
-                value={salesRepName}
-                onChange={(e) => setSalesRepName(e.target.value)}
-                placeholder="الاسم"
-                className="text-right text-sm"
-              />
-              <Input
-                value={salesRepPhone}
-                onChange={(e) => setSalesRepPhone(e.target.value)}
-                placeholder="رقم الهاتف"
-                className="text-right text-sm"
-                dir="ltr"
-              />
+              <Input value={salesRepName} onChange={(e) => setSalesRepName(e.target.value)} placeholder="الاسم" className="text-right text-sm" />
+              <Input value={salesRepPhone} onChange={(e) => setSalesRepPhone(e.target.value)} placeholder="رقم الهاتف" className="text-right text-sm" dir="ltr" />
             </div>
           </div>
 
@@ -351,15 +331,7 @@ const EditCustomerDialog: React.FC<EditCustomerDialogProps> = ({
               <CreditCard className="w-3.5 h-3.5" />
               الدين (دج)
             </Label>
-            <Input
-              type="number"
-              min="0"
-              value={debtAmount}
-              onChange={(e) => setDebtAmount(e.target.value)}
-              placeholder="0"
-              className="text-right"
-              dir="ltr"
-            />
+            <Input type="number" min="0" value={debtAmount} onChange={(e) => setDebtAmount(e.target.value)} placeholder="0" className="text-right" dir="ltr" />
             {debtSummary && debtSummary.count > 0 && (
               <p className="text-xs text-muted-foreground">{debtSummary.count} سند(ات) نشطة</p>
             )}
@@ -368,9 +340,7 @@ const EditCustomerDialog: React.FC<EditCustomerDialogProps> = ({
           <div className="space-y-2">
             <Label htmlFor="edit-wilaya">الولاية</Label>
             <Select value={wilaya} onValueChange={setWilaya}>
-              <SelectTrigger>
-                <SelectValue placeholder="اختر الولاية" />
-              </SelectTrigger>
+              <SelectTrigger><SelectValue placeholder="اختر الولاية" /></SelectTrigger>
               <SelectContent position="popper" className="z-[100] bg-popover max-h-60">
                 {ALGERIAN_WILAYAS.map((w) => (
                   <SelectItem key={w.code} value={w.name}>{w.name}</SelectItem>
@@ -380,28 +350,19 @@ const EditCustomerDialog: React.FC<EditCustomerDialogProps> = ({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="edit-address">العنوان</Label>
-            <Input
-              id="edit-address"
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
-              placeholder="أدخل العنوان"
-              className="text-right"
-            />
+            <Label htmlFor="edit-address" className="flex items-center gap-1">
+              العنوان
+              {addressLoading && <Loader2 className="w-3 h-3 animate-spin text-muted-foreground" />}
+            </Label>
+            <Input id="edit-address" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="أدخل العنوان" className="text-right" />
+            <p className="text-xs text-muted-foreground">💡 يتم اقتراح العنوان تلقائياً من الإحداثيات</p>
           </div>
 
           <div className="space-y-2">
             <Label>نوع الموقع</Label>
             <div className="grid grid-cols-3 gap-2">
               {locationTypes.map((type) => (
-                <Button
-                  key={type.value}
-                  type="button"
-                  variant={locationType === type.value ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setLocationType(type.value as any)}
-                  className="flex flex-col h-14 gap-1"
-                >
+                <Button key={type.value} type="button" variant={locationType === type.value ? 'default' : 'outline'} size="sm" onClick={() => setLocationType(type.value as any)} className="flex flex-col h-14 gap-1">
                   <type.icon className="w-4 h-4" />
                   <span className="text-xs">{type.label}</span>
                 </Button>
@@ -415,21 +376,14 @@ const EditCustomerDialog: React.FC<EditCustomerDialogProps> = ({
               <Button type="button" variant="outline" className={`w-full justify-between ${!(latitude && longitude) ? 'border-destructive' : ''}`}>
                 <span className="flex items-center gap-2">
                   تحديد الموقع على الخريطة *
-                  {latitude && longitude && (
-                    <span className="text-xs bg-primary text-primary-foreground px-1.5 py-0.5 rounded">✓</span>
-                  )}
+                  {latitude && longitude && <span className="text-xs bg-primary text-primary-foreground px-1.5 py-0.5 rounded">✓</span>}
                 </span>
                 {showMap ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
               </Button>
             </CollapsibleTrigger>
             <CollapsibleContent className="mt-2">
               <div className="h-64 rounded-lg overflow-hidden border">
-                <LazyLocationPicker
-                  onLocationChange={handleLocationChange}
-                  latitude={latitude}
-                  longitude={longitude}
-                  defaultWilaya={wilaya || undefined}
-                />
+                <LazyLocationPicker onLocationChange={handleLocationChange} latitude={latitude} longitude={longitude} defaultWilaya={wilaya || undefined} />
               </div>
               {latitude && longitude && (
                 <p className="text-xs text-muted-foreground mt-1 text-center">

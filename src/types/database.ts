@@ -40,6 +40,7 @@ export interface Customer {
   latitude: number | null;
   longitude: number | null;
   location_type?: string | null;
+  zone_id?: string | null;
   is_trusted?: boolean | null;
   trust_notes?: string | null;
   default_payment_type?: string | null;
