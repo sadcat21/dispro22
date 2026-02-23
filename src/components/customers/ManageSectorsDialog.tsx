@@ -7,16 +7,23 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { MapPin, Plus, Pencil, Trash2, Loader2, Save, X, UserCheck, Truck, Calendar } from 'lucide-react';
+import { MapPin, Plus, Pencil, Trash2, Loader2, Save, X, UserCheck, Truck, Calendar, Layers } from 'lucide-react';
 import { useSectors } from '@/hooks/useSectors';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Sector } from '@/types/database';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 interface ManageSectorsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+}
+
+interface SectorZone {
+  id: string;
+  name: string;
+  sector_id: string;
 }
 
 const DAYS = [
@@ -44,9 +51,19 @@ const ManageSectorsDialog: React.FC<ManageSectorsDialogProps> = ({ open, onOpenC
   const [salesWorkerId, setSalesWorkerId] = useState('');
   const [deliveryWorkerId, setDeliveryWorkerId] = useState('');
 
+  // Zone management state
+  const [zonesMap, setZonesMap] = useState<Record<string, SectorZone[]>>({});
+  const [expandedZonesSector, setExpandedZonesSector] = useState<string | null>(null);
+  const [newZoneName, setNewZoneName] = useState('');
+  const [addingZone, setAddingZone] = useState(false);
+  // Zones for the form (when creating/editing a sector)
+  const [formZones, setFormZones] = useState<string[]>([]);
+  const [newFormZone, setNewFormZone] = useState('');
+
   useEffect(() => {
     if (open) {
       fetchWorkers();
+      fetchAllZones();
     }
   }, [open, activeBranch]);
 
@@ -57,6 +74,18 @@ const ManageSectorsDialog: React.FC<ManageSectorsDialogProps> = ({ open, onOpenC
     setWorkers((data || []).map(w => ({ id: w.id!, full_name: w.full_name! })));
   };
 
+  const fetchAllZones = async () => {
+    const { data } = await supabase.from('sector_zones').select('id, name, sector_id').order('name');
+    if (data) {
+      const map: Record<string, SectorZone[]> = {};
+      data.forEach(z => {
+        if (!map[z.sector_id]) map[z.sector_id] = [];
+        map[z.sector_id].push(z);
+      });
+      setZonesMap(map);
+    }
+  };
+
   const resetForm = () => {
     setName('');
     setVisitDaySales('');
@@ -65,6 +94,8 @@ const ManageSectorsDialog: React.FC<ManageSectorsDialogProps> = ({ open, onOpenC
     setDeliveryWorkerId('');
     setEditingSector(null);
     setShowForm(false);
+    setFormZones([]);
+    setNewFormZone('');
   };
 
   const openEditForm = (sector: Sector) => {
@@ -74,7 +105,24 @@ const ManageSectorsDialog: React.FC<ManageSectorsDialogProps> = ({ open, onOpenC
     setVisitDayDelivery(sector.visit_day_delivery || '');
     setSalesWorkerId(sector.sales_worker_id || '');
     setDeliveryWorkerId(sector.delivery_worker_id || '');
+    // Load existing zones for editing
+    setFormZones((zonesMap[sector.id] || []).map(z => z.name));
     setShowForm(true);
+  };
+
+  const handleAddFormZone = () => {
+    const trimmed = newFormZone.trim();
+    if (!trimmed) return;
+    if (formZones.includes(trimmed)) {
+      toast.error('هذه المنطقة موجودة بالفعل');
+      return;
+    }
+    setFormZones(prev => [...prev, trimmed]);
+    setNewFormZone('');
+  };
+
+  const handleRemoveFormZone = (zoneName: string) => {
+    setFormZones(prev => prev.filter(z => z !== zoneName));
   };
 
   const handleSave = async () => {
@@ -94,18 +142,75 @@ const ManageSectorsDialog: React.FC<ManageSectorsDialogProps> = ({ open, onOpenC
         created_by: workerId,
       };
 
+      let savedSectorId: string;
+
       if (editingSector) {
         await updateSector(editingSector.id, sectorData);
+        savedSectorId = editingSector.id;
+
+        // Sync zones: delete old ones and insert new ones
+        const existingZones = zonesMap[editingSector.id] || [];
+        const existingNames = existingZones.map(z => z.name);
+
+        // Delete zones that were removed
+        const toDelete = existingZones.filter(z => !formZones.includes(z.name));
+        for (const z of toDelete) {
+          await supabase.from('sector_zones').delete().eq('id', z.id);
+        }
+
+        // Add new zones
+        const toAdd = formZones.filter(n => !existingNames.includes(n));
+        if (toAdd.length > 0) {
+          await supabase.from('sector_zones').insert(toAdd.map(n => ({ sector_id: savedSectorId, name: n })));
+        }
+
         toast.success('تم تحديث السكتور بنجاح');
       } else {
-        await createSector(sectorData);
+        const newSector = await createSector(sectorData);
+        savedSectorId = newSector.id;
+
+        // Insert zones for the new sector
+        if (formZones.length > 0) {
+          await supabase.from('sector_zones').insert(formZones.map(n => ({ sector_id: savedSectorId, name: n })));
+        }
+
         toast.success('تم إنشاء السكتور بنجاح');
       }
+
+      await fetchAllZones();
       resetForm();
     } catch (error: any) {
       toast.error(error.message || 'حدث خطأ');
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleAddZoneToExisting = async (sectorId: string) => {
+    const trimmed = newZoneName.trim();
+    if (!trimmed) return;
+    setAddingZone(true);
+    try {
+      const { error } = await supabase.from('sector_zones').insert({ sector_id: sectorId, name: trimmed });
+      if (error) throw error;
+      toast.success('تمت إضافة المنطقة');
+      setNewZoneName('');
+      await fetchAllZones();
+    } catch (error: any) {
+      toast.error(error.message || 'فشل الإضافة');
+    } finally {
+      setAddingZone(false);
+    }
+  };
+
+  const handleDeleteZone = async (zoneId: string) => {
+    try {
+      const { error } = await supabase.from('sector_zones').delete().eq('id', zoneId);
+      if (error) throw error;
+      toast.success('تم حذف المنطقة');
+      await fetchAllZones();
+    } catch (error: any) {
+      toast.error(error.message || 'فشل الحذف');
     }
   };
 
@@ -156,12 +261,44 @@ const ManageSectorsDialog: React.FC<ManageSectorsDialogProps> = ({ open, onOpenC
                 <Input value={name} onChange={e => setName(e.target.value)} placeholder="مثال: سكتور الشرق" className="text-right" autoFocus />
               </div>
 
+              {/* Zones inside the form */}
+              <div className="space-y-2 border rounded-lg p-3 bg-background">
+                <Label className="text-sm flex items-center gap-1">
+                  <Layers className="w-3.5 h-3.5" />
+                  المناطق داخل السكتور
+                </Label>
+                {formZones.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {formZones.map((zoneName) => (
+                      <Badge key={zoneName} variant="secondary" className="text-xs flex items-center gap-1 pr-1">
+                        {zoneName}
+                        <button type="button" onClick={() => handleRemoveFormZone(zoneName)} className="hover:text-destructive">
+                          <X className="w-3 h-3" />
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+                <div className="flex gap-2">
+                  <Input
+                    value={newFormZone}
+                    onChange={e => setNewFormZone(e.target.value)}
+                    placeholder="اسم المنطقة..."
+                    className="text-right text-sm flex-1"
+                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddFormZone(); } }}
+                  />
+                  <Button type="button" variant="outline" size="sm" onClick={handleAddFormZone} disabled={!newFormZone.trim()}>
+                    <Plus className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
+              </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label className="text-xs flex items-center gap-1"><Calendar className="w-3 h-3" /> يوم زيارة الطلبات</Label>
                   <Select value={visitDaySales} onValueChange={setVisitDaySales}>
                     <SelectTrigger className="text-xs h-9"><SelectValue placeholder="اختر اليوم" /></SelectTrigger>
-                     <SelectContent>
+                    <SelectContent>
                       <SelectItem value="none">بدون</SelectItem>
                       {DAYS.map(d => <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>)}
                     </SelectContent>
@@ -171,7 +308,7 @@ const ManageSectorsDialog: React.FC<ManageSectorsDialogProps> = ({ open, onOpenC
                   <Label className="text-xs flex items-center gap-1"><Calendar className="w-3 h-3" /> يوم التوصيل</Label>
                   <Select value={visitDayDelivery} onValueChange={setVisitDayDelivery}>
                     <SelectTrigger className="text-xs h-9"><SelectValue placeholder="اختر اليوم" /></SelectTrigger>
-                     <SelectContent>
+                    <SelectContent>
                       <SelectItem value="none">بدون</SelectItem>
                       {DAYS.map(d => <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>)}
                     </SelectContent>
@@ -184,7 +321,7 @@ const ManageSectorsDialog: React.FC<ManageSectorsDialogProps> = ({ open, onOpenC
                   <Label className="text-xs flex items-center gap-1"><UserCheck className="w-3 h-3" /> مندوب المبيعات</Label>
                   <Select value={salesWorkerId} onValueChange={setSalesWorkerId}>
                     <SelectTrigger className="text-xs h-9"><SelectValue placeholder="اختر المندوب" /></SelectTrigger>
-                     <SelectContent>
+                    <SelectContent>
                       <SelectItem value="none">بدون</SelectItem>
                       {workers.map(w => <SelectItem key={w.id} value={w.id}>{w.full_name}</SelectItem>)}
                     </SelectContent>
@@ -226,53 +363,101 @@ const ManageSectorsDialog: React.FC<ManageSectorsDialogProps> = ({ open, onOpenC
                 <p className="text-sm">لا توجد سكتورات بعد</p>
               </div>
             ) : (
-              sectors.map(sector => (
-                <Card key={sector.id}>
-                  <CardContent className="p-3">
-                    <div className="flex items-start justify-between">
-                      <div className="space-y-1.5 flex-1">
-                        <p className="font-bold text-sm">{sector.name}</p>
-                        <div className="flex flex-wrap gap-1.5">
-                          {getDayLabel(sector.visit_day_sales) && (
-                            <Badge variant="outline" className="text-[10px] px-1.5">
-                              <Calendar className="w-2.5 h-2.5 ml-0.5" />
-                              طلبات: {getDayLabel(sector.visit_day_sales)}
-                            </Badge>
-                          )}
-                          {getDayLabel(sector.visit_day_delivery) && (
-                            <Badge variant="outline" className="text-[10px] px-1.5">
-                              <Truck className="w-2.5 h-2.5 ml-0.5" />
-                              توصيل: {getDayLabel(sector.visit_day_delivery)}
-                            </Badge>
-                          )}
+              sectors.map(sector => {
+                const sectorZones = zonesMap[sector.id] || [];
+                return (
+                  <Card key={sector.id}>
+                    <CardContent className="p-3">
+                      <div className="flex items-start justify-between">
+                        <div className="space-y-1.5 flex-1">
+                          <p className="font-bold text-sm">{sector.name}</p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {getDayLabel(sector.visit_day_sales) && (
+                              <Badge variant="outline" className="text-[10px] px-1.5">
+                                <Calendar className="w-2.5 h-2.5 ml-0.5" />
+                                طلبات: {getDayLabel(sector.visit_day_sales)}
+                              </Badge>
+                            )}
+                            {getDayLabel(sector.visit_day_delivery) && (
+                              <Badge variant="outline" className="text-[10px] px-1.5">
+                                <Truck className="w-2.5 h-2.5 ml-0.5" />
+                                توصيل: {getDayLabel(sector.visit_day_delivery)}
+                              </Badge>
+                            )}
+                            {sectorZones.length > 0 && (
+                              <Badge variant="secondary" className="text-[10px] px-1.5">
+                                <Layers className="w-2.5 h-2.5 ml-0.5" />
+                                {sectorZones.length} منطقة
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="flex flex-wrap gap-1.5">
+                            {getWorkerName(sector.sales_worker_id) && (
+                              <Badge variant="secondary" className="text-[10px] px-1.5">
+                                <UserCheck className="w-2.5 h-2.5 ml-0.5" />
+                                {getWorkerName(sector.sales_worker_id)}
+                              </Badge>
+                            )}
+                            {getWorkerName(sector.delivery_worker_id) && (
+                              <Badge variant="secondary" className="text-[10px] px-1.5">
+                                <Truck className="w-2.5 h-2.5 ml-0.5" />
+                                {getWorkerName(sector.delivery_worker_id)}
+                              </Badge>
+                            )}
+                          </div>
                         </div>
-                        <div className="flex flex-wrap gap-1.5">
-                          {getWorkerName(sector.sales_worker_id) && (
-                            <Badge variant="secondary" className="text-[10px] px-1.5">
-                              <UserCheck className="w-2.5 h-2.5 ml-0.5" />
-                              {getWorkerName(sector.sales_worker_id)}
-                            </Badge>
-                          )}
-                          {getWorkerName(sector.delivery_worker_id) && (
-                            <Badge variant="secondary" className="text-[10px] px-1.5">
-                              <Truck className="w-2.5 h-2.5 ml-0.5" />
-                              {getWorkerName(sector.delivery_worker_id)}
-                            </Badge>
-                          )}
+                        <div className="flex gap-1">
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setExpandedZonesSector(expandedZonesSector === sector.id ? null : sector.id)} title="المناطق">
+                            <Layers className="w-3.5 h-3.5" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEditForm(sector)}>
+                            <Pencil className="w-3.5 h-3.5" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => setSectorToDelete(sector)}>
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
                         </div>
                       </div>
-                      <div className="flex gap-1">
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEditForm(sector)}>
-                          <Pencil className="w-3.5 h-3.5" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => setSectorToDelete(sector)}>
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))
+
+                      {/* Zones expandable section */}
+                      {expandedZonesSector === sector.id && (
+                        <div className="mt-3 pt-3 border-t space-y-2">
+                          <Label className="text-xs font-semibold flex items-center gap-1">
+                            <Layers className="w-3 h-3" />
+                            المناطق
+                          </Label>
+                          {sectorZones.length > 0 ? (
+                            <div className="flex flex-wrap gap-1.5">
+                              {sectorZones.map(zone => (
+                                <Badge key={zone.id} variant="outline" className="text-xs flex items-center gap-1 pr-1">
+                                  {zone.name}
+                                  <button onClick={() => handleDeleteZone(zone.id)} className="hover:text-destructive">
+                                    <X className="w-3 h-3" />
+                                  </button>
+                                </Badge>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-xs text-muted-foreground">لا توجد مناطق</p>
+                          )}
+                          <div className="flex gap-2">
+                            <Input
+                              value={newZoneName}
+                              onChange={e => setNewZoneName(e.target.value)}
+                              placeholder="اسم المنطقة الجديدة..."
+                              className="text-right text-sm flex-1"
+                              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddZoneToExisting(sector.id); } }}
+                            />
+                            <Button variant="outline" size="sm" onClick={() => handleAddZoneToExisting(sector.id)} disabled={!newZoneName.trim() || addingZone}>
+                              {addingZone ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              })
             )}
           </div>
         </DialogContent>

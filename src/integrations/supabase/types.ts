@@ -683,6 +683,7 @@ export type Database = {
           store_name: string | null
           trust_notes: string | null
           wilaya: string | null
+          zone_id: string | null
         }
         Insert: {
           address?: string | null
@@ -708,6 +709,7 @@ export type Database = {
           store_name?: string | null
           trust_notes?: string | null
           wilaya?: string | null
+          zone_id?: string | null
         }
         Update: {
           address?: string | null
@@ -733,6 +735,7 @@ export type Database = {
           store_name?: string | null
           trust_notes?: string | null
           wilaya?: string | null
+          zone_id?: string | null
         }
         Relationships: [
           {
@@ -761,6 +764,13 @@ export type Database = {
             columns: ["sector_id"]
             isOneToOne: false
             referencedRelation: "sectors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customers_zone_id_fkey"
+            columns: ["zone_id"]
+            isOneToOne: false
+            referencedRelation: "sector_zones"
             referencedColumns: ["id"]
           },
         ]
@@ -2075,6 +2085,35 @@ export type Database = {
             columns: ["role_id"]
             isOneToOne: false
             referencedRelation: "custom_roles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sector_zones: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          sector_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          sector_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          sector_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sector_zones_sector_id_fkey"
+            columns: ["sector_id"]
+            isOneToOne: false
+            referencedRelation: "sectors"
             referencedColumns: ["id"]
           },
         ]
