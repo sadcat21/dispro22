@@ -415,7 +415,16 @@ const CreateSessionDialog: React.FC<CreateSessionDialogProps> = ({ open, onOpenC
                   </div>
                 </div>
 
-                {/* === Section 7: Expenses === */}
+                {/* === Section 7: Gift Offer Value === */}
+                <SectionCard
+                  icon={<Gift className="w-4 h-4 text-purple-600" />}
+                  title="القيمة المالية لهدايا العروض"
+                  value={calc.giftOfferValue}
+                  color="purple"
+                  small
+                />
+
+                {/* === Section 8: Expenses === */}
                 <SectionCard
                   icon={<CreditCard className="w-4 h-4 text-muted-foreground" />}
                   title={t('accounting.expenses')}
