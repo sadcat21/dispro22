@@ -43,6 +43,7 @@ interface SectorZone {
 const CustomerApprovalTab: React.FC = () => {
     const { workerId, role, activeBranch } = useAuth();
     const { t } = useLanguage();
+    const queryClient = useQueryClient();
     const createDebt = useCreateDebt();
     const updateDebtPayment = useUpdateDebtPayment();
     const { trackVisit } = useTrackVisit();
