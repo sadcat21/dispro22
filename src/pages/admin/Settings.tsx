@@ -14,6 +14,7 @@ import BranchSelectionDialog from '@/components/auth/BranchSelectionDialog';
 import PrintSettingsCard from '@/components/settings/PrintSettingsCard';
 import NavbarCustomization from '@/components/settings/NavbarCustomization';
 import DataManagement from '@/components/settings/DataManagement';
+import LocationSettingsCard from '@/components/settings/LocationSettingsCard';
 
 const Settings: React.FC = () => {
   const { user, logout, role, activeBranch, availableRoles, switchRole, switchBranch, showRoleSelection, showBranchSelection, selectRole, selectBranch } = useAuth();
@@ -200,6 +201,9 @@ const Settings: React.FC = () => {
       )}
       {(role === 'admin' || role === 'branch_admin') && (
         <DataManagement />
+      )}
+      {(role === 'admin' || role === 'branch_admin') && (
+        <LocationSettingsCard />
       )}
 
       {/* User Info */}
