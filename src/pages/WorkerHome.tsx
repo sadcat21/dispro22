@@ -185,114 +185,68 @@ const WorkerHome: React.FC = () => {
           />
         </>
       ) : (hasOrdersAccess || hasDeliveryAccess || hasDebtAccess) ? (
-        <div className="p-4 space-y-4">
-          <h3 className="text-base font-bold">{t('common.quick_actions')}</h3>
+        (() => {
+          // Build visible actions dynamically
+          const quickActions: { key: string; icon: React.ReactNode; label: string; onClick: () => void; variant: 'primary' | 'secondary' | 'outline' | 'destructive' }[] = [];
 
-          {hasDeliveryAccess && (
-            <div className="grid grid-cols-3 gap-2">
-              {!isDeliveriesPageHidden && !isDeliveriesHidden && (
-                <button
-                  onClick={() => navigate('/my-deliveries')}
-                  className="rounded-xl bg-gradient-to-l from-primary to-primary/85 text-primary-foreground p-3 flex flex-col items-center justify-center gap-2 shadow-md active:scale-[0.97] transition-all duration-200 group"
-                >
-                  <div className="bg-primary-foreground/20 rounded-lg p-2 group-hover:scale-110 transition-transform duration-200">
-                    <Truck className="w-5 h-5" />
-                  </div>
-                  <span className="text-xs font-bold">{t('deliveries.title')}</span>
-                </button>
-              )}
+          if (hasDeliveryAccess && !isDeliveriesPageHidden && !isDeliveriesHidden) {
+            quickActions.push({ key: 'deliveries', icon: <Truck className="w-5 h-5" />, label: t('deliveries.title'), onClick: () => navigate('/my-deliveries'), variant: 'primary' });
+          }
+          if (hasDeliveryAccess && !isDirectSaleHidden) {
+            quickActions.push({ key: 'direct-sale', icon: <ShoppingBag className="w-5 h-5 text-primary" />, label: t('stock.direct_sale'), onClick: () => setShowActionDialog(true), variant: 'secondary' });
+          }
+          if (hasDeliveryAccess && !isMyStockPageHidden && !isMyStockHidden) {
+            quickActions.push({ key: 'my-stock', icon: <Package className="w-5 h-5 text-foreground" />, label: t('stock.my_stock'), onClick: () => navigate('/my-stock'), variant: 'outline' });
+          }
+          if (hasOrdersAccess && !isOrdersPageHidden && !isCreateOrderHidden) {
+            quickActions.push({ key: 'orders', icon: <ShoppingCart className="w-5 h-5" />, label: t('orders.manage'), onClick: () => navigate('/orders'), variant: 'primary' });
+          }
+          if (hasOrdersAccess && !hasDeliveryAccess && !isMyPromosPageHidden) {
+            quickActions.push({ key: 'promos', icon: <Gift className="w-5 h-5 text-primary" />, label: t('promos.add_new'), onClick: () => navigate('/my-promos'), variant: 'secondary' });
+          }
+          if (hasDebtAccess && !isCollectDebtHidden && !isDebtsPageHidden) {
+            quickActions.push({ key: 'debts', icon: <Banknote className="w-5 h-5 text-destructive" />, label: t('debts.title'), onClick: () => navigate('/customer-debts'), variant: 'destructive' });
+          }
+          if (hasCustomerAccess && !isCustomersPageHidden && !isAddCustomerHidden) {
+            quickActions.push({ key: 'customers', icon: <Users className="w-5 h-5 text-foreground" />, label: t('nav.customers'), onClick: () => navigate('/customers'), variant: 'outline' });
+          }
+          if (hasExpenseAccess && !isExpensesPageHidden && !isExpensesHidden) {
+            quickActions.push({ key: 'expenses', icon: <Wallet className="w-5 h-5 text-foreground" />, label: t('expenses.my_expenses'), onClick: () => navigate('/expenses'), variant: 'outline' });
+          }
 
-              {!isDirectSaleHidden && (
-                <button
-                  onClick={() => setShowActionDialog(true)}
-                  className="rounded-xl bg-secondary text-secondary-foreground p-3 flex flex-col items-center justify-center gap-2 shadow-md active:scale-[0.97] transition-all duration-200 group"
-                >
-                  <div className="bg-primary/20 rounded-lg p-2 group-hover:scale-110 transition-transform duration-200">
-                    <ShoppingBag className="w-5 h-5 text-primary" />
-                  </div>
-                  <span className="text-xs font-bold">{t('stock.direct_sale')}</span>
-                </button>
-              )}
+          const variantStyles: Record<string, { container: string; iconBg: string }> = {
+            primary: { container: 'bg-gradient-to-l from-primary to-primary/85 text-primary-foreground', iconBg: 'bg-primary-foreground/20' },
+            secondary: { container: 'bg-secondary text-secondary-foreground', iconBg: 'bg-primary/20' },
+            outline: { container: 'border border-border bg-card text-card-foreground', iconBg: 'bg-muted' },
+            destructive: { container: 'bg-destructive/10 border border-destructive/30 text-foreground', iconBg: 'bg-destructive/20' },
+          };
 
-              {!isMyStockPageHidden && !isMyStockHidden && (
-                <button
-                  onClick={() => navigate('/my-stock')}
-                  className="rounded-xl border border-border bg-card text-card-foreground p-3 flex flex-col items-center justify-center gap-2 shadow-md active:scale-[0.97] transition-all duration-200 group"
-                >
-                  <div className="bg-muted rounded-lg p-2 group-hover:scale-110 transition-transform duration-200">
-                    <Package className="w-5 h-5 text-foreground" />
-                  </div>
-                  <span className="text-xs font-bold">{t('stock.my_stock')}</span>
-                </button>
-              )}
-            </div>
-          )}
+          // Determine grid cols based on count
+          const gridCols = quickActions.length === 1 ? 'grid-cols-1' : quickActions.length === 2 ? 'grid-cols-2' : 'grid-cols-3';
 
-          {hasDebtAccess && !isCollectDebtHidden && !isDebtsPageHidden && (
-            <button
-              onClick={() => navigate('/customer-debts')}
-              className="rounded-xl bg-destructive/10 border border-destructive/30 text-foreground p-3 flex flex-col items-center justify-center gap-2 shadow-md active:scale-[0.97] transition-all duration-200 group w-full"
-            >
-              <div className="bg-destructive/20 rounded-lg p-2 group-hover:scale-110 transition-transform duration-200">
-                <Banknote className="w-5 h-5 text-destructive" />
+          return quickActions.length > 0 ? (
+            <div className="p-4 space-y-4">
+              <h3 className="text-base font-bold">{t('common.quick_actions')}</h3>
+              <div className={`grid ${gridCols} gap-2`}>
+                {quickActions.map((action) => {
+                  const style = variantStyles[action.variant];
+                  return (
+                    <button
+                      key={action.key}
+                      onClick={action.onClick}
+                      className={`rounded-xl p-3 flex flex-col items-center justify-center gap-2 shadow-md active:scale-[0.97] transition-all duration-200 group ${style.container}`}
+                    >
+                      <div className={`${style.iconBg} rounded-lg p-2 group-hover:scale-110 transition-transform duration-200`}>
+                        {action.icon}
+                      </div>
+                      <span className="text-xs font-bold">{action.label}</span>
+                    </button>
+                  );
+                })}
               </div>
-              <span className="text-xs font-bold">{t('debts.title')}</span>
-            </button>
-          )}
-
-          {hasOrdersAccess && (
-            <div className="grid grid-cols-2 gap-2">
-              {!isOrdersPageHidden && !isCreateOrderHidden && (
-                <button
-                  onClick={() => navigate('/orders')}
-                  className="rounded-xl bg-gradient-to-l from-primary to-primary/85 text-primary-foreground p-3 flex flex-col items-center justify-center gap-2 shadow-md active:scale-[0.97] transition-all duration-200 group"
-                >
-                  <div className="bg-primary-foreground/20 rounded-lg p-2 group-hover:scale-110 transition-transform duration-200">
-                    <ShoppingCart className="w-5 h-5" />
-                  </div>
-                  <span className="text-xs font-bold">{t('orders.manage')}</span>
-                </button>
-              )}
-              {!hasDeliveryAccess && !isMyPromosPageHidden && (
-                <button
-                  onClick={() => navigate('/my-promos')}
-                  className="rounded-xl bg-secondary text-secondary-foreground p-3 flex flex-col items-center justify-center gap-2 shadow-md active:scale-[0.97] transition-all duration-200 group"
-                >
-                  <div className="bg-primary/20 rounded-lg p-2 group-hover:scale-110 transition-transform duration-200">
-                    <Gift className="w-5 h-5 text-primary" />
-                  </div>
-                  <span className="text-xs font-bold">{t('promos.add_new')}</span>
-                </button>
-              )}
             </div>
-          )}
-
-          {/* Quick actions: Customers & Expenses */}
-          <div className="grid grid-cols-2 gap-2">
-            {hasCustomerAccess && !isCustomersPageHidden && !isAddCustomerHidden && (
-              <button
-                onClick={() => navigate('/customers')}
-                className="rounded-xl border border-border bg-card text-card-foreground p-3 flex flex-col items-center justify-center gap-2 shadow-md active:scale-[0.97] transition-all duration-200 group"
-              >
-                <div className="bg-muted rounded-lg p-2 group-hover:scale-110 transition-transform duration-200">
-                  <Users className="w-5 h-5 text-foreground" />
-                </div>
-                <span className="text-xs font-bold">{t('nav.customers')}</span>
-              </button>
-            )}
-            {hasExpenseAccess && !isExpensesPageHidden && !isExpensesHidden && (
-              <button
-                onClick={() => navigate('/expenses')}
-                className="rounded-xl border border-border bg-card text-card-foreground p-3 flex flex-col items-center justify-center gap-2 shadow-md active:scale-[0.97] transition-all duration-200 group"
-              >
-                <div className="bg-muted rounded-lg p-2 group-hover:scale-110 transition-transform duration-200">
-                  <Wallet className="w-5 h-5 text-foreground" />
-                </div>
-                <span className="text-xs font-bold">{t('expenses.my_expenses')}</span>
-              </button>
-            )}
-          </div>
-        </div>
+          ) : null;
+        })()
       ) : (
         /* No specific permissions */
         <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
