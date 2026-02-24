@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Permission, CustomRole, RoleWithPermissions } from '@/types/permissions';
 import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
 
 export const usePermissions = () => {
   return useQuery({
@@ -207,6 +208,78 @@ export const useUpdateRolePermissions = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['role-permissions'] });
       queryClient.invalidateQueries({ queryKey: ['roles-with-permissions'] });
+    },
+  });
+};
+
+// --- Individual Worker Permissions ---
+
+export const useIndividualWorkerPermissions = (workerId: string | null) => {
+  return useQuery({
+    queryKey: ['worker-individual-permissions', workerId],
+    queryFn: async () => {
+      if (!workerId) return [];
+      const { data, error } = await supabase
+        .from('worker_permissions')
+        .select('permission_id')
+        .eq('worker_id', workerId);
+      if (error) throw error;
+      return data.map(wp => wp.permission_id);
+    },
+    enabled: !!workerId,
+  });
+};
+
+export const useToggleWorkerPermission = () => {
+  const queryClient = useQueryClient();
+  const { workerId: grantedBy } = useAuth();
+
+  return useMutation({
+    mutationFn: async ({ workerId, permissionId, grant }: { workerId: string; permissionId: string; grant: boolean }) => {
+      if (grant) {
+        const { error } = await supabase
+          .from('worker_permissions')
+          .insert({ worker_id: workerId, permission_id: permissionId, granted_by: grantedBy });
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('worker_permissions')
+          .delete()
+          .eq('worker_id', workerId)
+          .eq('permission_id', permissionId);
+        if (error) throw error;
+      }
+    },
+    onSuccess: (_, { workerId }) => {
+      queryClient.invalidateQueries({ queryKey: ['worker-individual-permissions', workerId] });
+      queryClient.invalidateQueries({ queryKey: ['worker-permissions', workerId] });
+      queryClient.invalidateQueries({ queryKey: ['all-worker-individual-permissions'] });
+    },
+    onError: (error: any) => {
+      toast.error(error.message);
+    },
+  });
+};
+
+export const useAllWorkersWithIndividualPermissions = (permissionCode: string) => {
+  return useQuery({
+    queryKey: ['workers-with-permission', permissionCode],
+    queryFn: async () => {
+      // Get the permission ID
+      const { data: perm } = await supabase
+        .from('permissions')
+        .select('id')
+        .eq('code', permissionCode)
+        .maybeSingle();
+      if (!perm) return [];
+
+      // Get all workers who have this individual permission
+      const { data, error } = await supabase
+        .from('worker_permissions')
+        .select('worker_id')
+        .eq('permission_id', perm.id);
+      if (error) throw error;
+      return data.map(wp => wp.worker_id);
     },
   });
 };

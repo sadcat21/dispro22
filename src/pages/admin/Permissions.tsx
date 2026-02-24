@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { Plus, Shield, Trash2, Edit, Save, X, ChevronDown, ChevronUp, Briefcase } from 'lucide-react';
+import { Plus, Shield, Trash2, Edit, Save, X, ChevronDown, ChevronUp, Briefcase, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import {
   Dialog,
@@ -36,6 +37,7 @@ import {
 import { Permission, PERMISSION_CATEGORIES, RESOURCE_NAMES, PermissionCategory, SYSTEM_ROLE_CODES, FUNCTIONAL_ROLE_CODES, ROLE_TYPE_LABELS } from '@/types/permissions';
 import { Loader2 } from 'lucide-react';
 import RoleCard from '@/components/permissions/RoleCard';
+import WorkerPermissionsSection from '@/components/permissions/WorkerPermissionsSection';
 
 const Permissions: React.FC = () => {
   const { toast } = useToast();
@@ -279,6 +281,10 @@ const Permissions: React.FC = () => {
           ))}
         </div>
       )}
+
+
+      {/* Individual Worker Permissions */}
+      <WorkerPermissionsSection />
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={!!deleteRoleId} onOpenChange={() => setDeleteRoleId(null)}>
