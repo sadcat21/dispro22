@@ -136,7 +136,7 @@ const SectorCustomersPopover: React.FC = () => {
 
   // Categorize sales customers into sub-tabs
   const visitedCustomerIds = useMemo(() => {
-    return new Set(todayVisits.map(v => v.customer_id).filter(Boolean));
+    return new Set(todayVisits.filter(v => v.operation_type === 'visit').map(v => v.customer_id).filter(Boolean));
   }, [todayVisits]);
 
   const orderedCustomerIds = useMemo(() => {
