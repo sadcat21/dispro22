@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { MapPin, AlertTriangle, CheckCircle2, Loader2 } from 'lucide-react';
 import { calculateDistance, formatDistance } from '@/utils/geoUtils';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useLocationThreshold } from '@/hooks/useLocationSettings';
 
 interface CustomerDistanceIndicatorProps {
   customerLatitude?: number | null;
@@ -12,8 +13,10 @@ interface CustomerDistanceIndicatorProps {
 const CustomerDistanceIndicator: React.FC<CustomerDistanceIndicatorProps> = ({
   customerLatitude,
   customerLongitude,
-  thresholdMeters = 100,
+  thresholdMeters: thresholdProp,
 }) => {
+  const { data: configuredThreshold } = useLocationThreshold();
+  const thresholdMeters = thresholdProp ?? configuredThreshold ?? 100;
   const { dir } = useLanguage();
   const isRtl = dir === 'rtl';
   const [workerPosition, setWorkerPosition] = useState<{ lat: number; lng: number } | null>(null);
