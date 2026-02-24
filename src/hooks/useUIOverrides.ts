@@ -146,6 +146,8 @@ export const UI_ELEMENTS = {
     { key: '/promo-table', label: 'جدول العمليات' },
     { key: '/stats', label: 'الإحصائيات' },
     { key: '/guide', label: 'الدليل' },
+    { key: '/available-offers', label: 'العروض المتاحة' },
+    { key: '/daily-receipts', label: 'الفواتير اليومية' },
   ],
   buttons: [
     { key: 'direct_sale', label: 'البيع المباشر' },

@@ -7,6 +7,7 @@ import { Calculator, Banknote, ArrowLeft, Navigation } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useIsElementHidden } from '@/hooks/useUIOverrides';
 
 // Color mapping by path for semantic meaning
 const pathColors: Record<string, { bg: string; icon: string; border: string }> = {
@@ -49,6 +50,10 @@ const AdminHome: React.FC = () => {
   const { gridCols } = useFontSize();
   const { activeBranch } = useAuth();
 
+  const isAccountingHidden = useIsElementHidden('page', '/accounting');
+  const isDebtsHidden = useIsElementHidden('page', '/customer-debts');
+  const isGeoHidden = useIsElementHidden('page', '/geo-operations');
+
   const allItems = [...main, ...more].filter(item => item.path !== '/' && item.path !== '/accounting' && item.path !== '/customer-debts' && item.path !== '/geo-operations');
 
   // Quick stats
@@ -79,43 +84,49 @@ const AdminHome: React.FC = () => {
 
       {/* Quick Access Buttons */}
       <div className="grid grid-cols-2 gap-3">
-        <div
-          className="relative overflow-hidden rounded-xl border-2 border-amber-300 bg-gradient-to-br from-amber-50 to-amber-100 p-4 cursor-pointer active:scale-[0.97] transition-all hover:shadow-lg"
-          onClick={() => navigate('/accounting')}
-        >
-          <Calculator className="w-8 h-8 text-amber-600 mb-2" />
-          <p className="font-bold text-sm text-amber-900">{t('accounting.title')}</p>
-          {openSessions !== undefined && openSessions > 0 && (
-            <p className="text-xs text-amber-700 mt-1">{openSessions} {t('accounting.status_open')}</p>
-          )}
-          <ArrowLeft className="absolute top-3 left-3 w-4 h-4 text-amber-400" />
-        </div>
+        {!isAccountingHidden && (
+          <div
+            className="relative overflow-hidden rounded-xl border-2 border-amber-300 bg-gradient-to-br from-amber-50 to-amber-100 p-4 cursor-pointer active:scale-[0.97] transition-all hover:shadow-lg"
+            onClick={() => navigate('/accounting')}
+          >
+            <Calculator className="w-8 h-8 text-amber-600 mb-2" />
+            <p className="font-bold text-sm text-amber-900">{t('accounting.title')}</p>
+            {openSessions !== undefined && openSessions > 0 && (
+              <p className="text-xs text-amber-700 mt-1">{openSessions} {t('accounting.status_open')}</p>
+            )}
+            <ArrowLeft className="absolute top-3 left-3 w-4 h-4 text-amber-400" />
+          </div>
+        )}
 
-        <div
-          className="relative overflow-hidden rounded-xl border-2 border-rose-300 bg-gradient-to-br from-rose-50 to-rose-100 p-4 cursor-pointer active:scale-[0.97] transition-all hover:shadow-lg"
-          onClick={() => navigate('/customer-debts')}
-        >
-          <Banknote className="w-8 h-8 text-rose-600 mb-2" />
-          <p className="font-bold text-sm text-rose-900">{t('debts.title')}</p>
-          {activeDebts && activeDebts.count > 0 && (
-            <p className="text-xs text-rose-700 mt-1">{activeDebts.count} • {activeDebts.total.toLocaleString()} DA</p>
-          )}
-          <ArrowLeft className="absolute top-3 left-3 w-4 h-4 text-rose-400" />
-        </div>
+        {!isDebtsHidden && (
+          <div
+            className="relative overflow-hidden rounded-xl border-2 border-rose-300 bg-gradient-to-br from-rose-50 to-rose-100 p-4 cursor-pointer active:scale-[0.97] transition-all hover:shadow-lg"
+            onClick={() => navigate('/customer-debts')}
+          >
+            <Banknote className="w-8 h-8 text-rose-600 mb-2" />
+            <p className="font-bold text-sm text-rose-900">{t('debts.title')}</p>
+            {activeDebts && activeDebts.count > 0 && (
+              <p className="text-xs text-rose-700 mt-1">{activeDebts.count} • {activeDebts.total.toLocaleString()} DA</p>
+            )}
+            <ArrowLeft className="absolute top-3 left-3 w-4 h-4 text-rose-400" />
+          </div>
+        )}
       </div>
 
       {/* Geo Operations Button */}
-      <div
-        className="relative overflow-hidden rounded-xl border-2 border-teal-300 bg-gradient-to-br from-teal-50 to-emerald-100 p-4 cursor-pointer active:scale-[0.97] transition-all hover:shadow-lg flex items-center gap-4"
-        onClick={() => navigate('/geo-operations')}
-      >
-        <Navigation className="w-9 h-9 text-teal-600 flex-shrink-0" />
-        <div className="flex-1">
-          <p className="font-bold text-sm text-teal-900">العمليات الجغرافية</p>
-          <p className="text-xs text-teal-700 mt-0.5">تتبع المواقع والمسارات الجغرافية</p>
+      {!isGeoHidden && (
+        <div
+          className="relative overflow-hidden rounded-xl border-2 border-teal-300 bg-gradient-to-br from-teal-50 to-emerald-100 p-4 cursor-pointer active:scale-[0.97] transition-all hover:shadow-lg flex items-center gap-4"
+          onClick={() => navigate('/geo-operations')}
+        >
+          <Navigation className="w-9 h-9 text-teal-600 flex-shrink-0" />
+          <div className="flex-1">
+            <p className="font-bold text-sm text-teal-900">العمليات الجغرافية</p>
+            <p className="text-xs text-teal-700 mt-0.5">تتبع المواقع والمسارات الجغرافية</p>
+          </div>
+          <ArrowLeft className="w-4 h-4 text-teal-400" />
         </div>
-        <ArrowLeft className="w-4 h-4 text-teal-400" />
-      </div>
+      )}
 
       {/* Regular Navigation Grid */}
       <div className={`grid ${gridColsClass[gridCols] || 'grid-cols-4'} gap-2`}>

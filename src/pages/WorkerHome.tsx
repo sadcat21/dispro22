@@ -39,6 +39,13 @@ const WorkerHome: React.FC = () => {
   const isAddCustomerHidden = useIsElementHidden('button', 'add_customer');
   const isAddPromoHidden = useIsElementHidden('button', 'add_promo');
   const isCollectDebtHidden = useIsElementHidden('button', 'collect_debt');
+  const isOrdersPageHidden = useIsElementHidden('page', '/orders');
+  const isDeliveriesPageHidden = useIsElementHidden('page', '/my-deliveries');
+  const isMyStockPageHidden = useIsElementHidden('page', '/my-stock');
+  const isCustomersPageHidden = useIsElementHidden('page', '/customers');
+  const isExpensesPageHidden = useIsElementHidden('page', '/expenses');
+  const isMyPromosPageHidden = useIsElementHidden('page', '/my-promos');
+  const isDebtsPageHidden = useIsElementHidden('page', '/customer-debts');
 
   const { data: stockItems } = useQuery({
     queryKey: ['my-worker-stock', workerId],
@@ -180,15 +187,17 @@ const WorkerHome: React.FC = () => {
 
           {hasDeliveryAccess && (
             <div className="grid grid-cols-3 gap-2">
-              <button
-                onClick={() => navigate('/my-deliveries')}
-                className="rounded-xl bg-gradient-to-l from-primary to-primary/85 text-primary-foreground p-3 flex flex-col items-center justify-center gap-2 shadow-md active:scale-[0.97] transition-all duration-200 group"
-              >
-                <div className="bg-primary-foreground/20 rounded-lg p-2 group-hover:scale-110 transition-transform duration-200">
-                  <Truck className="w-5 h-5" />
-                </div>
-                <span className="text-xs font-bold">{t('deliveries.title')}</span>
-              </button>
+              {!isDeliveriesPageHidden && (
+                <button
+                  onClick={() => navigate('/my-deliveries')}
+                  className="rounded-xl bg-gradient-to-l from-primary to-primary/85 text-primary-foreground p-3 flex flex-col items-center justify-center gap-2 shadow-md active:scale-[0.97] transition-all duration-200 group"
+                >
+                  <div className="bg-primary-foreground/20 rounded-lg p-2 group-hover:scale-110 transition-transform duration-200">
+                    <Truck className="w-5 h-5" />
+                  </div>
+                  <span className="text-xs font-bold">{t('deliveries.title')}</span>
+                </button>
+              )}
 
               {!isDirectSaleHidden && (
                 <button
@@ -202,19 +211,21 @@ const WorkerHome: React.FC = () => {
                 </button>
               )}
 
-              <button
-                onClick={() => navigate('/my-stock')}
-                className="rounded-xl border border-border bg-card text-card-foreground p-3 flex flex-col items-center justify-center gap-2 shadow-md active:scale-[0.97] transition-all duration-200 group"
-              >
-                <div className="bg-muted rounded-lg p-2 group-hover:scale-110 transition-transform duration-200">
-                  <Package className="w-5 h-5 text-foreground" />
-                </div>
-                <span className="text-xs font-bold">{t('stock.my_stock')}</span>
-              </button>
+              {!isMyStockPageHidden && (
+                <button
+                  onClick={() => navigate('/my-stock')}
+                  className="rounded-xl border border-border bg-card text-card-foreground p-3 flex flex-col items-center justify-center gap-2 shadow-md active:scale-[0.97] transition-all duration-200 group"
+                >
+                  <div className="bg-muted rounded-lg p-2 group-hover:scale-110 transition-transform duration-200">
+                    <Package className="w-5 h-5 text-foreground" />
+                  </div>
+                  <span className="text-xs font-bold">{t('stock.my_stock')}</span>
+                </button>
+              )}
             </div>
           )}
 
-          {hasDebtAccess && (
+          {hasDebtAccess && !isCollectDebtHidden && !isDebtsPageHidden && (
             <button
               onClick={() => navigate('/customer-debts')}
               className="rounded-xl bg-destructive/10 border border-destructive/30 text-foreground p-3 flex flex-col items-center justify-center gap-2 shadow-md active:scale-[0.97] transition-all duration-200 group w-full"
@@ -228,16 +239,18 @@ const WorkerHome: React.FC = () => {
 
           {hasOrdersAccess && (
             <div className="grid grid-cols-2 gap-2">
-              <button
-                onClick={() => navigate('/orders')}
-                className="rounded-xl bg-gradient-to-l from-primary to-primary/85 text-primary-foreground p-3 flex flex-col items-center justify-center gap-2 shadow-md active:scale-[0.97] transition-all duration-200 group"
-              >
-                <div className="bg-primary-foreground/20 rounded-lg p-2 group-hover:scale-110 transition-transform duration-200">
-                  <ShoppingCart className="w-5 h-5" />
-                </div>
-                <span className="text-xs font-bold">{t('orders.manage')}</span>
-              </button>
-              {!hasDeliveryAccess && (
+              {!isOrdersPageHidden && (
+                <button
+                  onClick={() => navigate('/orders')}
+                  className="rounded-xl bg-gradient-to-l from-primary to-primary/85 text-primary-foreground p-3 flex flex-col items-center justify-center gap-2 shadow-md active:scale-[0.97] transition-all duration-200 group"
+                >
+                  <div className="bg-primary-foreground/20 rounded-lg p-2 group-hover:scale-110 transition-transform duration-200">
+                    <ShoppingCart className="w-5 h-5" />
+                  </div>
+                  <span className="text-xs font-bold">{t('orders.manage')}</span>
+                </button>
+              )}
+              {!hasDeliveryAccess && !isMyPromosPageHidden && (
                 <button
                   onClick={() => navigate('/my-promos')}
                   className="rounded-xl bg-secondary text-secondary-foreground p-3 flex flex-col items-center justify-center gap-2 shadow-md active:scale-[0.97] transition-all duration-200 group"
@@ -253,7 +266,7 @@ const WorkerHome: React.FC = () => {
 
           {/* Quick actions: Customers & Expenses */}
           <div className="grid grid-cols-2 gap-2">
-            {hasCustomerAccess && (
+            {hasCustomerAccess && !isCustomersPageHidden && (
               <button
                 onClick={() => navigate('/customers')}
                 className="rounded-xl border border-border bg-card text-card-foreground p-3 flex flex-col items-center justify-center gap-2 shadow-md active:scale-[0.97] transition-all duration-200 group"
@@ -264,7 +277,7 @@ const WorkerHome: React.FC = () => {
                 <span className="text-xs font-bold">{t('nav.customers')}</span>
               </button>
             )}
-            {hasExpenseAccess && (
+            {hasExpenseAccess && !isExpensesPageHidden && (
               <button
                 onClick={() => navigate('/expenses')}
                 className="rounded-xl border border-border bg-card text-card-foreground p-3 flex flex-col items-center justify-center gap-2 shadow-md active:scale-[0.97] transition-all duration-200 group"
