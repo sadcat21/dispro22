@@ -218,31 +218,43 @@ export const useSessionCalculations = (params: SessionCalcParams | null) => {
       }
 
       // Supplement promo tracking from promos table (catches promos not in order_items)
+      // First, collect total gift quantities already tracked per product from order_items
+      const orderItemsGiftByProduct: Record<string, number> = {};
+      Object.values(promoMap).forEach(p => {
+        orderItemsGiftByProduct[p.productId] = (orderItemsGiftByProduct[p.productId] || 0) + p.giftQuantity;
+      });
+
+      // Aggregate all promos by product_id first
+      const promosByProduct: Record<string, { totalGift: number; totalVente: number; product: any }> = {};
       for (const promo of (promosData || [])) {
         const giftQty = Number(promo.gratuite_quantity || 0);
         if (giftQty <= 0) continue;
-        const key = `${promo.product_id}_promo`;
-        if (!promoMap[key]) {
-          // Check if already tracked via order_items
-          const alreadyTracked = Object.values(promoMap).some(
-            p => p.productId === promo.product_id && p.giftQuantity >= giftQty
-          );
-          if (alreadyTracked) continue;
-          const product = promo.product as any;
-          promoMap[key] = {
-            productName: product?.name || '',
-            productId: promo.product_id,
-            quantitySold: Number(promo.vente_quantity || 0),
-            giftQuantity: 0,
-            offerName: 'عرض ترويجي',
-          };
+        if (!promosByProduct[promo.product_id]) {
+          promosByProduct[promo.product_id] = { totalGift: 0, totalVente: 0, product: promo.product };
         }
-        promoMap[key].giftQuantity += giftQty;
-        // Add gift value from promos table
-        const product = promo.product as any;
+        promosByProduct[promo.product_id].totalGift += giftQty;
+        promosByProduct[promo.product_id].totalVente += Number(promo.vente_quantity || 0);
+      }
+
+      // Now add any promos that aren't fully covered by order_items
+      for (const [productId, promoAgg] of Object.entries(promosByProduct)) {
+        const alreadyTrackedGifts = orderItemsGiftByProduct[productId] || 0;
+        const extraGifts = promoAgg.totalGift - alreadyTrackedGifts;
+        if (extraGifts <= 0) continue; // Already fully tracked via order_items
+
+        const key = `${productId}_promo`;
+        const product = promoAgg.product as any;
+        promoMap[key] = {
+          productName: product?.name || '',
+          productId: productId,
+          quantitySold: promoAgg.totalVente,
+          giftQuantity: extraGifts,
+          offerName: 'عرض ترويجي',
+        };
+        // Add gift value for extra gifts only
         if (product) {
           const boxPrice = calcBoxPrice(product);
-          giftOfferValue += giftQty * boxPrice;
+          giftOfferValue += extraGifts * boxPrice;
         }
       }
 
