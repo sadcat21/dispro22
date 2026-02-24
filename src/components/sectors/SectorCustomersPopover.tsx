@@ -256,7 +256,7 @@ const SectorCustomersPopover: React.FC = () => {
           </TabsContent>
 
           <TabsContent value="sales" className="m-0 flex-1 min-h-0">
-            <Tabs defaultValue="not-visited" className="flex flex-col h-full min-h-0">
+            <Tabs defaultValue="not-visited" key="sales-sub" className="flex flex-col h-full min-h-0">
               <TabsList className="w-full rounded-none border-b shrink-0 h-auto p-0.5 gap-0.5">
                 <TabsTrigger value="not-visited" className="flex-1 gap-1 text-[10px] px-1.5 py-1.5 data-[state=active]:bg-orange-100 data-[state=active]:text-orange-700">
                   <EyeOff className="w-3 h-3" />
