@@ -67,6 +67,7 @@ const AddCustomerDialog: React.FC<AddCustomerDialogProps> = ({
   const [latitude, setLatitude] = useState<number | null>(null);
   const [longitude, setLongitude] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [gpsGranted, setGpsGranted] = useState(false);
   const [showMap, setShowMap] = useState(false);
   const [searchAddressQuery, setSearchAddressQuery] = useState('');
   const [locationType, setLocationType] = useState<'store' | 'warehouse' | 'office'>('store');
@@ -143,6 +144,7 @@ const AddCustomerDialog: React.FC<AddCustomerDialogProps> = ({
       setTrustNotes('');
       setDefaultPaymentType('without_invoice');
       setDefaultPriceSubtype('retail');
+      setGpsGranted(false);
       // Auto-capture GPS
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
@@ -151,16 +153,17 @@ const AddCustomerDialog: React.FC<AddCustomerDialogProps> = ({
             const lng = position.coords.longitude;
             setLatitude(lat);
             setLongitude(lng);
+            setGpsGranted(true);
             fetchAddressFromCoords(lat, lng);
           },
           (err) => {
             console.warn('GPS auto-capture failed:', err.message);
-            toast.error('يرجى تفعيل خدمة الموقع (GPS) لإضافة عميل جديد');
+            setGpsGranted(false);
           },
           { enableHighAccuracy: true, timeout: 10000 }
         );
       } else {
-        toast.error('المتصفح لا يدعم خدمة الموقع (GPS)');
+        setGpsGranted(false);
       }
     }
   }, [open]);
@@ -351,6 +354,46 @@ const AddCustomerDialog: React.FC<AddCustomerDialogProps> = ({
           </DialogTitle>
         </DialogHeader>
 
+        {/* GPS Required Gate */}
+        {!gpsGranted ? (
+          <div className="flex flex-col items-center justify-center py-12 space-y-4 text-center">
+            <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center">
+              <MapPin className="w-8 h-8 text-destructive" />
+            </div>
+            <div className="space-y-2">
+              <h3 className="font-bold text-lg">يجب تفعيل خدمة الموقع (GPS)</h3>
+              <p className="text-sm text-muted-foreground max-w-[250px]">
+                لا يمكن إضافة عميل جديد بدون تحديد الموقع الجغرافي. يرجى تفعيل GPS والمحاولة مرة أخرى.
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="default"
+              className="gap-2"
+              onClick={() => {
+                if (navigator.geolocation) {
+                  navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                      setLatitude(position.coords.latitude);
+                      setLongitude(position.coords.longitude);
+                      setGpsGranted(true);
+                      fetchAddressFromCoords(position.coords.latitude, position.coords.longitude);
+                      toast.success('تم تفعيل الموقع بنجاح');
+                    },
+                    () => {
+                      toast.error('فشل الحصول على الموقع. تأكد من تفعيل GPS في إعدادات الجهاز');
+                    },
+                    { enableHighAccuracy: true, timeout: 15000 }
+                  );
+                }
+              }}
+            >
+              <MapPin className="w-4 h-4" />
+              إعادة المحاولة
+            </Button>
+          </div>
+        ) : (
+        <>
         {/* Completion Bar */}
         <div className="space-y-1">
           <div className="flex justify-between items-center">
@@ -658,6 +701,8 @@ const AddCustomerDialog: React.FC<AddCustomerDialogProps> = ({
             </Button>
           </div>
         </form>
+        </>
+        )}
       </DialogContent>
     </Dialog>
   );
