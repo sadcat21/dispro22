@@ -49,7 +49,7 @@ const PromoDetailsPrintView = forwardRef<HTMLDivElement, PromoDetailsPrintViewPr
       <div
         ref={ref}
         className="print-container"
-        dir={printDir}
+        dir="rtl"
         style={{
           display: isVisible ? 'block' : 'none',
           position: 'relative',
