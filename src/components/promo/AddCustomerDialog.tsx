@@ -631,7 +631,7 @@ const AddCustomerDialog: React.FC<AddCustomerDialogProps> = ({
             {!(latitude && longitude) && <p className="text-xs text-destructive">يجب تحديد الموقع الجغرافي</p>}
           </div>
 
-          <div className="flex gap-2 pt-2">
+          <div className="flex gap-2 pt-2 sticky bottom-0 bg-background pb-2 -mb-2 border-t mt-4 pt-3">
             <Button type="button" variant="outline" className="flex-1" onClick={() => onOpenChange(false)}>
               {t('common.cancel')}
             </Button>
