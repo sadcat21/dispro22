@@ -383,25 +383,27 @@ const Customers: React.FC = () => {
               {/* Customer Info Row */}
               <div className="flex items-start gap-2">
                 <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center mt-0.5 shrink-0">
-                  <User className="w-4 h-4 text-primary" />
+                  <Store className="w-4 h-4 text-primary" />
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="font-bold text-sm leading-tight">
-                    {language === 'fr' && customer.name_fr ? customer.name_fr : customer.name}
+                    {customer.store_name
+                      ? (language === 'fr' && (customer as any).store_name_fr ? (customer as any).store_name_fr : customer.store_name)
+                      : (language === 'fr' && customer.name_fr ? customer.name_fr : customer.name)}
                   </p>
-                  {customer.store_name && (
-                    <p className="text-[11px] text-muted-foreground">
-                      <Store className="w-2.5 h-2.5 inline ml-0.5" />
-                      {language === 'fr' && (customer as any).store_name_fr ? (customer as any).store_name_fr : customer.store_name}
-                    </p>
-                  )}
-                  <div className="flex items-center gap-1 flex-wrap mt-1">
+                  <div className="flex items-center gap-1 flex-wrap mt-0.5">
                     {getSectorName(customer.sector_id) && (
-                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0 font-semibold">
                         <MapPin className="w-2.5 h-2.5 ml-0.5" />
                         {getSectorName(customer.sector_id)}
                       </Badge>
                     )}
+                  </div>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    <User className="w-2.5 h-2.5 inline ml-0.5" />
+                    {language === 'fr' && customer.name_fr ? customer.name_fr : customer.name}
+                  </p>
+                  <div className="flex items-center gap-1 flex-wrap mt-1">
                     {customer.internal_name && (
                       <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-primary/30 text-primary">
                         {customer.internal_name}
