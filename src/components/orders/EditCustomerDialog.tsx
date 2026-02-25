@@ -728,10 +728,12 @@ const EditCustomerDialog: React.FC<EditCustomerDialogProps> = ({
             </div>
           </div>
 
-          <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading && <Loader2 className="w-4 h-4 ml-2 animate-spin" />}
-            حفظ التعديلات
-          </Button>
+          <div className="sticky bottom-0 z-20 bg-background border-t pt-3 pb-1 -mx-6 px-6">
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading && <Loader2 className="w-4 h-4 ml-2 animate-spin" />}
+              حفظ التعديلات
+            </Button>
+          </div>
         </form>
       </DialogContent>
     </Dialog>
