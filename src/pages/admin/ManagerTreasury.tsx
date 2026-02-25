@@ -180,8 +180,15 @@ const ManagerTreasury = () => {
         <Card className="border-green-500/30 bg-green-500/5">
           <CardContent className="p-3 text-center">
             <Banknote className="w-5 h-5 mx-auto mb-1 text-green-500" />
-            <p className="text-xs text-muted-foreground">نقدي</p>
-            <p className="text-lg font-bold text-green-500">{summary?.cash?.toLocaleString() || 0} د.ج</p>
+            <p className="text-xs text-muted-foreground">كاش فاتورة 1</p>
+            <p className="text-lg font-bold text-green-500">{summary?.cash_invoice1?.toLocaleString() || 0} د.ج</p>
+          </CardContent>
+        </Card>
+        <Card className="border-emerald-500/30 bg-emerald-500/5">
+          <CardContent className="p-3 text-center">
+            <Banknote className="w-5 h-5 mx-auto mb-1 text-emerald-500" />
+            <p className="text-xs text-muted-foreground">كاش فاتورة 2</p>
+            <p className="text-lg font-bold text-emerald-500">{summary?.cash_invoice2?.toLocaleString() || 0} د.ج</p>
           </CardContent>
         </Card>
         <Card className="border-blue-500/30 bg-blue-500/5">
@@ -198,10 +205,10 @@ const ManagerTreasury = () => {
             <p className="text-lg font-bold text-purple-500">{summary?.bank_receipt?.toLocaleString() || 0} د.ج</p>
           </CardContent>
         </Card>
-        <Card className="border-orange-500/30 bg-orange-500/5">
+        <Card className="col-span-2 border-orange-500/30 bg-orange-500/5">
           <CardContent className="p-3 text-center">
             <ArrowUpRight className="w-5 h-5 mx-auto mb-1 text-orange-500" />
-            <p className="text-xs text-muted-foreground">فيرمو</p>
+            <p className="text-xs text-muted-foreground">فيرمو ({summary?.transferCount || 0})</p>
             <p className="text-lg font-bold text-orange-500">{summary?.bank_transfer?.toLocaleString() || 0} د.ج</p>
           </CardContent>
         </Card>
