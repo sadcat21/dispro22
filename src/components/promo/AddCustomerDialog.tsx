@@ -676,7 +676,7 @@ const AddCustomerDialog: React.FC<AddCustomerDialogProps> = ({
                   {zonesLoading && <Loader2 className="w-3 h-3 animate-spin text-muted-foreground" />}
                 </Label>
                 {addingZone ? (
-                  <div className="flex gap-2">
+                  <div className="flex gap-2" dir="rtl">
                     <Input
                       value={newZoneName}
                       onChange={(e) => setNewZoneName(e.target.value)}

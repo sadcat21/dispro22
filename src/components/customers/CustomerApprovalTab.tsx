@@ -488,7 +488,7 @@ const CustomerApprovalTab: React.FC = () => {
                                         <div className="space-y-2">
                                             <Label className="text-xs">المنطقة داخل السكتور</Label>
                                             {addingZone ? (
-                                                <div className="flex gap-2">
+                                                <div className="flex gap-2" dir="rtl">
                                                     <Input value={newZoneName} onChange={(e) => setNewZoneName(e.target.value)} placeholder="اسم المنطقة الجديدة" autoFocus onKeyDown={(e) => e.key === 'Enter' && handleAddZoneApproval()} />
                                                     <Button size="sm" onClick={handleAddZoneApproval} disabled={savingZone || !newZoneName.trim()}>
                                                         {savingZone ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
