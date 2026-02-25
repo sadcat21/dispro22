@@ -40,12 +40,14 @@ export interface HandoverEntry {
 }
 
 export interface TreasurySummary {
-  cash: number;
+  cash_invoice1: number;
+  cash_invoice2: number;
   check: number;
   checkCount: number;
   bank_receipt: number;
   receiptCount: number;
   bank_transfer: number;
+  transferCount: number;
   total: number;
   handedOver: number;
   remaining: number;
@@ -77,11 +79,14 @@ export const useTreasurySummary = () => {
   return useQuery({
     queryKey: ['treasury-summary', activeBranch?.id],
     queryFn: async () => {
-      // Get treasury entries
-      let tQuery = supabase.from('manager_treasury').select('payment_method, amount');
-      if (activeBranch?.id) tQuery = tQuery.eq('branch_id', activeBranch.id);
-      const { data: treasury, error: tErr } = await tQuery;
-      if (tErr) throw tErr;
+      // Get delivered orders to calculate payment method totals
+      let oQuery = supabase
+        .from('orders')
+        .select('payment_type, invoice_payment_method, payment_status, total_amount, partial_amount')
+        .eq('status', 'delivered');
+      if (activeBranch?.id) oQuery = oQuery.eq('branch_id', activeBranch.id);
+      const { data: orders, error: oErr } = await oQuery;
+      if (oErr) throw oErr;
 
       // Get handovers
       let hQuery = supabase.from('manager_handovers').select('amount');
@@ -90,21 +95,44 @@ export const useTreasurySummary = () => {
       if (hErr) throw hErr;
 
       const summary: TreasurySummary = {
-        cash: 0, check: 0, checkCount: 0,
+        cash_invoice1: 0, cash_invoice2: 0,
+        check: 0, checkCount: 0,
         bank_receipt: 0, receiptCount: 0,
-        bank_transfer: 0, total: 0, handedOver: 0, remaining: 0,
+        bank_transfer: 0, transferCount: 0,
+        total: 0, handedOver: 0, remaining: 0,
       };
 
-      (treasury || []).forEach((t: any) => {
-        summary.total += Number(t.amount);
-        switch (t.payment_method) {
-          case 'cash': summary.cash += Number(t.amount); break;
-          case 'check': summary.check += Number(t.amount); summary.checkCount++; break;
-          case 'bank_receipt': summary.bank_receipt += Number(t.amount); summary.receiptCount++; break;
-          case 'bank_transfer': summary.bank_transfer += Number(t.amount); break;
+      (orders || []).forEach((o: any) => {
+        const amount = Number(o.total_amount || 0);
+        if (o.payment_type === 'with_invoice') {
+          // فاتورة 1
+          switch (o.invoice_payment_method) {
+            case 'cash':
+              summary.cash_invoice1 += amount;
+              break;
+            case 'check':
+              summary.check += amount;
+              summary.checkCount++;
+              break;
+            case 'receipt':
+              summary.bank_receipt += amount;
+              summary.receiptCount++;
+              break;
+            case 'transfer':
+              summary.bank_transfer += amount;
+              summary.transferCount++;
+              break;
+            default:
+              summary.cash_invoice1 += amount;
+              break;
+          }
+        } else {
+          // فاتورة 2 (without_invoice) = كاش
+          summary.cash_invoice2 += amount;
         }
       });
 
+      summary.total = summary.cash_invoice1 + summary.cash_invoice2 + summary.check + summary.bank_receipt + summary.bank_transfer;
       summary.handedOver = (handovers || []).reduce((s: number, h: any) => s + Number(h.amount), 0);
       summary.remaining = summary.total - summary.handedOver;
 
