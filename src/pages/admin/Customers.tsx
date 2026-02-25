@@ -580,7 +580,7 @@ const Customers: React.FC = () => {
         </div>
         <div className="flex gap-1.5 shrink-0">
           <Button size="icon" variant="outline" className="h-9 w-9" onClick={() => setExpandAllSectors(!expandAllSectors)} title={expandAllSectors ? t('customers.collapse_all') : t('customers.expand_all')}>
-            {expandAllSectors ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            {expandAllSectors ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
           </Button>
           <Button size="icon" variant="outline" className="h-9 w-9" onClick={() => setShowSectorsDialog(true)} title={t('customers.sectors')}>
             <MapPinPlus className="w-4 h-4" />
