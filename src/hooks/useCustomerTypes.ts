@@ -3,6 +3,19 @@ import { supabase } from '@/integrations/supabase/client';
 
 const CUSTOMER_TYPES_KEY = 'customer_types';
 
+export interface CustomerTypeEntry {
+  ar: string;
+  fr: string;
+  en: string;
+}
+
+const DEFAULT_TYPES: CustomerTypeEntry[] = [
+  { ar: 'محل', fr: 'Magasin', en: 'Store' },
+  { ar: 'سوبر ماركت', fr: 'Supermarché', en: 'Supermarket' },
+  { ar: 'مول', fr: 'Mall', en: 'Mall' },
+  { ar: 'كروسيست', fr: 'Grossiste', en: 'Wholesaler' },
+];
+
 export const useCustomerTypes = () => {
   const queryClient = useQueryClient();
 
@@ -15,19 +28,23 @@ export const useCustomerTypes = () => {
         .eq('key', CUSTOMER_TYPES_KEY)
         .maybeSingle();
       if (error) throw error;
-      if (!data) return ['محل', 'سوبر ماركت', 'مول', 'كروسيست'];
+      if (!data) return DEFAULT_TYPES;
       try {
-        return JSON.parse(data.value) as string[];
+        const parsed = JSON.parse(data.value);
+        // Handle legacy format (simple string array)
+        if (Array.isArray(parsed) && parsed.length > 0 && typeof parsed[0] === 'string') {
+          return (parsed as string[]).map(name => ({ ar: name, fr: name, en: name }));
+        }
+        return parsed as CustomerTypeEntry[];
       } catch {
-        return ['محل', 'سوبر ماركت', 'مول', 'كروسيست'];
+        return DEFAULT_TYPES;
       }
     },
   });
 
   const updateTypes = useMutation({
-    mutationFn: async (types: string[]) => {
+    mutationFn: async (types: CustomerTypeEntry[]) => {
       const value = JSON.stringify(types);
-      // Try update first
       const { data: existing } = await supabase
         .from('app_settings')
         .select('id')
@@ -53,4 +70,19 @@ export const useCustomerTypes = () => {
   });
 
   return { customerTypes, isLoading, updateTypes };
+};
+
+/**
+ * Get the display name for a customer type based on language.
+ * Handles both old format (plain string) and new format (object with translations).
+ */
+export const getCustomerTypeLabel = (
+  types: CustomerTypeEntry[],
+  arValue: string | null | undefined,
+  language: string
+): string => {
+  if (!arValue) return '';
+  const entry = types.find(t => t.ar === arValue);
+  if (!entry) return arValue;
+  return (entry as any)[language] || entry.ar;
 };

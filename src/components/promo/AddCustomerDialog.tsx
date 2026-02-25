@@ -47,7 +47,7 @@ const AddCustomerDialog: React.FC<AddCustomerDialogProps> = ({
   onSuccess,
 }) => {
   const { workerId, activeBranch, role } = useAuth();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { sectors, fetchSectors } = useSectors();
   const createDebt = useCreateDebt();
   const { trackVisit } = useTrackVisit();
@@ -685,15 +685,15 @@ const AddCustomerDialog: React.FC<AddCustomerDialogProps> = ({
               <div className="space-y-2">
                 <Label>نوع العميل</Label>
                 <div className="flex flex-wrap gap-2">
-                  {customerTypes.map((type) => (
+                  {customerTypes.map((entry) => (
                     <Button
-                      key={type}
+                      key={entry.ar}
                       type="button"
-                      variant={customerType === type ? 'default' : 'outline'}
+                      variant={customerType === entry.ar ? 'default' : 'outline'}
                       size="sm"
-                      onClick={() => setCustomerType(customerType === type ? '' : type)}
+                      onClick={() => setCustomerType(customerType === entry.ar ? '' : entry.ar)}
                     >
-                      {type}
+                      {entry[language] || entry.ar}
                     </Button>
                   ))}
                 </div>

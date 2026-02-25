@@ -18,6 +18,7 @@ import { useCustomerDebtSummary, useCreateDebt, useUpdateDebtPayment } from '@/h
 import { useAuth } from '@/contexts/AuthContext';
 import { reverseGeocode } from '@/utils/geoUtils';
 import { useCustomerTypes } from '@/hooks/useCustomerTypes';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface EditCustomerDialogProps {
   open: boolean;
@@ -51,6 +52,7 @@ const EditCustomerDialog: React.FC<EditCustomerDialogProps> = ({
   const updateDebtPayment = useUpdateDebtPayment();
   const { workerId, role } = useAuth();
   const { customerTypes } = useCustomerTypes();
+  const { language } = useLanguage();
   const [name, setName] = useState('');
   const [nameFr, setNameFr] = useState('');
   const [translatingName, setTranslatingName] = useState(false);
@@ -504,15 +506,15 @@ const EditCustomerDialog: React.FC<EditCustomerDialogProps> = ({
                 نوع العميل
               </Label>
               <div className="flex flex-wrap gap-2">
-                {customerTypes.map((type) => (
+                {customerTypes.map((entry) => (
                   <Button
-                    key={type}
+                    key={entry.ar}
                     type="button"
-                    variant={customerType === type ? 'default' : 'outline'}
+                    variant={customerType === entry.ar ? 'default' : 'outline'}
                     size="sm"
-                    onClick={() => setCustomerType(customerType === type ? '' : type)}
+                    onClick={() => setCustomerType(customerType === entry.ar ? '' : entry.ar)}
                   >
-                    {type}
+                    {entry[language] || entry.ar}
                   </Button>
                 ))}
               </div>
