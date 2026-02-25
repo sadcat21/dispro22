@@ -239,8 +239,11 @@ const CustomerPickerDialog: React.FC<CustomerPickerDialogProps> = ({
                             >
                               <ChevronLeft className="w-4 h-4 text-muted-foreground shrink-0" />
                               <div className="flex-1 min-w-0 text-right">
-                                <p className="font-bold text-sm truncate">{customer.name}</p>
-                                {subtitle && (
+                                <p className="font-bold text-sm truncate">{customer.store_name || customer.name}</p>
+                                {(customer.store_name ? customer.name : null) && (
+                                  <p className="text-xs text-muted-foreground truncate mt-0.5">{customer.name}</p>
+                                )}
+                                {subtitle && !customer.store_name && (
                                   <p className="text-xs text-muted-foreground truncate mt-0.5">{subtitle}</p>
                                 )}
                                 {debtInfo && debtInfo.total > 0 && (
