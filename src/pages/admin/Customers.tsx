@@ -579,6 +579,9 @@ const Customers: React.FC = () => {
           </div>
         </div>
         <div className="flex gap-1.5 shrink-0">
+          <Button size="icon" variant="outline" className="h-9 w-9" onClick={() => setExpandAllSectors(!expandAllSectors)} title={expandAllSectors ? t('customers.collapse_all') : t('customers.expand_all')}>
+            {expandAllSectors ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          </Button>
           <Button size="icon" variant="outline" className="h-9 w-9" onClick={() => setShowSectorsDialog(true)} title={t('customers.sectors')}>
             <MapPinPlus className="w-4 h-4" />
           </Button>
@@ -636,10 +639,6 @@ const Customers: React.FC = () => {
               </SelectContent>
             </Select>
           )}
-          <div className="flex items-center gap-1.5 shrink-0">
-            <Switch id="expand-all-sectors" checked={expandAllSectors} onCheckedChange={setExpandAllSectors} className="scale-75" />
-            <label htmlFor="expand-all-sectors" className="text-[10px] text-muted-foreground whitespace-nowrap">{t('customers.expand_all')}</label>
-          </div>
         </div>
         {customerTypes.length > 0 && (
           <div className="flex gap-1 flex-wrap">
