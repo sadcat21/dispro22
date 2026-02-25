@@ -12,6 +12,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Plus, User, Loader2, Trash2, Phone, MapPin, Search, Pencil, Building2, ChevronDown, ChevronUp, Navigation, Shield, Tag, UserCircle, Store, CreditCard, Warehouse, Eye, PlusCircle, Banknote, Truck, AlertTriangle, ShoppingBag, Calendar, Package } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
@@ -39,9 +40,10 @@ const normalizeArabic = (text: string): string =>
   text.replace(/[إأآءٱ]/g, 'ا').replace(/[ىة]/g, 'ه').replace(/ؤ/g, 'و').replace(/ئ/g, 'ي');
 
 // Collapsible sector group component
-const SectorCustomerGroup: React.FC<{ label: string; count: number; defaultOpen: boolean; children: React.ReactNode }> = ({ label, count, defaultOpen, children }) => {
+const SectorCustomerGroup: React.FC<{ label: string; count: number; forceOpen?: boolean; defaultOpen: boolean; children: React.ReactNode }> = ({ label, count, forceOpen, defaultOpen, children }) => {
   const [isOpen, setIsOpen] = React.useState(defaultOpen);
   React.useEffect(() => { setIsOpen(defaultOpen); }, [defaultOpen]);
+  React.useEffect(() => { if (forceOpen !== undefined) setIsOpen(forceOpen); }, [forceOpen]);
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
       <CollapsibleTrigger asChild>
@@ -72,6 +74,7 @@ const Customers: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [sectorFilter, setSectorFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [expandAllSectors, setExpandAllSectors] = useState(false);
 
   // Edit dialog state
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
@@ -396,6 +399,10 @@ const Customers: React.FC = () => {
             })}
           </div>
         )}
+        <div className="flex items-center justify-between">
+          <label htmlFor="expand-all-sectors" className="text-xs text-muted-foreground">فتح كل الأقسام</label>
+          <Switch id="expand-all-sectors" checked={expandAllSectors} onCheckedChange={setExpandAllSectors} />
+        </div>
       </div>
 
       {/* Customers List - Grouped by Sector */}
@@ -430,6 +437,7 @@ const Customers: React.FC = () => {
               label={group.label}
               count={group.customers.length}
               defaultOpen={!!searchQuery.trim()}
+              forceOpen={expandAllSectors || undefined}
             >
               {group.customers.map((customer) => {
                 const { percent, missing } = getCustomerCompletion(customer);
