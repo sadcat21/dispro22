@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { MapPin, User, Truck, ShoppingCart, MapPinOff, Navigation, Loader2, Eye, EyeOff, CheckCircle, PackageX, PackageCheck } from 'lucide-react';
+import { MapPin, User, Truck, ShoppingCart, MapPinOff, Navigation, Loader2, Eye, EyeOff, CheckCircle, PackageX, PackageCheck, Landmark, Banknote, Clock, Check, X } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQuery } from '@tanstack/react-query';
@@ -11,12 +11,17 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useNavigate } from 'react-router-dom';
 import { useTrackVisit } from '@/hooks/useVisitTracking';
 import { toast } from 'sonner';
 import { useLocationThreshold } from '@/hooks/useLocationSettings';
 import { useHasPermission } from '@/hooks/usePermissions';
 import { calculateDistance } from '@/utils/geoUtils';
+import { useDueDebts, usePendingCollections, useApproveCollection, DueDebt } from '@/hooks/useDebtCollections';
+import CollectDebtDialog from '@/components/debts/CollectDebtDialog';
+import VisitNoPaymentDialog from '@/components/debts/VisitNoPaymentDialog';
+import { format } from 'date-fns';
 
 const DAY_NAMES: Record<string, string> = {
   saturday: 'السبت',
@@ -46,6 +51,16 @@ const SectorCustomersPopover: React.FC = () => {
   const todayName = JS_DAY_TO_NAME[new Date().getDay()] || '';
   const [isOpen, setIsOpen] = useState(false);
   const [checkingLocationFor, setCheckingLocationFor] = useState<string | null>(null);
+
+  // Debt-related state
+  const isAdmin = role === 'admin' || role === 'branch_admin';
+  const { data: dueDebts = [] } = useDueDebts(undefined);
+  const { data: allDebts = [] } = useDueDebts('__all__');
+  const { data: pendingCollections = [] } = usePendingCollections();
+  const approveCollection = useApproveCollection();
+  const [selectedDebt, setSelectedDebt] = useState<DueDebt | null>(null);
+  const [showCollect, setShowCollect] = useState(false);
+  const [showVisit, setShowVisit] = useState(false);
 
   const { data: sectors = [] } = useQuery({
     queryKey: ['sectors-with-customers', workerId, activeBranch?.id],
@@ -93,7 +108,7 @@ const SectorCustomersPopover: React.FC = () => {
     refetchInterval: 10000,
   });
 
-  const isAdmin = role === 'admin' || role === 'branch_admin';
+  // isAdmin already declared above
 
   // Fetch today's orders by this worker (for sales categorization)
   const { data: todayOrders = [] } = useQuery({
@@ -201,9 +216,69 @@ const SectorCustomersPopover: React.FC = () => {
     return deliveryCustomers.filter(c => deliveredCustomerIds.has(c.id));
   }, [deliveryCustomers, deliveredCustomerIds]);
 
-  const totalCount = deliveryCustomers.length + salesCustomers.length;
+  // Debt categorization: today's collection customers that have been collected vs not
+  const todayStart2 = useMemo(() => new Date().toISOString().split('T')[0], []);
+  
+  const { data: todayCollections = [] } = useQuery({
+    queryKey: ['today-debt-collections', workerId, todayStart2],
+    queryFn: async () => {
+      let query = supabase
+        .from('debt_collections')
+        .select('debt_id, action, amount_collected, status')
+        .eq('collection_date', todayStart2);
+      if (!isAdmin) {
+        query = query.eq('worker_id', workerId!);
+      }
+      const { data, error } = await query;
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!workerId && isOpen,
+    refetchInterval: 10000,
+  });
 
-  if (mySectors.length === 0) return null;
+  const collectedDebtIds = useMemo(() => {
+    return new Set(todayCollections.filter(c => c.action !== 'no_payment').map(c => c.debt_id));
+  }, [todayCollections]);
+
+  const noPaymentDebtIds = useMemo(() => {
+    return new Set(todayCollections.filter(c => c.action === 'no_payment').map(c => c.debt_id));
+  }, [todayCollections]);
+
+  const debtsToCollectToday = useMemo(() => {
+    return dueDebts.filter(d => !collectedDebtIds.has(d.id) && !noPaymentDebtIds.has(d.id));
+  }, [dueDebts, collectedDebtIds, noPaymentDebtIds]);
+
+  const debtsCollectedToday = useMemo(() => {
+    return dueDebts.filter(d => collectedDebtIds.has(d.id));
+  }, [dueDebts, collectedDebtIds]);
+
+  const debtsNoPaymentToday = useMemo(() => {
+    return dueDebts.filter(d => noPaymentDebtIds.has(d.id));
+  }, [dueDebts, noPaymentDebtIds]);
+
+  const totalCount = deliveryCustomers.length + salesCustomers.length;
+  const debtBadgeCount = dueDebts.length;
+
+  if (mySectors.length === 0 && dueDebts.length === 0 && allDebts.length === 0) return null;
+
+  const handleApproveCollection = async (collectionId: string) => {
+    try {
+      await approveCollection.mutateAsync({ collectionId, approved: true });
+      toast.success('تمت الموافقة');
+    } catch (e: any) {
+      toast.error(e.message);
+    }
+  };
+
+  const handleRejectCollection = async (collectionId: string) => {
+    try {
+      await approveCollection.mutateAsync({ collectionId, approved: false, rejectionReason: 'مرفوض' });
+      toast.success('تم الرفض');
+    } catch (e: any) {
+      toast.error(e.message);
+    }
+  };
 
   const handleCustomerClick = (customer: any, tab: 'delivery' | 'sales') => {
     setIsOpen(false);
@@ -278,6 +353,7 @@ const SectorCustomersPopover: React.FC = () => {
   };
 
   return (
+    <>
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
         <button
@@ -285,9 +361,9 @@ const SectorCustomersPopover: React.FC = () => {
           title="عملاء اليوم"
         >
           <MapPin className="w-4 h-4 text-blue-500" />
-          {totalCount > 0 && (
+          {(totalCount + debtBadgeCount) > 0 && (
             <span className="absolute -top-1 -right-1 bg-blue-600 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
-              {totalCount}
+              {totalCount + debtBadgeCount}
             </span>
           )}
         </button>
@@ -309,6 +385,11 @@ const SectorCustomersPopover: React.FC = () => {
               <ShoppingCart className="w-3.5 h-3.5" />
               طلبات
               {salesCustomers.length > 0 && <Badge variant="secondary" className="text-[10px] px-1">{salesCustomers.length}</Badge>}
+            </TabsTrigger>
+            <TabsTrigger value="debts" className="flex-1 gap-1 text-xs">
+              <Landmark className="w-3.5 h-3.5" />
+              ديون
+              {debtBadgeCount > 0 && <Badge variant="destructive" className="text-[10px] px-1">{debtBadgeCount}</Badge>}
             </TabsTrigger>
           </TabsList>
 
@@ -418,9 +499,112 @@ const SectorCustomersPopover: React.FC = () => {
               </TabsContent>
             </Tabs>
           </TabsContent>
+
+          {/* Debts Tab */}
+          <TabsContent value="debts" className="m-0 flex-1 min-h-0">
+            <Tabs defaultValue="today-collection" className="flex flex-col h-full min-h-0">
+              <TabsList className="w-full rounded-none border-b shrink-0 h-auto p-0.5 gap-0.5">
+                <TabsTrigger value="today-collection" className="flex-1 gap-1 text-[10px] px-1 py-1.5 data-[state=active]:bg-orange-100 data-[state=active]:text-orange-700">
+                  <Clock className="w-3 h-3" />
+                  تحصيل اليوم
+                  {debtsToCollectToday.length > 0 && <Badge className="text-[9px] px-1 h-4 bg-orange-500">{debtsToCollectToday.length}</Badge>}
+                </TabsTrigger>
+                <TabsTrigger value="collected" className="flex-1 gap-1 text-[10px] px-1 py-1.5 data-[state=active]:bg-green-100 data-[state=active]:text-green-700">
+                  <Check className="w-3 h-3" />
+                  تم التحصيل
+                  {debtsCollectedToday.length > 0 && <Badge className="text-[9px] px-1 h-4 bg-green-500">{debtsCollectedToday.length}</Badge>}
+                </TabsTrigger>
+                <TabsTrigger value="no-payment" className="flex-1 gap-1 text-[10px] px-1 py-1.5 data-[state=active]:bg-amber-100 data-[state=active]:text-amber-700">
+                  <X className="w-3 h-3" />
+                  بدون تحصيل
+                  {debtsNoPaymentToday.length > 0 && <Badge className="text-[9px] px-1 h-4 bg-amber-500">{debtsNoPaymentToday.length}</Badge>}
+                </TabsTrigger>
+                <TabsTrigger value="all-debts" className="flex-1 gap-1 text-[10px] px-1 py-1.5 data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
+                  <Landmark className="w-3 h-3" />
+                  الكل
+                  {allDebts.length > 0 && <Badge variant="secondary" className="text-[9px] px-1 h-4">{allDebts.length}</Badge>}
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="today-collection" className="m-0 flex-1 min-h-0" style={{ overflow: 'auto', maxHeight: '45vh' }}>
+                <DebtList debts={debtsToCollectToday} onSelect={setSelectedDebt} emptyMessage="لا توجد ديون مستحقة اليوم ✓" />
+              </TabsContent>
+              <TabsContent value="collected" className="m-0 flex-1 min-h-0" style={{ overflow: 'auto', maxHeight: '45vh' }}>
+                <DebtList debts={debtsCollectedToday} onSelect={setSelectedDebt} emptyMessage="لا توجد تحصيلات بعد" />
+              </TabsContent>
+              <TabsContent value="no-payment" className="m-0 flex-1 min-h-0" style={{ overflow: 'auto', maxHeight: '45vh' }}>
+                <DebtList debts={debtsNoPaymentToday} onSelect={setSelectedDebt} emptyMessage="لا توجد زيارات بدون دفع" />
+              </TabsContent>
+              <TabsContent value="all-debts" className="m-0 flex-1 min-h-0" style={{ overflow: 'auto', maxHeight: '45vh' }}>
+                <DebtList debts={allDebts} onSelect={setSelectedDebt} emptyMessage="لا توجد ديون مستحقة" />
+              </TabsContent>
+            </Tabs>
+          </TabsContent>
         </Tabs>
       </PopoverContent>
     </Popover>
+
+    {/* Debt Info Dialog */}
+    {selectedDebt && (
+      <Dialog open={!!selectedDebt} onOpenChange={(open) => !open && setSelectedDebt(null)}>
+        <DialogContent className="max-w-[95vw] sm:max-w-sm p-4 gap-3" dir="rtl">
+          <DialogHeader className="pb-0">
+            <DialogTitle className="text-base truncate">
+              {selectedDebt.customer?.store_name || selectedDebt.customer?.name || '—'}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="bg-muted/50 rounded-md p-2 text-center space-y-1">
+              <p className="text-xs text-muted-foreground">المبلغ المتبقي</p>
+              <p className="text-xl font-bold text-destructive">{Number(selectedDebt.remaining_amount).toLocaleString()} DA</p>
+              <p className="text-xs text-muted-foreground">
+                تاريخ الاستحقاق: {selectedDebt.due_date ? format(new Date(selectedDebt.due_date + 'T00:00:00'), 'dd/MM/yyyy') : '—'}
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <Button size="sm" className="flex-1" onClick={() => { setShowCollect(true); setIsOpen(false); }}>
+                <Banknote className="w-4 h-4 ml-1" />
+                تحصيل
+              </Button>
+              <Button size="sm" variant="outline" className="flex-1" onClick={() => { setShowVisit(true); setIsOpen(false); }}>
+                <Eye className="w-4 h-4 ml-1" />
+                زيارة بدون دفع
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    )}
+
+    {selectedDebt && (
+      <CollectDebtDialog
+        open={showCollect}
+        onOpenChange={(open) => { setShowCollect(open); if (!open) setSelectedDebt(null); }}
+        debtId={selectedDebt.id}
+        totalDebtAmount={Number(selectedDebt.total_amount)}
+        paidAmountBefore={Number(selectedDebt.paid_amount)}
+        remainingAmount={Number(selectedDebt.remaining_amount)}
+        customerName={selectedDebt.customer?.name || '—'}
+        customerId={selectedDebt.customer_id}
+        defaultAmount={selectedDebt.collection_amount || undefined}
+        collectionType={selectedDebt.collection_type}
+        collectionDays={selectedDebt.collection_days}
+      />
+    )}
+
+    {selectedDebt && (
+      <VisitNoPaymentDialog
+        open={showVisit}
+        onOpenChange={(open) => { setShowVisit(open); if (!open) setSelectedDebt(null); }}
+        debtId={selectedDebt.id}
+        customerName={selectedDebt.customer?.name || '—'}
+        collectionType={selectedDebt.collection_type}
+        collectionDays={selectedDebt.collection_days}
+        customerLatitude={selectedDebt.customer?.latitude}
+        customerLongitude={selectedDebt.customer?.longitude}
+      />
+    )}
+    </>
   );
 };
 
@@ -487,6 +671,35 @@ const CustomerList: React.FC<{
             )}
           </div>
         </div>
+      ))}
+    </div>
+  );
+};
+
+
+const DebtList: React.FC<{ debts: DueDebt[]; onSelect: (d: DueDebt) => void; emptyMessage: string }> = ({ debts, onSelect, emptyMessage }) => {
+  if (debts.length === 0) {
+    return <div className="p-6 text-center text-sm text-muted-foreground">{emptyMessage}</div>;
+  }
+
+  return (
+    <div className="divide-y">
+      {debts.map(debt => (
+        <button
+          key={debt.id}
+          className="w-full p-3 text-right hover:bg-muted/50 transition-colors"
+          onClick={() => onSelect(debt)}
+        >
+          <div className="flex items-center justify-between">
+            <span className="font-bold text-sm">{debt.customer?.store_name || debt.customer?.name || '—'}</span>
+            <span className="text-destructive font-bold">{Number(debt.remaining_amount).toLocaleString()} DA</span>
+          </div>
+          <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+            <Clock className="w-3 h-3" />
+            <span>{debt.due_date ? format(new Date(debt.due_date + 'T00:00:00'), 'dd/MM/yyyy') : '—'}</span>
+            {debt.customer?.phone && <span>• {debt.customer.phone}</span>}
+          </div>
+        </button>
       ))}
     </div>
   );
