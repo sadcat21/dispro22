@@ -310,46 +310,23 @@ const AddCustomerDialog: React.FC<AddCustomerDialogProps> = ({
         default_price_subtype: defaultPriceSubtype,
       };
 
-      // Workers must go through approval, admins/branch_admins can add directly
-      const isManager = role === 'admin' || role === 'branch_admin';
+      // All roles can add customers directly (approval only for edit/delete)
+      const { data, error } = await supabase.from('customers').insert(payload).select().single();
+      if (error) throw error;
 
-      if (isManager) {
-        const { data, error } = await supabase.from('customers').insert(payload).select().single();
-        if (error) throw error;
-
-        const debt = parseFloat(debtAmount);
-        if (debt > 0 && workerId) {
-          await createDebt.mutateAsync({
-            customer_id: data.id, worker_id: workerId,
-            branch_id: effectiveBranchId || undefined,
-            total_amount: debt, paid_amount: 0,
-            notes: 'دين أولي عند إنشاء العميل',
-          });
-        }
-
-        toast.success(t('customers.add') + ' ✓');
-        trackVisit({ customerId: data.id, operationType: 'add_customer', operationId: data.id });
-        onSuccess(data as Customer);
-      } else {
-        // Worker: create approval request instead of direct insert
-        const approvalPayload = {
-          ...payload,
-          initial_debt: parseFloat(debtAmount) || 0,
-        };
-        const { error } = await supabase
-          .from('customer_approval_requests')
-          .insert({
-            operation_type: 'insert',
-            payload: approvalPayload,
-            requested_by: workerId,
-            branch_id: effectiveBranchId || null,
-            status: 'pending'
-          } as any);
-        if (error) throw error;
-        trackVisit({ customerId: null, operationType: 'add_customer', notes: `طلب إضافة عميل: ${name.trim()}` });
-        toast.success('تم إرسال طلب إضافة العميل للمراجعة');
-        onOpenChange(false);
+      const debt = parseFloat(debtAmount);
+      if (debt > 0 && workerId) {
+        await createDebt.mutateAsync({
+          customer_id: data.id, worker_id: workerId,
+          branch_id: effectiveBranchId || undefined,
+          total_amount: debt, paid_amount: 0,
+          notes: 'دين أولي عند إنشاء العميل',
+        });
       }
+
+      toast.success(t('customers.add') + ' ✓');
+      trackVisit({ customerId: data.id, operationType: 'add_customer', operationId: data.id });
+      onSuccess(data as Customer);
     } catch (error: any) {
       console.error('Error adding customer:', error);
       toast.error(error.message);
