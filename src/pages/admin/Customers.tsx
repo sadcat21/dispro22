@@ -221,7 +221,8 @@ const Customers: React.FC = () => {
 
   const getSectorName = (sectorId: string | null | undefined) => {
     if (!sectorId) return null;
-    return sectors.find(s => s.id === sectorId)?.name;
+    const sector = sectors.find(s => s.id === sectorId);
+    return sector ? getLocalizedName(sector, language) : null;
   };
 
   const handleCustomerAdded = (newCustomer: Customer) => {
