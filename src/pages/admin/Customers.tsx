@@ -364,7 +364,10 @@ const Customers: React.FC = () => {
               <SelectItem value="all">كل الأنواع</SelectItem>
               <SelectItem value="none">بدون نوع</SelectItem>
               {customerTypes.map((ct, idx) => (
-                <SelectItem key={idx} value={ct.ar}>{getCustomerTypeLabel(customerTypes, ct.ar, language)}</SelectItem>
+                <SelectItem key={idx} value={ct.ar}>
+                  <span className="font-mono uppercase text-xs">{ct.short || ct.ar}</span>
+                  <span className="text-muted-foreground mr-1">— {ct.fr || ct.ar}</span>
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -421,13 +424,12 @@ const Customers: React.FC = () => {
                       const storeName = customer.store_name
                         ? (language === 'fr' && customer.store_name_fr ? customer.store_name_fr : customer.store_name)
                         : (language === 'fr' && customer.name_fr ? customer.name_fr : customer.name);
-                      const typeLabel = customer.customer_type
-                        ? getCustomerTypeLabel(customerTypes, customer.customer_type, language)
-                        : '';
-                      if (!typeLabel) return storeName;
-                      const nameContainsType = normalizeArabic(storeName.toLowerCase()).includes(normalizeArabic(typeLabel.toLowerCase()));
-                      if (nameContainsType) return storeName;
-                      return <><span className="text-primary">{typeLabel}</span>{' '}{storeName}</>;
+                      const typeEntry = customer.customer_type
+                        ? customerTypes.find(t => t.ar === customer.customer_type)
+                        : null;
+                      const shortLabel = typeEntry?.short || typeEntry?.ar || '';
+                      if (!shortLabel) return storeName;
+                      return <><Badge variant="destructive" className="text-[10px] px-1.5 py-0 font-mono uppercase ml-1">{shortLabel}</Badge>{storeName}</>;
                     })()}
                   </p>
                   <div className="flex items-center gap-1 flex-wrap mt-0.5">
