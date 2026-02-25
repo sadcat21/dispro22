@@ -33,6 +33,10 @@ import { format, differenceInDays } from 'date-fns';
 import { ar } from 'date-fns/locale';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
+// Normalize Arabic text: treat all alef variants and hamza as the same
+const normalizeArabic = (text: string): string =>
+  text.replace(/[إأآءٱ]/g, 'ا').replace(/[ىة]/g, 'ه').replace(/ؤ/g, 'و').replace(/ئ/g, 'ي');
+
 // Collapsible sector group component
 const SectorCustomerGroup: React.FC<{ label: string; count: number; defaultOpen: boolean; children: React.ReactNode }> = ({ label, count, defaultOpen, children }) => {
   const [isOpen, setIsOpen] = React.useState(defaultOpen);
@@ -136,15 +140,16 @@ const Customers: React.FC = () => {
     }
 
     if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
+      const query = normalizeArabic(searchQuery.toLowerCase());
+      const match = (val: string | null | undefined) => val && normalizeArabic(val.toLowerCase()).includes(query);
       filtered = filtered.filter(c =>
-        c.name.toLowerCase().includes(query) ||
-        c.name_fr?.toLowerCase().includes(query) ||
-        c.internal_name?.toLowerCase().includes(query) ||
-        c.store_name?.toLowerCase().includes(query) ||
-        (c as any).store_name_fr?.toLowerCase().includes(query) ||
+        match(c.name) ||
+        match(c.name_fr) ||
+        match(c.internal_name) ||
+        match(c.store_name) ||
+        match(c.store_name_fr) ||
         c.phone?.includes(searchQuery) ||
-        c.wilaya?.toLowerCase().includes(query)
+        match(c.wilaya)
       );
     }
     return filtered;
