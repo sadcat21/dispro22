@@ -130,12 +130,12 @@ const CustomerActionDialog: React.FC<CustomerActionDialogProps> = ({
                     {/* Selected customer info */}
                     <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
                         <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold">
-                            {selectedCustomer?.name?.charAt(0) || '?'}
+                            {(selectedCustomer?.store_name || selectedCustomer?.name)?.charAt(0) || '?'}
                         </div>
                         <div className="flex-1 min-w-0">
-                            <p className="font-bold text-sm">{selectedCustomer?.name}</p>
+                            <p className="font-bold text-sm">{selectedCustomer?.store_name || selectedCustomer?.name}</p>
                             <p className="text-xs text-muted-foreground">
-                                {[selectedCustomer?.store_name, selectedCustomer?.phone].filter(Boolean).join(' • ')}
+                                {[selectedCustomer?.store_name ? selectedCustomer?.name : null, selectedCustomer?.phone].filter(Boolean).join(' • ')}
                             </p>
                         </div>
                         <Button

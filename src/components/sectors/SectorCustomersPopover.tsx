@@ -38,7 +38,7 @@ const JS_DAY_TO_NAME: Record<number, string> = {
 
 const SectorCustomersPopover: React.FC = () => {
   const { t } = useLanguage();
-  const { workerId, activeBranch } = useAuth();
+  const { workerId, activeBranch, role } = useAuth();
   const navigate = useNavigate();
   const { trackVisit } = useTrackVisit();
   const { data: locationThreshold } = useLocationThreshold();
@@ -110,19 +110,24 @@ const SectorCustomersPopover: React.FC = () => {
     refetchInterval: 10000,
   });
 
+  const isAdmin = role === 'admin' || role === 'branch_admin';
+
   const mySectors = useMemo(() => {
+    if (isAdmin) return sectors; // Admins see all sectors
     return sectors.filter(s => 
       s.delivery_worker_id === workerId || s.sales_worker_id === workerId
     );
-  }, [sectors, workerId]);
+  }, [sectors, workerId, isAdmin]);
 
   const todayDeliverySectors = useMemo(() => {
+    if (isAdmin) return mySectors.filter(s => s.visit_day_delivery === todayName);
     return mySectors.filter(s => s.visit_day_delivery === todayName && s.delivery_worker_id === workerId);
-  }, [mySectors, todayName, workerId]);
+  }, [mySectors, todayName, workerId, isAdmin]);
 
   const todaySalesSectors = useMemo(() => {
+    if (isAdmin) return mySectors.filter(s => s.visit_day_sales === todayName);
     return mySectors.filter(s => s.visit_day_sales === todayName && s.sales_worker_id === workerId);
-  }, [mySectors, todayName, workerId]);
+  }, [mySectors, todayName, workerId, isAdmin]);
 
   const deliveryCustomers = useMemo(() => {
     const sectorIds = new Set(todayDeliverySectors.map(s => s.id));
@@ -342,9 +347,9 @@ const CustomerList: React.FC<{
               <User className="w-4 h-4 text-primary" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="font-bold text-sm truncate">{c.name}</p>
+              <p className="font-bold text-sm truncate">{c.store_name || c.name}</p>
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                {c.store_name && <span>{c.store_name}</span>}
+                {c.store_name && <span>{c.name}</span>}
                 {c.phone && <span>• {c.phone}</span>}
                 {c.wilaya && <span>• {c.wilaya}</span>}
               </div>

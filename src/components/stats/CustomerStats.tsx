@@ -76,8 +76,8 @@ const CustomerStats: React.FC<CustomerStatsProps> = ({ orders, promos, customers
   // Chart data - top customers
   const chartData = useMemo(() => {
     return customerStats.slice(0, 8).map(stat => ({
-      name: stat.customer.name.length > 12 ? stat.customer.name.substring(0, 12) + '...' : stat.customer.name,
-      fullName: stat.customer.name,
+      name: (stat.customer.store_name || stat.customer.name).length > 12 ? (stat.customer.store_name || stat.customer.name).substring(0, 12) + '...' : (stat.customer.store_name || stat.customer.name),
+      fullName: stat.customer.store_name || stat.customer.name,
       طلبات: stat.orderCount,
       عروض: stat.promoCount,
     }));
@@ -101,7 +101,7 @@ const CustomerStats: React.FC<CustomerStatsProps> = ({ orders, promos, customers
           <SelectItem value="all">جميع العملاء</SelectItem>
           {customerStats.map((stat) => (
             <SelectItem key={stat.customer.id} value={stat.customer.id}>
-              {stat.customer.name} ({stat.orderCount + stat.promoCount} عملية)
+              {stat.customer.store_name || stat.customer.name} ({stat.orderCount + stat.promoCount} عملية)
             </SelectItem>
           ))}
         </SelectContent>
@@ -193,10 +193,10 @@ const CustomerStats: React.FC<CustomerStatsProps> = ({ orders, promos, customers
                 >
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold">
-                      {stat.customer.name?.charAt(0) || '?'}
+                      {(stat.customer.store_name || stat.customer.name)?.charAt(0) || '?'}
                     </div>
                     <div>
-                      <p className="font-bold">{stat.customer.name}</p>
+                      <p className="font-bold">{stat.customer.store_name || stat.customer.name}</p>
                       <p className="text-xs text-muted-foreground flex items-center gap-1">
                         <MapPin className="w-3 h-3" />
                         {stat.customer.wilaya || 'غير محدد'}
@@ -229,9 +229,9 @@ const CustomerStats: React.FC<CustomerStatsProps> = ({ orders, promos, customers
             <CardHeader className="pb-2">
               <CardTitle className="text-lg flex items-center gap-2">
                 <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold">
-                  {selectedCustomerStats.customer.name?.charAt(0) || '?'}
+                  {(selectedCustomerStats.customer.store_name || selectedCustomerStats.customer.name)?.charAt(0) || '?'}
                 </div>
-                {selectedCustomerStats.customer.name}
+                {selectedCustomerStats.customer.store_name || selectedCustomerStats.customer.name}
               </CardTitle>
             </CardHeader>
             <CardContent>
