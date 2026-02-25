@@ -30,6 +30,9 @@ import DirectSaleDialog from '@/components/warehouse/DirectSaleDialog';
 import { useTrackVisit } from '@/hooks/useVisitTracking';
 import { Customer } from '@/types/database';
 import { useIsElementHidden } from '@/hooks/useUIOverrides';
+import { useSectors } from '@/hooks/useSectors';
+import ModifyOrderDialog from '@/components/orders/ModifyOrderDialog';
+import { Edit } from 'lucide-react';
 
 const getDateLocale = (lang: string) => {
   switch (lang) {
@@ -74,6 +77,8 @@ const OrdersContent: React.FC = () => {
   const [confirmCancelOrderId, setConfirmCancelOrderId] = useState<string | null>(null);
   const [confirmDeleteOrderId, setConfirmDeleteOrderId] = useState<string | null>(null);
   const [customerIdFilter, setCustomerIdFilter] = useState<string | null>(null);
+  const [showModifyDialog, setShowModifyDialog] = useState(false);
+  const [modifyOrder, setModifyOrder] = useState<OrderWithDetails | null>(null);
 
   const [products, setProducts] = useState<Product[]>([]);
   const [workers, setWorkers] = useState<Worker[]>([]);
@@ -97,6 +102,12 @@ const OrdersContent: React.FC = () => {
   const deleteOrder = useDeleteOrder();
   const cancelOrder = useCancelOrder();
   const { trackVisit } = useTrackVisit();
+  const { sectors } = useSectors();
+  const sectorMap = useMemo(() => {
+    const map = new Map<string, string>();
+    sectors.forEach(s => map.set(s.id, s.name));
+    return map;
+  }, [sectors]);
 
   // UI override checks for actions
   const isCreateOrderHidden = useIsElementHidden('button', 'create_order');
@@ -638,7 +649,12 @@ const OrdersContent: React.FC = () => {
                         {order.customer?.store_name || order.customer?.name}
                       </button>
                       {order.customer?.store_name && order.customer?.name && (
-                        <p className="text-xs text-muted-foreground mr-6">{order.customer.name}</p>
+                        <span className="text-xs text-muted-foreground">{order.customer.name}</span>
+                      )}
+                      {order.customer?.sector_id && sectorMap.get(order.customer.sector_id) && (
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                          {sectorMap.get(order.customer.sector_id)}
+                        </Badge>
                       )}
                     </div>
 
@@ -696,6 +712,20 @@ const OrdersContent: React.FC = () => {
                     >
                       <Package className="w-4 h-4" />
                     </Button>
+
+                    {!isModifyOrderHidden && order.status !== 'cancelled' && order.status !== 'delivered' && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setModifyOrder(order);
+                          setSelectedOrderId(order.id);
+                          setShowModifyDialog(true);
+                        }}
+                      >
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                    )}
 
                     {order.status === 'pending' && (
                       <>
@@ -856,6 +886,19 @@ const OrdersContent: React.FC = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Modify Order Dialog */}
+      {modifyOrder && (
+        <ModifyOrderDialog
+          open={showModifyDialog}
+          onOpenChange={(open) => {
+            setShowModifyDialog(open);
+            if (!open) setModifyOrder(null);
+          }}
+          order={modifyOrder}
+          orderItems={selectedOrderItems || []}
+        />
+      )}
     </div>
   );
 };
