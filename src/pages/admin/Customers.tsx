@@ -70,6 +70,7 @@ const Customers: React.FC = () => {
   const [showSectorsDialog, setShowSectorsDialog] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [sectorFilter, setSectorFilter] = useState<string>('all');
+  const [typeFilter, setTypeFilter] = useState<string>('all');
 
   // Edit dialog state
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
@@ -139,6 +140,14 @@ const Customers: React.FC = () => {
       }
     }
 
+    if (typeFilter !== 'all') {
+      if (typeFilter === 'none') {
+        filtered = filtered.filter(c => !c.customer_type);
+      } else {
+        filtered = filtered.filter(c => c.customer_type === typeFilter);
+      }
+    }
+
     if (searchQuery.trim()) {
       const query = normalizeArabic(searchQuery.toLowerCase());
       const match = (val: string | null | undefined) => val && normalizeArabic(val.toLowerCase()).includes(query);
@@ -153,7 +162,7 @@ const Customers: React.FC = () => {
       );
     }
     return filtered;
-  }, [searchQuery, filteredByBranch, sectorFilter]);
+  }, [searchQuery, filteredByBranch, sectorFilter, typeFilter]);
 
   // Fetch last delivered orders for all customers
   useEffect(() => {
@@ -342,6 +351,20 @@ const Customers: React.FC = () => {
               <SelectItem value="none">بدون سكتور</SelectItem>
               {sectors.map(s => (
                 <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+        {customerTypes.length > 0 && (
+          <Select value={typeFilter} onValueChange={setTypeFilter}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="فلترة حسب النوع" />
+            </SelectTrigger>
+            <SelectContent className="bg-popover z-[100]">
+              <SelectItem value="all">كل الأنواع</SelectItem>
+              <SelectItem value="none">بدون نوع</SelectItem>
+              {customerTypes.map((ct, idx) => (
+                <SelectItem key={idx} value={ct.ar}>{getCustomerTypeLabel(customerTypes, ct.ar, language)}</SelectItem>
               ))}
             </SelectContent>
           </Select>
