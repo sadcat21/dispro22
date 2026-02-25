@@ -17,7 +17,7 @@ import { useSectors } from '@/hooks/useSectors';
 import { useCustomerDebtSummary, useCreateDebt, useUpdateDebtPayment } from '@/hooks/useCustomerDebts';
 import { useAuth } from '@/contexts/AuthContext';
 import { reverseGeocode } from '@/utils/geoUtils';
-import { useCustomerTypes } from '@/hooks/useCustomerTypes';
+import { useCustomerTypes, getCustomerTypeColor } from '@/hooks/useCustomerTypes';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getLocalizedName } from '@/utils/sectorName';
 
@@ -493,18 +493,23 @@ const EditCustomerDialog: React.FC<EditCustomerDialogProps> = ({
                   نوع العميل *
                 </Label>
                 <div className="flex flex-wrap gap-2">
-                  {customerTypes.map((entry) => (
-                    <Button
-                      key={entry.ar}
-                      type="button"
-                      variant={customerType === entry.ar ? 'default' : 'outline'}
-                      size="sm"
-                      className="font-mono uppercase text-xs"
-                      onClick={() => setCustomerType(customerType === entry.ar ? '' : entry.ar)}
-                    >
-                      {entry.short || entry[language] || entry.ar}
-                    </Button>
-                  ))}
+                  {customerTypes.map((entry, idx) => {
+                    const color = getCustomerTypeColor(entry.short, idx);
+                    const isActive = customerType === entry.ar;
+                    return (
+                      <Button
+                        key={entry.ar}
+                        type="button"
+                        variant="default"
+                        size="sm"
+                        className={`font-mono uppercase text-xs text-white ${isActive ? 'ring-2 ring-offset-1 ring-foreground/40' : 'opacity-60 hover:opacity-100'}`}
+                        style={{ backgroundColor: color, borderColor: color }}
+                        onClick={() => setCustomerType(isActive ? '' : entry.ar)}
+                      >
+                        {entry.short || entry[language] || entry.ar}
+                      </Button>
+                    );
+                  })}
                 </div>
                 {customerType && (() => {
                   const selected = customerTypes.find(t => t.ar === customerType);
