@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { addDays } from 'date-fns';
+import { useRealtimeSubscription } from './useRealtimeSubscription';
 
 // Map collection day keys to JS day indices (0=Sun, 6=Sat)
 const DAY_KEY_TO_JS: Record<string, number> = {
@@ -53,6 +54,13 @@ export const useDueDebts = (targetDate?: string) => {
   const { user, role } = useAuth();
   const isAdmin = role === 'admin' || role === 'branch_admin';
   const showAll = targetDate === '__all__';
+
+  useRealtimeSubscription(
+    'debt-collections-realtime',
+    [{ table: 'customer_debts' }, { table: 'debt_collections' }],
+    [['due-debts'], ['pending-collections'], ['customer-debts'], ['customer-debt-summary']],
+    !!user?.id
+  );
 
   return useQuery({
     queryKey: ['due-debts', user?.id, targetDate, isAdmin],

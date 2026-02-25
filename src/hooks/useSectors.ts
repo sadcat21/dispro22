@@ -30,6 +30,21 @@ export const useSectors = () => {
     fetchSectors();
   }, [fetchSectors]);
 
+  // Realtime subscription for sectors
+  useEffect(() => {
+    const channel = supabase
+      .channel('sectors-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'sectors' }, () => {
+        fetchSectors();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'sector_zones' }, () => {
+        fetchSectors();
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [fetchSectors]);
+
   const createSector = async (sector: Omit<Sector, 'id' | 'created_at' | 'updated_at'>) => {
     const { data, error } = await supabase.from('sectors').insert(sector).select().single();
     if (error) throw error;
@@ -44,7 +59,6 @@ export const useSectors = () => {
   };
 
   const deleteSector = async (id: string) => {
-    // First unlink customers from this sector
     await supabase.from('customers').update({ sector_id: null }).eq('sector_id', id);
     const { error } = await supabase.from('sectors').delete().eq('id', id);
     if (error) throw error;

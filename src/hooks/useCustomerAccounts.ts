@@ -3,8 +3,15 @@ import { supabase } from '@/integrations/supabase/client';
 import { CustomerAccount, CustomerAccountStatus } from '@/types/customerAccount';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { useRealtimeSubscription } from './useRealtimeSubscription';
 
 export const useCustomerAccounts = (status?: CustomerAccountStatus) => {
+  useRealtimeSubscription(
+    'customer-accounts-realtime',
+    [{ table: 'customer_accounts' }, { table: 'customer_approval_requests' }],
+    [['customer-accounts'], ['customers']],
+  );
+
   return useQuery({
     queryKey: ['customer-accounts', status],
     queryFn: async () => {

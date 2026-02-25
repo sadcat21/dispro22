@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { ExpenseCategory, ExpenseWithDetails } from '@/types/expense';
 import { toast } from 'sonner';
+import { useRealtimeSubscription } from './useRealtimeSubscription';
 
 export const useExpenseCategories = () => {
   return useQuery({
@@ -22,6 +23,12 @@ export const useExpenseCategories = () => {
 
 export const useExpenses = (workerFilter?: string | null) => {
   const { workerId, role, activeBranch } = useAuth();
+
+  useRealtimeSubscription(
+    'expenses-realtime',
+    [{ table: 'expenses' }],
+    [['expenses']],
+  );
 
   return useQuery({
     queryKey: ['expenses', workerFilter, role, activeBranch?.id],
