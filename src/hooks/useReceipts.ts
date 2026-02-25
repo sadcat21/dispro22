@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Receipt, ReceiptWithDetails, ReceiptModificationWithDetails, ReceiptItem, ReceiptType } from '@/types/receipt';
 import { useAuth } from '@/contexts/AuthContext';
+import { useRealtimeSubscription } from './useRealtimeSubscription';
 
 export const useReceipts = (filters?: {
   date?: string;
@@ -10,6 +11,12 @@ export const useReceipts = (filters?: {
   customerId?: string;
   receiptType?: string;
 }) => {
+  useRealtimeSubscription(
+    'receipts-realtime',
+    [{ table: 'receipts' }, { table: 'receipt_modifications' }],
+    [['receipts'], ['receipt-modifications']],
+  );
+
   return useQuery({
     queryKey: ['receipts', filters],
     queryFn: async () => {

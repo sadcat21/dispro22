@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { ActivityLog, ActivityLogWithWorker } from '@/types/activityLog';
 import { useAuth } from '@/contexts/AuthContext';
+import { useRealtimeSubscription } from './useRealtimeSubscription';
 
 interface LogActivityParams {
   actionType: string;
@@ -50,6 +51,12 @@ interface ActivityLogsFilters {
 
 export const useActivityLogs = (filters?: ActivityLogsFilters) => {
   const { role, activeBranch } = useAuth();
+
+  useRealtimeSubscription(
+    'activity-logs-realtime',
+    [{ table: 'activity_logs' }],
+    [['activity-logs'], ['my-activity-logs']],
+  );
 
   return useQuery({
     queryKey: ['activity-logs', filters, activeBranch?.id],

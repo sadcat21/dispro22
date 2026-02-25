@@ -2,9 +2,17 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Order, OrderItem, OrderWithDetails, OrderStatus } from '@/types/database';
 import { useAuth } from '@/contexts/AuthContext';
+import { useRealtimeSubscription } from './useRealtimeSubscription';
 
 export const useOrders = () => {
   const { workerId, role, activeBranch } = useAuth();
+
+  useRealtimeSubscription(
+    'orders-realtime',
+    [{ table: 'orders' }, { table: 'order_items' }],
+    [['orders'], ['my-orders'], ['assigned-orders'], ['order-items']],
+    !!workerId
+  );
 
   return useQuery({
     queryKey: ['orders', workerId, role, activeBranch?.id],
@@ -19,7 +27,6 @@ export const useOrders = () => {
         `)
         .order('created_at', { ascending: false });
 
-      // Filter based on role
       if (role === 'admin' && activeBranch) {
         query = query.eq('branch_id', activeBranch.id);
       }
@@ -71,13 +78,11 @@ export const useAssignedOrders = () => {
         .neq('status', 'cancelled')
         .order('created_at', { ascending: false });
 
-      // Admin and branch_admin can see all orders (optionally filtered by branch)
       if (role === 'admin' || role === 'branch_admin') {
         if (activeBranch) {
           query = query.eq('branch_id', activeBranch.id);
         }
       } else {
-        // Regular workers see only their assigned orders
         query = query.eq('assigned_worker_id', workerId!);
       }
 
@@ -134,7 +139,6 @@ export const useCreateOrder = () => {
       assignedWorkerId?: string;
       totalAmount?: number;
     }) => {
-      // Create order
       const { data: order, error: orderError } = await supabase
         .from('orders')
         .insert({
@@ -154,7 +158,6 @@ export const useCreateOrder = () => {
 
       if (orderError) throw orderError;
 
-      // Create order items with prices and gift info
       const orderItems = items.map(item => ({
         order_id: order.id,
         product_id: item.productId,
@@ -225,7 +228,6 @@ export const useUpdateOrderStatus = () => {
 
       if (error) throw error;
 
-      // Deduct from worker stock when delivered
       if (status === 'delivered' && data.assigned_worker_id) {
         const { data: orderItems } = await supabase
           .from('order_items')
@@ -234,7 +236,6 @@ export const useUpdateOrderStatus = () => {
 
         if (orderItems) {
           for (const item of orderItems) {
-            // Get current worker stock
             const { data: ws } = await supabase
               .from('worker_stock')
               .select('id, quantity')
@@ -249,7 +250,6 @@ export const useUpdateOrderStatus = () => {
                 .eq('id', ws.id);
             }
 
-            // Record movement
             await supabase.from('stock_movements').insert({
               product_id: item.product_id,
               branch_id: data.branch_id,
@@ -301,7 +301,6 @@ export const useCancelOrder = () => {
 
   return useMutation({
     mutationFn: async (orderId: string) => {
-      // Get the order details first
       const { data: order, error: orderError } = await supabase
         .from('orders')
         .select('id, assigned_worker_id, status, branch_id')
@@ -310,16 +309,13 @@ export const useCancelOrder = () => {
 
       if (orderError) throw orderError;
 
-      // Get order items to restore stock
       const { data: orderItems } = await supabase
         .from('order_items')
         .select('product_id, quantity')
         .eq('order_id', orderId);
 
-      // If order was delivered, restore worker stock and remove delivery movements
       if (order.status === 'delivered' && order.assigned_worker_id && orderItems) {
         for (const item of orderItems) {
-          // Restore worker stock
           const { data: ws } = await supabase
             .from('worker_stock')
             .select('id, quantity')
@@ -334,7 +330,6 @@ export const useCancelOrder = () => {
               .eq('id', ws.id);
           }
 
-          // Remove delivery stock movements for this order
           await supabase
             .from('stock_movements')
             .delete()
@@ -344,7 +339,6 @@ export const useCancelOrder = () => {
         }
       }
 
-      // Update order status to cancelled
       const { data, error } = await supabase
         .from('orders')
         .update({ status: 'cancelled' as OrderStatus })

@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { CustomerDebt, CustomerDebtWithDetails } from '@/types/accounting';
 import { useAuth } from '@/contexts/AuthContext';
+import { useRealtimeSubscription } from './useRealtimeSubscription';
 
 export const useCustomerDebts = (filters?: {
   status?: string;
@@ -9,6 +10,12 @@ export const useCustomerDebts = (filters?: {
   branchId?: string;
   customerId?: string;
 }) => {
+  useRealtimeSubscription(
+    'customer-debts-realtime',
+    [{ table: 'customer_debts' }, { table: 'debt_payments' }],
+    [['customer-debts'], ['customer-debt-summary'], ['debt-payments']],
+  );
+
   return useQuery({
     queryKey: ['customer-debts', filters],
     queryFn: async () => {
