@@ -474,12 +474,6 @@ const ManagerTreasury = () => {
                     <span className="text-xs font-bold text-green-500">+{debtCashCollected.toLocaleString()} د.ج</span>
                   </div>
                 )}
-                {totalGiftsValue > 0 && (
-                  <div className="flex items-center justify-between rounded-lg bg-background/50 p-2 opacity-60">
-                    <span className="text-[10px] text-muted-foreground">🎁 قيمة الهدايا (للعلم فقط)</span>
-                    <span className="text-xs font-bold text-purple-500">{totalGiftsValue.toLocaleString()} د.ج</span>
-                  </div>
-                )}
                 <div className="border-t pt-1.5">
                   <div className="flex items-center justify-between rounded-lg bg-primary/5 border border-primary/20 p-2">
                     <span className="text-[10px] font-medium">= المتوقع في الخزينة</span>
