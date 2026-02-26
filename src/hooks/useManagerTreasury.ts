@@ -62,6 +62,7 @@ export interface TreasurySummary {
   collectedDebts: number;
   uncollectedDebts: number;
   debtCashCollected: number;
+  totalExpenses: number;
 }
 
 export const useManagerTreasury = () => {
@@ -138,6 +139,12 @@ export const useTreasurySummary = () => {
         return s;
       }, 0);
 
+      // Get approved expenses
+      let expQuery = supabase.from('expenses').select('amount').eq('status', 'approved');
+      if (activeBranch?.id) expQuery = expQuery.eq('branch_id', activeBranch.id);
+      const { data: expensesData } = await expQuery;
+      const totalExpenses = (expensesData || []).reduce((s: number, e: any) => s + Number(e.amount || 0), 0);
+
       // Calculate total sales from all delivered orders
       const totalSales = (orders || []).reduce((s: number, o: any) => s + Number(o.total_amount || 0), 0);
 
@@ -149,7 +156,7 @@ export const useTreasurySummary = () => {
         bank_transfer: 0, transferCount: 0,
         coins: totalCoins,
         total: 0, handedOver: 0, remaining: 0,
-        totalSales, totalDebts, collectedDebts, uncollectedDebts, debtCashCollected,
+        totalSales, totalDebts, collectedDebts, uncollectedDebts, debtCashCollected, totalExpenses,
       };
 
       (orders || []).forEach((o: any) => {
