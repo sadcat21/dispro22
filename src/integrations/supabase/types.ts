@@ -1056,6 +1056,64 @@ export type Database = {
           },
         ]
       }
+      handover_items: {
+        Row: {
+          amount: number
+          created_at: string
+          customer_name: string | null
+          handover_id: string
+          id: string
+          notes: string | null
+          order_id: string | null
+          payment_method: string
+          treasury_entry_id: string | null
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          customer_name?: string | null
+          handover_id: string
+          id?: string
+          notes?: string | null
+          order_id?: string | null
+          payment_method: string
+          treasury_entry_id?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          customer_name?: string | null
+          handover_id?: string
+          id?: string
+          notes?: string | null
+          order_id?: string | null
+          payment_method?: string
+          treasury_entry_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "handover_items_handover_id_fkey"
+            columns: ["handover_id"]
+            isOneToOne: false
+            referencedRelation: "manager_handovers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "handover_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "handover_items_treasury_entry_id_fkey"
+            columns: ["treasury_entry_id"]
+            isOneToOne: false
+            referencedRelation: "manager_treasury"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       manager_handovers: {
         Row: {
           amount: number
