@@ -1162,6 +1162,7 @@ export type Database = {
           created_at: string
           customer_name: string | null
           id: string
+          invoice_date: string | null
           invoice_number: string | null
           manager_id: string
           notes: string | null
@@ -1180,6 +1181,7 @@ export type Database = {
           created_at?: string
           customer_name?: string | null
           id?: string
+          invoice_date?: string | null
           invoice_number?: string | null
           manager_id: string
           notes?: string | null
@@ -1198,6 +1200,7 @@ export type Database = {
           created_at?: string
           customer_name?: string | null
           id?: string
+          invoice_date?: string | null
           invoice_number?: string | null
           manager_id?: string
           notes?: string | null
