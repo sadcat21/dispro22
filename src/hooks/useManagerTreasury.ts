@@ -135,15 +135,16 @@ export const useTreasurySummary = () => {
       const totalCoins = (coinItems || []).reduce((s: number, item: any) => s + Number(item.actual_amount || 0), 0);
 
       // Get active coin exchange tasks (coins given to workers for exchange)
+      // Get ALL coin exchange tasks (active + completed) for accurate accounting
       let ceQuery = supabase
         .from('coin_exchange_tasks')
-        .select('coin_amount, returned_amount')
-        .eq('status', 'active');
+        .select('coin_amount, returned_amount, status')
+        .in('status', ['active', 'completed']);
       if (activeBranch?.id) ceQuery = ceQuery.eq('branch_id', activeBranch.id);
       const { data: coinExchangeTasks } = await ceQuery;
       const totalCoinsGiven = (coinExchangeTasks || []).reduce((s: number, t: any) => s + Number(t.coin_amount || 0), 0);
       const coinBillsReturned = (coinExchangeTasks || []).reduce((s: number, t: any) => s + Number(t.returned_amount || 0), 0);
-      const coinExchangeOut = totalCoinsGiven - coinBillsReturned;
+      const coinExchangeOut = (coinExchangeTasks || []).filter((t: any) => t.status === 'active').reduce((s: number, t: any) => s + Number(t.coin_amount || 0) - Number(t.returned_amount || 0), 0);
 
       // Get debts
       let dQuery = supabase.from('customer_debts').select('total_amount, paid_amount, remaining_amount, status');
