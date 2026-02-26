@@ -45,6 +45,7 @@ interface DirectSaleDialogProps {
   onOpenChange: (open: boolean) => void;
   stockItems: StockItem[];
   initialCustomerId?: string;
+  stockSource?: 'worker' | 'warehouse';
 }
 
 interface OrderItemWithPrice {
@@ -58,7 +59,7 @@ interface OrderItemWithPrice {
   offerNote?: string; // note for managers when offer was overridden
 }
 
-const DirectSaleDialog: React.FC<DirectSaleDialogProps> = ({ open, onOpenChange, stockItems, initialCustomerId }) => {
+const DirectSaleDialog: React.FC<DirectSaleDialogProps> = ({ open, onOpenChange, stockItems, initialCustomerId, stockSource = 'worker' }) => {
   const { workerId, activeBranch, user } = useAuth();
   const { t, dir } = useLanguage();
   const queryClient = useQueryClient();
@@ -488,11 +489,15 @@ const DirectSaleDialog: React.FC<DirectSaleDialogProps> = ({ open, onOpenChange,
       const { error: itemsErr } = await supabase.from('order_items').insert(orderItemsData);
       if (itemsErr) throw new Error('فشل في حفظ بنود الطلب: ' + itemsErr.message);
 
-      // Deduct from worker stock & log movements
+      // Deduct from stock & log movements
       for (const item of orderItems) {
         const ws = stockItems.find(s => s.product_id === item.productId);
         if (ws) {
-          await supabase.from('worker_stock').update({ quantity: ws.quantity - item.quantity }).eq('id', ws.id);
+          if (stockSource === 'warehouse') {
+            await supabase.from('warehouse_stock').update({ quantity: ws.quantity - item.quantity }).eq('id', ws.id);
+          } else {
+            await supabase.from('worker_stock').update({ quantity: ws.quantity - item.quantity }).eq('id', ws.id);
+          }
         }
         await supabase.from('stock_movements').insert({
           product_id: item.productId,
@@ -503,7 +508,7 @@ const DirectSaleDialog: React.FC<DirectSaleDialogProps> = ({ open, onOpenChange,
           created_by: workerId!,
           worker_id: workerId!,
           order_id: order.id,
-          notes: 'بيع مباشر من الشاحنة',
+          notes: stockSource === 'warehouse' ? 'بيع مباشر من المخزن' : 'بيع مباشر من الشاحنة',
         });
       }
 
@@ -540,6 +545,9 @@ const DirectSaleDialog: React.FC<DirectSaleDialogProps> = ({ open, onOpenChange,
       }
 
       queryClient.invalidateQueries({ queryKey: ['my-worker-stock'] });
+      if (stockSource === 'warehouse') {
+        queryClient.invalidateQueries({ queryKey: ['warehouse-stock'] });
+      }
 
       // Track direct sale visit GPS
       trackVisit({ customerId: selectedCustomerId, operationType: 'direct_sale', operationId: order.id });

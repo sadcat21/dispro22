@@ -1,12 +1,15 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { Package, Users, Loader2 } from 'lucide-react';
+import { Package, Users, Loader2, ShoppingBag } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { useWarehouseStock } from '@/hooks/useWarehouseStock';
+import DirectSaleDialog from '@/components/warehouse/DirectSaleDialog';
 
 const WarehouseStock: React.FC = () => {
   const { t } = useLanguage();
   const { warehouseStock, workerStocksByWorker, isLoading } = useWarehouseStock();
+  const [showSaleDialog, setShowSaleDialog] = useState(false);
 
   if (isLoading) {
     return (
@@ -16,9 +19,27 @@ const WarehouseStock: React.FC = () => {
     );
   }
 
+  const hasStock = warehouseStock.length > 0;
+
+  // Map warehouse stock to the format DirectSaleDialog expects
+  const stockItemsForSale = warehouseStock.map(s => ({
+    id: s.id,
+    product_id: s.product_id,
+    quantity: s.quantity,
+    product: s.product,
+  }));
+
   return (
     <div className="p-4 space-y-6">
-      <h2 className="text-xl font-bold">{t('stock.warehouse_stock')}</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-bold">{t('stock.warehouse_stock')}</h2>
+        {hasStock && (
+          <Button size="sm" onClick={() => setShowSaleDialog(true)}>
+            <ShoppingBag className="w-4 h-4 ml-1" />
+            {t('stock.direct_sale')}
+          </Button>
+        )}
+      </div>
 
       {/* Warehouse Stock */}
       <div>
@@ -80,6 +101,13 @@ const WarehouseStock: React.FC = () => {
           </div>
         )}
       </div>
+
+      <DirectSaleDialog
+        open={showSaleDialog}
+        onOpenChange={setShowSaleDialog}
+        stockItems={stockItemsForSale}
+        stockSource="warehouse"
+      />
     </div>
   );
 };
