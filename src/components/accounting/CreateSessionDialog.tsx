@@ -22,12 +22,13 @@ interface CreateSessionDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   preselectedWorkerId?: string;
+  workerName?: string;
   editSession?: AccountingSession | null;
 }
 
 const fmt = (n: number) => n.toLocaleString();
 
-const CreateSessionDialog: React.FC<CreateSessionDialogProps> = ({ open, onOpenChange, preselectedWorkerId, editSession }) => {
+const CreateSessionDialog: React.FC<CreateSessionDialogProps> = ({ open, onOpenChange, preselectedWorkerId, workerName, editSession }) => {
   const { t, dir } = useLanguage();
   const { activeBranch } = useAuth();
   const createSession = useCreateSession();
@@ -192,7 +193,10 @@ const CreateSessionDialog: React.FC<CreateSessionDialogProps> = ({ open, onOpenC
             <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
               <Calculator className="w-5 h-5 text-primary" />
             </div>
-            {isEditMode ? (t('accounting.edit_session') || 'تعديل الجلسة') : t('accounting.new_session')}
+            <div className="flex flex-col">
+              <span>{isEditMode ? (t('accounting.edit_session') || 'تعديل الجلسة') : t('accounting.new_session')}</span>
+              {workerName && <span className="text-xs font-normal text-muted-foreground">{workerName}</span>}
+            </div>
           </DialogTitle>
         </DialogHeader>
 
