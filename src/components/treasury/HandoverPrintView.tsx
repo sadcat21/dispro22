@@ -214,37 +214,60 @@ const HandoverPrintView: React.FC<Props> = ({
         </div>
       )}
 
-      {/* Summary Footer */}
-      <div className="mt-6 border-t border-black pt-3 text-sm">
-        <div className="flex justify-between mb-1">
-          <span>ARGENT FACTURES (Cash F1):</span>
-          <span className="font-bold">{cashInvoice1.toLocaleString()} DA</span>
+      {/* Summary Footer - Separated sections */}
+      <div className="mt-6 text-sm">
+        {/* Section 1: Argent Physique (Cash) */}
+        <div className="border-2 border-black p-3 mb-4">
+          <h3 className="font-bold text-center mb-2 text-base underline">ARGENT PHYSIQUE (ESPÈCES)</h3>
+          <div className="flex justify-between mb-1">
+            <span>Argent Factures (F1):</span>
+            <span className="font-bold">{cashInvoice1.toLocaleString()} DA</span>
+          </div>
+          <div className="flex justify-between mb-1">
+            <span>Argent Sans Facture (F2):</span>
+            <span className="font-bold">{cashInvoice2.toLocaleString()} DA</span>
+          </div>
+          <div className="flex justify-between mt-2 pt-2 border-t border-black font-bold">
+            <span>Total Espèces:</span>
+            <span>{(cashInvoice1 + cashInvoice2).toLocaleString()} DA</span>
+          </div>
         </div>
-        <div className="flex justify-between mb-1">
-          <span>ARGENT SANS FACTURE (Cash F2):</span>
-          <span className="font-bold">{cashInvoice2.toLocaleString()} DA</span>
-        </div>
-        {checksAmount > 0 && (
-          <div className="flex justify-between mb-1">
-            <span>CHEQUES:</span>
-            <span className="font-bold">{checksAmount.toLocaleString()} DA</span>
+
+        {/* Section 2: Valeurs (Non-cash) */}
+        {(checksAmount > 0 || receiptsAmount > 0 || transfersAmount > 0) && (
+          <div className="border-2 border-black p-3 mb-4">
+            <h3 className="font-bold text-center mb-2 text-base underline">VALEURS (EFFETS)</h3>
+            {checksAmount > 0 && (
+              <div className="flex justify-between mb-1">
+                <span>Chèques:</span>
+                <span className="font-bold">{checksAmount.toLocaleString()} DA</span>
+              </div>
+            )}
+            {receiptsAmount > 0 && (
+              <div className="flex justify-between mb-1">
+                <span>Versements:</span>
+                <span className="font-bold">{receiptsAmount.toLocaleString()} DA</span>
+              </div>
+            )}
+            {transfersAmount > 0 && (
+              <div className="flex justify-between mb-1">
+                <span>Virements:</span>
+                <span className="font-bold">{transfersAmount.toLocaleString()} DA</span>
+              </div>
+            )}
+            <div className="flex justify-between mt-2 pt-2 border-t border-black font-bold">
+              <span>Total Valeurs:</span>
+              <span>{(checksAmount + receiptsAmount + transfersAmount).toLocaleString()} DA</span>
+            </div>
           </div>
         )}
-        {receiptsAmount > 0 && (
-          <div className="flex justify-between mb-1">
-            <span>VERSEMENTS:</span>
-            <span className="font-bold">{receiptsAmount.toLocaleString()} DA</span>
+
+        {/* Grand Total */}
+        <div className="border-2 border-black p-3 bg-gray-100">
+          <div className="flex justify-between text-base font-bold">
+            <span>TOTAL GÉNÉRAL:</span>
+            <span>{totalAmount.toLocaleString()} DA</span>
           </div>
-        )}
-        {transfersAmount > 0 && (
-          <div className="flex justify-between mb-1">
-            <span>VIREMENTS:</span>
-            <span className="font-bold">{transfersAmount.toLocaleString()} DA</span>
-          </div>
-        )}
-        <div className="flex justify-between mt-2 pt-2 border-t border-black text-base font-bold">
-          <span>TOTAL:</span>
-          <span>{totalAmount.toLocaleString()} DA</span>
         </div>
       </div>
 
