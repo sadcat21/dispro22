@@ -114,6 +114,7 @@ const ManagerTreasury = () => {
                       invoice_number: data.invoice_number || f.invoice_number,
                       check_number: data.check_number || f.check_number,
                       check_bank: data.check_bank || f.check_bank,
+                      check_date: data.check_date || f.check_date,
                       receipt_number: data.receipt_number || f.receipt_number,
                       transfer_reference: data.transfer_reference || f.transfer_reference,
                       notes: data.raw_text ? (f.notes ? f.notes + '\n---\n' + data.raw_text : data.raw_text) : f.notes,

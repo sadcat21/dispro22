@@ -10,6 +10,7 @@ interface ExtractedData {
   customer_name?: string;
   check_number?: string;
   check_bank?: string;
+  check_date?: string;
   receipt_number?: string;
   transfer_reference?: string;
   raw_text?: string;
