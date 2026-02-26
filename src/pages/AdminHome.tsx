@@ -121,8 +121,8 @@ const AdminHome: React.FC = () => {
         >
           <Navigation className="w-9 h-9 text-teal-600 flex-shrink-0" />
           <div className="flex-1">
-            <p className="font-bold text-sm text-teal-900">العمليات الجغرافية</p>
-            <p className="text-xs text-teal-700 mt-0.5">تتبع المواقع والمسارات الجغرافية</p>
+            <p className="font-bold text-sm text-teal-900">{t('nav.geo_operations')}</p>
+            <p className="text-xs text-teal-700 mt-0.5">{t('nav.geo_operations')}</p>
           </div>
           <ArrowLeft className="w-4 h-4 text-teal-400" />
         </div>

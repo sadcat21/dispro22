@@ -43,6 +43,11 @@ export const translations: Translations = {
   'nav.customer_accounts': { ar: 'حسابات التجار', fr: 'Comptes clients', en: 'Customer Accounts' },
   'nav.more': { ar: 'المزيد', fr: 'Plus', en: 'More' },
   'nav.guide': { ar: 'دليل الاستخدام', fr: 'Guide d\'utilisation', en: 'User Guide' },
+  'nav.manager_treasury': { ar: 'خزينة المدير', fr: 'Trésorerie du manager', en: 'Manager Treasury' },
+  'nav.worker_debts': { ar: 'ديون العمال', fr: 'Dettes des employés', en: 'Worker Debts' },
+  'nav.daily_receipts': { ar: 'الفواتير اليومية', fr: 'Factures quotidiennes', en: 'Daily Receipts' },
+  'nav.geo_operations': { ar: 'العمليات الجغرافية', fr: 'Opérations géographiques', en: 'Geo Operations' },
+  'nav.product_offers': { ar: 'عروض المنتجات', fr: 'Offres produits', en: 'Product Offers' },
 
   // ==================== Branches ====================
   'branches.title': { ar: 'إدارة الفروع', fr: 'Gestion des succursales', en: 'Branch Management' },
@@ -724,7 +729,6 @@ export const translations: Translations = {
   'print.promo.all_products': { ar: 'جميع المنتجات', fr: 'Tous les produits', en: 'All Products' },
 
   // ==================== Product Offers ====================
-  'nav.product_offers': { ar: 'إعدادات العروض', fr: 'Paramètres des offres', en: 'Offer Settings' },
   'nav.available_offers': { ar: 'العروض المتاحة', fr: 'Offres disponibles', en: 'Available Offers' },
 
   'offers.management': { ar: 'إدارة العروض', fr: 'Gestion des offres', en: 'Offer Management' },

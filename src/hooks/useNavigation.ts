@@ -51,14 +51,14 @@ export const useNavigation = () => {
           { path: '/stock-receipts', icon: ClipboardList, label: t('stock.receipts') },
           { path: '/load-stock', icon: Truck, label: t('stock.load_to_worker') },
           { path: '/expenses', icon: Wallet, label: t('expenses.my_expenses') },
-          { path: '/daily-receipts', icon: FileText, label: 'الفواتير اليومية' },
+          { path: '/daily-receipts', icon: FileText, label: t('nav.daily_receipts') },
           { path: '/expenses-management', icon: Wallet, label: t('expenses.title') },
           { path: '/customer-debts', icon: Banknote, label: t('debts.title') },
           { path: '/accounting', icon: Calculator, label: t('accounting.title') },
-          { path: '/manager-treasury', icon: Vault, label: 'خزينة المدير' },
-          { path: '/worker-debts', icon: Banknote, label: 'ديون العمال' },
+          { path: '/manager-treasury', icon: Vault, label: t('nav.manager_treasury') },
+          { path: '/worker-debts', icon: Banknote, label: t('nav.worker_debts') },
           { path: '/worker-tracking', icon: MapPin, label: t('navigation.worker_tracking') },
-          { path: '/geo-operations', icon: Navigation, label: 'العمليات الجغرافية' },
+          { path: '/geo-operations', icon: Navigation, label: t('nav.geo_operations') },
           { path: '/activity-logs', icon: Activity, label: t('nav.activity_logs') },
           { path: '/nearby-stores', icon: Store, label: t('nav.nearby_stores') },
           { path: '/branches', icon: Building2, label: t('nav.branches') },
@@ -106,14 +106,14 @@ export const useNavigation = () => {
           { path: '/stock-receipts', icon: ClipboardList, label: t('stock.receipts') },
           { path: '/load-stock', icon: Truck, label: t('stock.load_to_worker') },
           { path: '/expenses', icon: Wallet, label: t('expenses.my_expenses') },
-          { path: '/daily-receipts', icon: FileText, label: 'الفواتير اليومية' },
+          { path: '/daily-receipts', icon: FileText, label: t('nav.daily_receipts') },
           { path: '/expenses-management', icon: Wallet, label: t('expenses.title') },
           { path: '/customer-debts', icon: Banknote, label: t('debts.title') },
           { path: '/accounting', icon: Calculator, label: t('accounting.title') },
-          { path: '/manager-treasury', icon: Vault, label: 'خزينة المدير' },
-          { path: '/worker-debts', icon: Banknote, label: 'ديون العمال' },
+          { path: '/manager-treasury', icon: Vault, label: t('nav.manager_treasury') },
+          { path: '/worker-debts', icon: Banknote, label: t('nav.worker_debts') },
           { path: '/worker-tracking', icon: MapPin, label: t('navigation.worker_tracking') },
-          { path: '/geo-operations', icon: Navigation, label: 'العمليات الجغرافية' },
+          { path: '/geo-operations', icon: Navigation, label: t('nav.geo_operations') },
           { path: '/activity-logs', icon: Activity, label: t('nav.activity_logs') },
           { path: '/nearby-stores', icon: Store, label: t('nav.nearby_stores') },
           { path: '/branches', icon: Building2, label: t('nav.branches') },
@@ -168,7 +168,7 @@ export const useNavigation = () => {
     moreItems.push({ path: '/expenses', icon: Wallet, label: t('expenses.my_expenses') });
 
     // Daily receipts - always available for workers
-    moreItems.push({ path: '/daily-receipts', icon: FileText, label: 'الفواتير اليومية' });
+    moreItems.push({ path: '/daily-receipts', icon: FileText, label: t('nav.daily_receipts') });
 
     // Guide page - always available for workers
     moreItems.push({ path: '/guide', icon: BookOpen, label: t('nav.guide') });
