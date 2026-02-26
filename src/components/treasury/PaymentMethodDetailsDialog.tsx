@@ -32,6 +32,8 @@ interface ProcessedOrder {
   stamp_amount: number;
   stamp_percentage: number;
   created_at: string;
+  is_debt: boolean;
+  debt_amount: number;
 }
 
 interface CustomerGroup {
@@ -41,6 +43,7 @@ interface CustomerGroup {
   orders: ProcessedOrder[];
   total: number;
   totalStamp: number;
+  totalDebt: number;
 }
 
 const PaymentMethodDetailsDialog = ({ open, onOpenChange, category }: Props) => {
@@ -94,17 +97,20 @@ const PaymentMethodDetailsDialog = ({ open, onOpenChange, category }: Props) => 
 
         // Match hook logic: account for partial/debt payments
         let paidAmount = totalAmount;
+        let debtAmount = 0;
+        const isDebt = o.payment_status === 'debt';
         if (o.payment_status === 'partial') {
           paidAmount = Number(o.partial_amount || 0);
-        } else if (o.payment_status === 'debt') {
+          debtAmount = totalAmount - paidAmount;
+        } else if (isDebt) {
           paidAmount = 0;
+          debtAmount = totalAmount;
         }
-        if (paidAmount <= 0) return;
 
         // Calculate stamp using tiers for cash_invoice1
         let stampAmount = 0;
         let stampPercentage = 0;
-        if (isCashInvoice1 && stampTiers?.length) {
+        if (isCashInvoice1 && stampTiers?.length && paidAmount > 0) {
           const baseAmount = itemsSubtotal > 0 ? itemsSubtotal : paidAmount;
           stampAmount = calculateStampAmount(baseAmount, stampTiers);
           const activeTiers = stampTiers.filter(t => t.is_active);
@@ -114,11 +120,13 @@ const PaymentMethodDetailsDialog = ({ open, onOpenChange, category }: Props) => 
 
         const processedOrder: ProcessedOrder = {
           id: o.id,
-          total_amount: paidAmount,
+          total_amount: paidAmount > 0 ? paidAmount : totalAmount,
           items_subtotal: itemsSubtotal,
           stamp_amount: stampAmount,
           stamp_percentage: stampPercentage,
           created_at: o.created_at,
+          is_debt: isDebt || o.payment_status === 'partial',
+          debt_amount: debtAmount,
         };
 
         if (!groupMap.has(customerId)) {
@@ -129,6 +137,7 @@ const PaymentMethodDetailsDialog = ({ open, onOpenChange, category }: Props) => 
             orders: [],
             total: 0,
             totalStamp: 0,
+            totalDebt: 0,
           });
         }
 
@@ -136,6 +145,7 @@ const PaymentMethodDetailsDialog = ({ open, onOpenChange, category }: Props) => 
         group.orders.push(processedOrder);
         group.total += paidAmount;
         group.totalStamp += stampAmount;
+        group.totalDebt += debtAmount;
       });
 
       return Array.from(groupMap.values()).sort((a, b) => b.total - a.total);
@@ -144,6 +154,7 @@ const PaymentMethodDetailsDialog = ({ open, onOpenChange, category }: Props) => 
 
   const grandTotal = (customerGroups || []).reduce((s, g) => s + g.total, 0);
   const grandStamp = isCashInvoice1 ? (customerGroups || []).reduce((s, g) => s + g.totalStamp, 0) : 0;
+  const grandDebt = (customerGroups || []).reduce((s, g) => s + g.totalDebt, 0);
   const totalOrders = (customerGroups || []).reduce((s, g) => s + g.orders.length, 0);
 
   return (
@@ -169,6 +180,13 @@ const PaymentMethodDetailsDialog = ({ open, onOpenChange, category }: Props) => 
               <p className="text-xs font-medium text-amber-700">إجمالي الطوابع (ضريبة)</p>
             </div>
             <p className="text-lg font-bold text-amber-600">{grandStamp.toLocaleString()} د.ج</p>
+          </div>
+        )}
+
+        {grandDebt > 0 && (
+          <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/30 text-center mb-2">
+            <p className="text-xs font-medium text-destructive">ديون غير محصلة</p>
+            <p className="text-lg font-bold text-destructive">{grandDebt.toLocaleString()} د.ج</p>
           </div>
         )}
 
