@@ -3,6 +3,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { useTreasurySummary, useManagerTreasury, useManagerHandovers, useCreateHandover, useAddTreasuryEntry } from '@/hooks/useManagerTreasury';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import PaymentMethodDetailsDialog from '@/components/treasury/PaymentMethodDetailsDialog';
+import HandoverItemPickerDialog, { PickedItem } from '@/components/treasury/HandoverItemPickerDialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -47,7 +48,7 @@ const itemTypeLabels: Record<string, string> = {
 
 const ManagerTreasury = () => {
   const { t } = useLanguage();
-  const { activeBranch } = useAuth();
+  const { activeBranch, workerId } = useAuth();
   const { data: summary, isLoading: summaryLoading } = useTreasurySummary();
   const { data: entries } = useManagerTreasury();
   const { data: handovers } = useManagerHandovers();
@@ -79,7 +80,11 @@ const ManagerTreasury = () => {
   const [infoOpen, setInfoOpen] = useState(false);
   const [detailsCategory, setDetailsCategory] = useState<'cash_invoice1' | 'cash_invoice2' | 'check' | 'bank_receipt' | 'bank_transfer' | null>(null);
   const [addForm, setAddForm] = useState({ payment_method: 'cash_invoice1', amount: '', customer_name: '', invoice_number: '', invoice_date: '', check_number: '', check_bank: '', check_date: '', receipt_number: '', transfer_reference: '', notes: '' });
-  const [handoverForm, setHandoverForm] = useState({ cash_invoice1: '', cash_invoice2: '', checks_amount: '', check_count: '', receipts_amount: '', receipt_count: '', transfers_amount: '', transfer_count: '', notes: '' });
+  const [handoverForm, setHandoverForm] = useState({ cash_invoice1: '', cash_invoice2: '', notes: '' });
+  const [pickedChecks, setPickedChecks] = useState<PickedItem[]>([]);
+  const [pickedReceipts, setPickedReceipts] = useState<PickedItem[]>([]);
+  const [pickedTransfers, setPickedTransfers] = useState<PickedItem[]>([]);
+  const [pickerType, setPickerType] = useState<'check' | 'receipt' | 'transfer' | null>(null);
 
   const handleAddEntry = async () => {
     if (!addForm.amount || Number(addForm.amount) <= 0) {
@@ -108,31 +113,56 @@ const ManagerTreasury = () => {
     }
   };
 
+  const checksAmount = pickedChecks.reduce((s, i) => s + i.amount, 0);
+  const receiptsAmount = pickedReceipts.reduce((s, i) => s + i.amount, 0);
+  const transfersAmount = pickedTransfers.reduce((s, i) => s + i.amount, 0);
+
   const handleHandover = async () => {
     const total = Number(handoverForm.cash_invoice1 || 0) + Number(handoverForm.cash_invoice2 || 0) +
-                  Number(handoverForm.checks_amount || 0) + Number(handoverForm.receipts_amount || 0) +
-                  Number(handoverForm.transfers_amount || 0);
+                  checksAmount + receiptsAmount + transfersAmount;
     if (total <= 0) {
       toast.error('أدخل مبلغاً واحداً على الأقل');
       return;
     }
     try {
-      await createHandover.mutateAsync({
+      const { data: handover, error } = await supabase.from('manager_handovers').insert({
+        manager_id: workerId!,
+        branch_id: activeBranch?.id || null,
+        payment_method: 'mixed',
+        amount: total,
         cash_invoice1: Number(handoverForm.cash_invoice1) || 0,
         cash_invoice2: Number(handoverForm.cash_invoice2) || 0,
-        checks_amount: Number(handoverForm.checks_amount) || 0,
-        check_count: Number(handoverForm.check_count) || 0,
-        receipts_amount: Number(handoverForm.receipts_amount) || 0,
-        receipt_count: Number(handoverForm.receipt_count) || 0,
-        transfers_amount: Number(handoverForm.transfers_amount) || 0,
-        transfer_count: Number(handoverForm.transfer_count) || 0,
-        notes: handoverForm.notes || undefined,
-      });
+        checks_amount: checksAmount,
+        check_count: pickedChecks.length,
+        receipts_amount: receiptsAmount,
+        receipt_count: pickedReceipts.length,
+        transfers_amount: transfersAmount,
+        transfer_count: pickedTransfers.length,
+        notes: handoverForm.notes || null,
+      }).select('id').single();
+
+      if (error) throw error;
+
+      // Save handover items for tracking
+      const allItems = [
+        ...pickedChecks.map(i => ({ handover_id: handover.id, order_id: i.order_id, payment_method: 'check', amount: i.amount, customer_name: i.customer_name })),
+        ...pickedReceipts.map(i => ({ handover_id: handover.id, order_id: i.order_id, payment_method: 'receipt', amount: i.amount, customer_name: i.customer_name })),
+        ...pickedTransfers.map(i => ({ handover_id: handover.id, order_id: i.order_id, payment_method: 'transfer', amount: i.amount, customer_name: i.customer_name })),
+      ];
+      if (allItems.length > 0) {
+        await supabase.from('handover_items').insert(allItems);
+      }
+
       toast.success('تم تسجيل التسليم بنجاح');
       setHandoverOpen(false);
-      setHandoverForm({ cash_invoice1: '', cash_invoice2: '', checks_amount: '', check_count: '', receipts_amount: '', receipt_count: '', transfers_amount: '', transfer_count: '', notes: '' });
-    } catch {
-      toast.error('حدث خطأ');
+      setHandoverForm({ cash_invoice1: '', cash_invoice2: '', notes: '' });
+      setPickedChecks([]);
+      setPickedReceipts([]);
+      setPickedTransfers([]);
+      // Refresh data
+      window.location.reload();
+    } catch (err: any) {
+      toast.error('حدث خطأ: ' + (err.message || ''));
     }
   };
 
@@ -236,34 +266,41 @@ const ManagerTreasury = () => {
                     <div><Label className="text-xs">كاش فاتورة 2</Label><Input type="number" placeholder="0" value={handoverForm.cash_invoice2} onChange={e => setHandoverForm(f => ({ ...f, cash_invoice2: e.target.value }))} /></div>
                   </div>
                 </div>
-                <div className="p-3 rounded-lg bg-muted/50 space-y-3">
-                  <p className="font-medium text-sm">📝 شيكات</p>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div><Label className="text-xs">قيمة الشيكات</Label><Input type="number" placeholder="0" value={handoverForm.checks_amount} onChange={e => setHandoverForm(f => ({ ...f, checks_amount: e.target.value }))} /></div>
-                    <div><Label className="text-xs">عدد الشيكات</Label><Input type="number" placeholder="0" value={handoverForm.check_count} onChange={e => setHandoverForm(f => ({ ...f, check_count: e.target.value }))} /></div>
+                <PickerSection label="📝 شيكات" items={pickedChecks} onOpen={() => setPickerType('check')} onRemove={(id) => setPickedChecks(p => p.filter(i => i.order_id !== id))} />
+                <PickerSection label="🧾 فيرسمو" items={pickedReceipts} onOpen={() => setPickerType('receipt')} onRemove={(id) => setPickedReceipts(p => p.filter(i => i.order_id !== id))} />
+                <PickerSection label="🏦 فيرمو" items={pickedTransfers} onOpen={() => setPickerType('transfer')} onRemove={(id) => setPickedTransfers(p => p.filter(i => i.order_id !== id))} />
+                
+                {/* Total summary */}
+                {(Number(handoverForm.cash_invoice1 || 0) + Number(handoverForm.cash_invoice2 || 0) + checksAmount + receiptsAmount + transfersAmount) > 0 && (
+                  <div className="p-3 rounded-lg bg-primary/5 border border-primary/20">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">إجمالي التسليم</span>
+                      <span className="text-sm font-bold text-primary">
+                        {(Number(handoverForm.cash_invoice1 || 0) + Number(handoverForm.cash_invoice2 || 0) + checksAmount + receiptsAmount + transfersAmount).toLocaleString()} د.ج
+                      </span>
+                    </div>
                   </div>
-                </div>
-                <div className="p-3 rounded-lg bg-muted/50 space-y-3">
-                  <p className="font-medium text-sm">🧾 فيرسمو (إيداع كاش بالبنك)</p>
-                  <p className="text-[10px] text-muted-foreground">العميل يأخذ الكاش ويودعه في حساب الشركة بالبنك</p>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div><Label className="text-xs">قيمة الفيرسمو</Label><Input type="number" placeholder="0" value={handoverForm.receipts_amount} onChange={e => setHandoverForm(f => ({ ...f, receipts_amount: e.target.value }))} /></div>
-                    <div><Label className="text-xs">عدد الوصولات</Label><Input type="number" placeholder="0" value={handoverForm.receipt_count} onChange={e => setHandoverForm(f => ({ ...f, receipt_count: e.target.value }))} /></div>
-                  </div>
-                </div>
-                <div className="p-3 rounded-lg bg-muted/50 space-y-3">
-                  <p className="font-medium text-sm">🏦 فيرمو (تحويل بنكي)</p>
-                  <p className="text-[10px] text-muted-foreground">العميل يحوّل من حسابه البنكي إلى حساب الشركة</p>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div><Label className="text-xs">قيمة الفيرمو</Label><Input type="number" placeholder="0" value={handoverForm.transfers_amount} onChange={e => setHandoverForm(f => ({ ...f, transfers_amount: e.target.value }))} /></div>
-                    <div><Label className="text-xs">عدد الوصولات</Label><Input type="number" placeholder="0" value={handoverForm.transfer_count} onChange={e => setHandoverForm(f => ({ ...f, transfer_count: e.target.value }))} /></div>
-                  </div>
-                </div>
+                )}
+
                 <div><Label>ملاحظات</Label><Textarea value={handoverForm.notes} onChange={e => setHandoverForm(f => ({ ...f, notes: e.target.value }))} /></div>
                 <Button onClick={handleHandover} disabled={createHandover.isPending} className="w-full">تسجيل التسليم</Button>
               </div>
             </DialogContent>
           </Dialog>
+
+          {/* Item Picker Dialog */}
+          {pickerType && (
+            <HandoverItemPickerDialog
+              open={!!pickerType}
+              onOpenChange={(open) => !open && setPickerType(null)}
+              paymentMethod={pickerType}
+              onConfirm={(items) => {
+                if (pickerType === 'check') setPickedChecks(prev => [...prev, ...items]);
+                else if (pickerType === 'receipt') setPickedReceipts(prev => [...prev, ...items]);
+                else if (pickerType === 'transfer') setPickedTransfers(prev => [...prev, ...items]);
+              }}
+            />
+          )}
         </div>
       </div>
 
@@ -752,6 +789,43 @@ const ManagerTreasury = () => {
           })}
         </TabsContent>
       </Tabs>
+    </div>
+  );
+};
+
+// Helper component for picker sections in handover dialog
+const PickerSection = ({ label, items, onOpen, onRemove }: {
+  label: string;
+  items: PickedItem[];
+  onOpen: () => void;
+  onRemove: (orderId: string) => void;
+}) => {
+  const total = items.reduce((s, i) => s + i.amount, 0);
+  return (
+    <div className="p-3 rounded-lg bg-muted/50 space-y-2">
+      <div className="flex items-center justify-between">
+        <p className="font-medium text-sm">{label}</p>
+        <Button variant="outline" size="sm" className="text-xs h-7" onClick={(e) => { e.preventDefault(); onOpen(); }}>
+          + اختيار
+        </Button>
+      </div>
+      {items.length > 0 ? (
+        <div className="space-y-1">
+          {items.map(item => (
+            <div key={item.order_id} className="flex items-center justify-between text-xs bg-background rounded-md px-2 py-1.5 border">
+              <span className="truncate flex-1">{item.customer_name}</span>
+              <span className="font-bold mx-2 whitespace-nowrap">{item.amount.toLocaleString()} د.ج</span>
+              <button onClick={(e) => { e.preventDefault(); onRemove(item.order_id); }} className="text-destructive hover:text-destructive/80 text-xs">✕</button>
+            </div>
+          ))}
+          <div className="flex items-center justify-between text-xs pt-1 border-t">
+            <span className="text-muted-foreground">{items.length} عنصر</span>
+            <span className="font-bold">{total.toLocaleString()} د.ج</span>
+          </div>
+        </div>
+      ) : (
+        <p className="text-xs text-muted-foreground text-center py-2">لم يتم اختيار أي عنصر</p>
+      )}
     </div>
   );
 };
