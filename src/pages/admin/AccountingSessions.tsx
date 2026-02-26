@@ -29,9 +29,8 @@ const AccountingSessions: React.FC = () => {
   const { t } = useLanguage();
   const { activeBranch, role } = useAuth();
   const [statusFilter, setStatusFilter] = useState('all');
-  const [showCreate, setShowCreate] = useState(false);
+  const [openSessions, setOpenSessions] = useState<{ workerId: string; workerName: string }[]>([]);
   const { workerId: contextWorkerId } = useSelectedWorker();
-  const [preselectedWorkerId, setPreselectedWorkerId] = useState('');
   const [selectedSession, setSelectedSession] = useState<AccountingSession | null>(null);
   const [deleteSession2, setDeleteSession2] = useState<AccountingSession | null>(null);
   const [workers, setWorkers] = useState<{ id: string; full_name: string }[]>([]);
@@ -57,14 +56,26 @@ const AccountingSessions: React.FC = () => {
   // Auto-open create dialog if coming from WorkerActions
   useEffect(() => {
     if (contextWorkerId) {
-      setPreselectedWorkerId(contextWorkerId);
-      setShowCreate(true);
+      const worker = workers.find(w => w.id === contextWorkerId);
+      if (worker && !openSessions.some(s => s.workerId === contextWorkerId)) {
+        setOpenSessions(prev => [...prev, { workerId: contextWorkerId, workerName: worker.full_name }]);
+      }
     }
-  }, [contextWorkerId]);
+  }, [contextWorkerId, workers]);
 
   const handleWorkerClick = (workerId: string) => {
-    setPreselectedWorkerId(workerId);
-    setShowCreate(true);
+    const worker = workers.find(w => w.id === workerId);
+    if (!worker) return;
+    // Don't open duplicate session for same worker
+    if (openSessions.some(s => s.workerId === workerId)) {
+      toast(t('accounting.session_already_open') || 'جلسة هذا العامل مفتوحة بالفعل');
+      return;
+    }
+    setOpenSessions(prev => [...prev, { workerId, workerName: worker.full_name }]);
+  };
+
+  const handleCloseSession = (workerId: string) => {
+    setOpenSessions(prev => prev.filter(s => s.workerId !== workerId));
   };
 
   const handleDeleteSession = async (session: AccountingSession, e: React.MouseEvent) => {
@@ -263,14 +274,17 @@ const AccountingSessions: React.FC = () => {
         )}
       </div>
 
-      <CreateSessionDialog
-        open={showCreate}
-        onOpenChange={(open) => {
-          setShowCreate(open);
-          if (!open) setPreselectedWorkerId('');
-        }}
-        preselectedWorkerId={preselectedWorkerId}
-      />
+      {openSessions.map(session => (
+        <CreateSessionDialog
+          key={session.workerId}
+          open={true}
+          onOpenChange={(open) => {
+            if (!open) handleCloseSession(session.workerId);
+          }}
+          preselectedWorkerId={session.workerId}
+          workerName={session.workerName}
+        />
+      ))}
 
       {selectedSession && (
         <SessionDetailsDialog

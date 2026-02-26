@@ -1094,6 +1094,7 @@ export const translations: Translations = {
   'accounting.calculating': { ar: 'جاري الحساب...', fr: 'Calcul en cours...', en: 'Calculating...' },
   'accounting.save_session': { ar: 'حفظ الجلسة', fr: 'Enregistrer la session', en: 'Save Session' },
   'accounting.session_created': { ar: 'تم إنشاء الجلسة بنجاح', fr: 'Session créée', en: 'Session created' },
+  'accounting.session_already_open': { ar: 'جلسة هذا العامل مفتوحة بالفعل', fr: 'Session déjà ouverte pour ce travailleur', en: 'Session already open for this worker' },
   'accounting.session_details': { ar: 'تفاصيل الجلسة', fr: 'Détails de la session', en: 'Session Details' },
   'accounting.status_open': { ar: 'مفتوحة', fr: 'Ouverte', en: 'Open' },
   'accounting.status_completed': { ar: 'مكتملة', fr: 'Terminée', en: 'Completed' },
