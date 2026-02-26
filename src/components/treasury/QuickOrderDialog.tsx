@@ -95,12 +95,33 @@ const QuickOrderDialog: React.FC<Props> = ({ open, onOpenChange, onOrderCreated 
     return [selectedSector.id];
   }, [selectedSector?.id, routes]);
 
+  // Search all registered customers when searching in sectors step
+  const { data: searchedCustomers } = useQuery({
+    queryKey: ['quick-search-customers', sectorSearch, activeBranch?.id],
+    queryFn: async () => {
+      if (!sectorSearch || sectorSearch.length < 2) return [];
+      const term = sectorSearch.toLowerCase();
+      let q = supabase.from('customers')
+        .select('id, name, name_fr, store_name, store_name_fr, internal_name, phone, sector_id')
+        .eq('is_registered', true)
+        .eq('status', 'active')
+        .or(`name.ilike.%${term}%,name_fr.ilike.%${term}%,store_name.ilike.%${term}%,store_name_fr.ilike.%${term}%,internal_name.ilike.%${term}%`)
+        .order('name')
+        .limit(20);
+      if (activeBranch?.id) q = q.or(`branch_id.eq.${activeBranch.id},branch_id.is.null`);
+      const { data, error } = await q;
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: open && step === 'sectors' && sectorSearch.length >= 2,
+  });
+
   // Fetch customers for selected sector + route sectors
   const { data: sectorCustomers, isLoading: loadingCustomers } = useQuery({
     queryKey: ['sector-customers', routeSectorIds, activeBranch?.id],
     queryFn: async () => {
       let q = supabase.from('customers')
-        .select('id, name, name_fr, store_name, phone, sector_id')
+        .select('id, name, name_fr, store_name, store_name_fr, internal_name, phone, sector_id')
         .in('sector_id', routeSectorIds)
         .eq('is_registered', true)
         .eq('status', 'active')
@@ -164,7 +185,10 @@ const QuickOrderDialog: React.FC<Props> = ({ open, onOpenChange, onOrderCreated 
   const groupedCustomers = useMemo(() => {
     const customers = sectorCustomers || [];
     const filtered = customerSearch
-      ? customers.filter((c: any) => c.name?.includes(customerSearch) || c.name_fr?.toLowerCase().includes(customerSearch.toLowerCase()) || c.phone?.includes(customerSearch))
+      ? customers.filter((c: any) => {
+          const term = customerSearch.toLowerCase();
+          return c.name?.includes(customerSearch) || c.name_fr?.toLowerCase().includes(term) || c.phone?.includes(customerSearch) || c.store_name?.includes(customerSearch) || c.store_name_fr?.toLowerCase().includes(term) || c.internal_name?.toLowerCase().includes(term);
+        })
       : customers;
 
     // Group by sector_id
@@ -364,7 +388,42 @@ const QuickOrderDialog: React.FC<Props> = ({ open, onOpenChange, onOrderCreated 
                       </Button>
                     ))
                   ) : (
-                    <p className="text-center text-muted-foreground text-sm py-8">لا توجد سكتورات</p>
+                    !searchedCustomers?.length && <p className="text-center text-muted-foreground text-sm py-8">لا توجد سكتورات</p>
+                  )}
+
+                  {/* Show matching customers from search */}
+                  {searchedCustomers && searchedCustomers.length > 0 && (
+                    <>
+                      <div className="flex items-center gap-2 px-3 py-2 mt-2 border-t">
+                        <User className="w-3.5 h-3.5 text-primary" />
+                        <span className="text-xs font-semibold text-muted-foreground">عملاء مطابقون ({searchedCustomers.length})</span>
+                      </div>
+                      {searchedCustomers.map((c: any) => (
+                        <Button
+                          key={c.id}
+                          variant="ghost"
+                          className="w-full justify-start text-start h-auto py-2 px-3"
+                          onClick={() => {
+                            setSelectedCustomer(c);
+                            if (c.sector_id) {
+                              const sector = sectors.find(s => s.id === c.sector_id);
+                              if (sector) setSelectedSector(sector);
+                            }
+                            setStep('products');
+                          }}
+                        >
+                          <User className="w-4 h-4 ml-2 shrink-0 text-primary" />
+                          <div className="min-w-0">
+                            <span className="text-sm font-medium block truncate">{c.name}</span>
+                            <div className="flex gap-2 text-[11px] text-muted-foreground">
+                              {c.name_fr && <span dir="ltr">{c.name_fr}</span>}
+                              {c.store_name && <span>• {c.store_name}</span>}
+                              {c.internal_name && <span>• {c.internal_name}</span>}
+                            </div>
+                          </div>
+                        </Button>
+                      ))}
+                    </>
                   )}
                 </div>
               </ScrollArea>
