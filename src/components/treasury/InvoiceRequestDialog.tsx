@@ -36,7 +36,7 @@ const InvoiceRequestDialog: React.FC<Props> = ({ open, onOpenChange }) => {
   const [workerSubTab, setWorkerSubTab] = useState<'pending' | 'completed' | 'received'>('pending');
   const [receivingOrderId, setReceivingOrderId] = useState<string | null>(null);
   const [invoiceNumberInput, setInvoiceNumberInput] = useState('');
-  const [invoicePrefix, setInvoicePrefix] = useState('FC');
+  const [invoicePrefix, setInvoicePrefix] = useState('F');
   const [invoiceYear, setInvoiceYear] = useState(new Date().getFullYear().toString());
 
   const buildInvoiceNumber = (num: string) => {
