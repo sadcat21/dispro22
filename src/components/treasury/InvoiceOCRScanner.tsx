@@ -1,11 +1,13 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
-import { Camera, Loader2, ScanLine, Upload, ClipboardPaste, X } from 'lucide-react';
+import { Camera, Loader2, Upload, ClipboardPaste, X } from 'lucide-react';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ExtractedData {
   amount?: string;
   invoice_number?: string;
+  customer_name?: string;
   check_number?: string;
   check_bank?: string;
   receipt_number?: string;
@@ -28,93 +30,42 @@ const InvoiceOCRScanner = ({ onDataExtracted, paymentMethod }: InvoiceOCRScanner
   const streamRef = useRef<MediaStream | null>(null);
   const pasteAreaRef = useRef<HTMLDivElement>(null);
 
-  const extractDataFromText = (text: string): ExtractedData => {
-    const data: ExtractedData = { raw_text: text };
-
-    const amountPatterns = [
-      /(?:المبلغ|الإجمالي|المجموع|TTC|Total|Montant|NET\s*[AÀ]\s*PAYER)[:\s]*([0-9][0-9\s,.]+[0-9])/i,
-      /([0-9]{1,3}(?:[,.\s][0-9]{3})*(?:[,.][0-9]{2}))\s*(?:د\.ج|DA|DZD)/i,
-      /(?:مبلغ|amount)[:\s]*([0-9][0-9\s,.]+[0-9])/i,
-    ];
-
-    for (const pattern of amountPatterns) {
-      const match = text.match(pattern);
-      if (match) {
-        let amt = match[1].replace(/\s/g, '');
-        if (amt.includes(',') && amt.includes('.')) {
-          amt = amt.replace(/,/g, '');
-        } else if (amt.includes(',')) {
-          const parts = amt.split(',');
-          if (parts[parts.length - 1].length === 2) {
-            amt = parts.slice(0, -1).join('') + '.' + parts[parts.length - 1];
-          } else {
-            amt = amt.replace(/,/g, '');
-          }
-        }
-        data.amount = parseFloat(amt).toString();
-        if (!isNaN(Number(data.amount))) break;
-      }
-    }
-
-    const invoicePatterns = [
-      /(?:فاتورة|facture|invoice|FC|N°)[:\s#]*([A-Z0-9/-]+)/i,
-      /(?:رقم)[:\s]*([A-Z0-9/-]+)/i,
-    ];
-    for (const pattern of invoicePatterns) {
-      const match = text.match(pattern);
-      if (match) { data.invoice_number = match[1]; break; }
-    }
-
-    if (paymentMethod === 'check') {
-      const checkPatterns = [
-        /(?:شيك|chèque|cheque|check)[:\s#]*([0-9]+)/i,
-        /(?:N°|رقم)[:\s]*([0-9]{5,})/i,
-      ];
-      for (const pattern of checkPatterns) {
-        const match = text.match(pattern);
-        if (match) { data.check_number = match[1]; break; }
-      }
-      const bankMatch = text.match(/(?:بنك|banque|bank|BNA|CPA|BADR|BDL|BEA|CNEP|SGA|AGB|Gulf Bank|ABC|Trust Bank)[A-Za-z\s]*/i);
-      if (bankMatch) data.check_bank = bankMatch[0].trim();
-    }
-
-    if (paymentMethod === 'bank_receipt') {
-      const receiptMatch = text.match(/(?:وصل|reçu|receipt|bordereau)[:\s#]*([A-Z0-9/-]+)/i);
-      if (receiptMatch) data.receipt_number = receiptMatch[1];
-    }
-
-    if (paymentMethod === 'bank_transfer') {
-      const refMatch = text.match(/(?:مرجع|référence|reference|ref|virement)[:\s#]*([A-Z0-9/-]+)/i);
-      if (refMatch) data.transfer_reference = refMatch[1];
-    }
-
-    return data;
-  };
-
   const processImage = useCallback(async (imageSource: File | Blob | string) => {
     // Show preview
+    let base64Data: string;
     if (typeof imageSource === 'string') {
       setPreview(imageSource);
+      base64Data = imageSource.replace(/^data:image\/[^;]+;base64,/, '');
     } else {
-      const reader = new FileReader();
-      reader.onload = (ev) => setPreview(ev.target?.result as string);
-      reader.readAsDataURL(imageSource);
+      const dataUrl = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (ev) => resolve(ev.target?.result as string);
+        reader.readAsDataURL(imageSource);
+      });
+      setPreview(dataUrl);
+      base64Data = dataUrl.replace(/^data:image\/[^;]+;base64,/, '');
     }
 
     setIsProcessing(true);
     try {
-      const { createWorker } = await import('tesseract.js');
-      const worker = await createWorker('ara+fra', 1, { logger: () => {} });
-      const { data: { text } } = await worker.recognize(imageSource);
-      await worker.terminate();
+      const { data, error } = await supabase.functions.invoke('analyze-invoice', {
+        body: { image_base64: base64Data, payment_method: paymentMethod }
+      });
 
-      const extracted = extractDataFromText(text);
-      if (extracted.amount || extracted.invoice_number || extracted.check_number) {
-        onDataExtracted(extracted);
-        toast.success('تم استخراج البيانات من الصورة');
+      if (error) throw error;
+
+      if (data?.success && data?.data) {
+        const extracted: ExtractedData = data.data;
+        if (extracted.amount || extracted.invoice_number || extracted.customer_name || extracted.check_number) {
+          onDataExtracted(extracted);
+          toast.success('تم استخراج البيانات من الصورة');
+        } else {
+          toast.warning('لم يتم العثور على بيانات واضحة، حاول صورة أوضح');
+          onDataExtracted({ raw_text: data.raw_text || '' });
+        }
       } else {
-        toast.warning('لم يتم العثور على بيانات واضحة، حاول صورة أوضح');
-        onDataExtracted({ raw_text: text });
+        toast.warning('لم يتم العثور على بيانات واضحة');
+        onDataExtracted({ raw_text: data?.raw_text || '' });
       }
     } catch (err) {
       console.error('OCR Error:', err);
@@ -124,7 +75,6 @@ const InvoiceOCRScanner = ({ onDataExtracted, paymentMethod }: InvoiceOCRScanner
     }
   }, [paymentMethod, onDataExtracted]);
 
-  // File upload handler
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -132,7 +82,6 @@ const InvoiceOCRScanner = ({ onDataExtracted, paymentMethod }: InvoiceOCRScanner
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  // Camera capture handler  
   const handleCameraCapture = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -140,7 +89,6 @@ const InvoiceOCRScanner = ({ onDataExtracted, paymentMethod }: InvoiceOCRScanner
     if (cameraInputRef.current) cameraInputRef.current.value = '';
   };
 
-  // Live camera - open stream
   const handleOpenLiveCamera = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -158,13 +106,11 @@ const InvoiceOCRScanner = ({ onDataExtracted, paymentMethod }: InvoiceOCRScanner
       if (err instanceof Error && err.name === 'NotAllowedError') {
         toast.error('تم رفض إذن الكاميرا، تحقق من إعدادات المتصفح');
       } else {
-        // Fallback to file input with camera capture
         cameraInputRef.current?.click();
       }
     }
   };
 
-  // Capture frame from live camera
   const handleCaptureFrame = async () => {
     if (!videoRef.current) return;
     const canvas = document.createElement('canvas');
@@ -173,9 +119,7 @@ const InvoiceOCRScanner = ({ onDataExtracted, paymentMethod }: InvoiceOCRScanner
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     ctx.drawImage(videoRef.current, 0, 0);
-    
     stopCamera();
-    
     canvas.toBlob(async (blob) => {
       if (blob) await processImage(blob);
     }, 'image/jpeg', 0.9);
@@ -189,7 +133,6 @@ const InvoiceOCRScanner = ({ onDataExtracted, paymentMethod }: InvoiceOCRScanner
     setShowCamera(false);
   };
 
-  // Paste from clipboard
   const handlePaste = useCallback(async (e: ClipboardEvent) => {
     const items = e.clipboardData?.items;
     if (!items) return;
@@ -197,15 +140,11 @@ const InvoiceOCRScanner = ({ onDataExtracted, paymentMethod }: InvoiceOCRScanner
       if (items[i].type.startsWith('image/')) {
         e.preventDefault();
         const file = items[i].getAsFile();
-        if (file) {
-          await processImage(file);
-          break;
-        }
+        if (file) { await processImage(file); break; }
       }
     }
   }, [processImage]);
 
-  // Manual paste button (read from clipboard API)
   const handlePasteButton = async () => {
     try {
       const clipboardItems = await navigator.clipboard.read();
@@ -231,18 +170,15 @@ const InvoiceOCRScanner = ({ onDataExtracted, paymentMethod }: InvoiceOCRScanner
     }
   }, [handlePaste]);
 
-  // Cleanup camera on unmount
   useEffect(() => {
     return () => { stopCamera(); };
   }, []);
 
   return (
     <div className="space-y-2" ref={pasteAreaRef} tabIndex={0}>
-      {/* Hidden file inputs */}
       <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileSelect} />
       <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleCameraCapture} />
 
-      {/* Live camera view */}
       {showCamera && (
         <div className="relative rounded-lg overflow-hidden border bg-black">
           <video ref={videoRef} className="w-full h-48 object-cover" autoPlay playsInline muted />
@@ -257,33 +193,26 @@ const InvoiceOCRScanner = ({ onDataExtracted, paymentMethod }: InvoiceOCRScanner
         </div>
       )}
 
-      {/* Action buttons */}
       {!showCamera && !isProcessing && (
         <div className="grid grid-cols-3 gap-2">
           <Button type="button" variant="outline" size="sm" className="gap-1 text-xs" onClick={() => fileInputRef.current?.click()}>
-            <Upload className="w-3.5 h-3.5" />
-            رفع صورة
+            <Upload className="w-3.5 h-3.5" /> رفع صورة
           </Button>
           <Button type="button" variant="outline" size="sm" className="gap-1 text-xs" onClick={handleOpenLiveCamera}>
-            <Camera className="w-3.5 h-3.5" />
-            كاميرا
+            <Camera className="w-3.5 h-3.5" /> كاميرا
           </Button>
           <Button type="button" variant="outline" size="sm" className="gap-1 text-xs" onClick={handlePasteButton}>
-            <ClipboardPaste className="w-3.5 h-3.5" />
-            لصق
+            <ClipboardPaste className="w-3.5 h-3.5" /> لصق
           </Button>
         </div>
       )}
 
-      {/* Processing state */}
       {isProcessing && (
         <Button type="button" variant="outline" className="w-full gap-2" disabled>
-          <Loader2 className="w-4 h-4 animate-spin" />
-          جاري قراءة الصورة...
+          <Loader2 className="w-4 h-4 animate-spin" /> جاري تحليل الصورة بالذكاء الاصطناعي...
         </Button>
       )}
 
-      {/* Preview */}
       {preview && !showCamera && (
         <div className="relative rounded-lg overflow-hidden border max-h-32">
           <img src={preview} alt="معاينة" className="w-full h-32 object-cover" />
