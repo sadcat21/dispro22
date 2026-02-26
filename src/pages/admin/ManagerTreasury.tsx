@@ -435,10 +435,13 @@ const ManagerTreasury = () => {
         const collectedDebts = summary?.collectedDebts || 0;
         const totalInTreasury = summary?.total || 0;
         const handedOver = summary?.handedOver || 0;
+        const totalExpenses = summary?.totalExpenses || 0;
         
-        // ما يجب أن يكون في الخزينة = المبيعات - الديون الجديدة + تحصيلات الديون
+        // المتوقع = المبيعات - الديون + تحصيلات الديون
         const expectedInTreasury = totalSales - totalDebts + collectedDebts;
-        const gap = expectedInTreasury - totalInTreasury;
+        // الموجود فعلياً + المُسلَّم + المصاريف = ما تم التصرف فيه
+        const accountedFor = totalInTreasury + handedOver + totalExpenses;
+        const gap = expectedInTreasury - accountedFor;
         const hasGap = Math.abs(gap) > 1;
         
         return (
@@ -471,6 +474,9 @@ const ManagerTreasury = () => {
                     <span className="text-xs font-bold text-primary">{expectedInTreasury.toLocaleString()} د.ج</span>
                   </div>
                 </div>
+
+                <p className="text-[10px] text-muted-foreground text-center pt-1">📤 أين ذهبت الأموال؟</p>
+
                 <div className="flex items-center justify-between rounded-lg bg-background p-2">
                   <span className="text-[10px] text-muted-foreground">الموجود فعلياً في الخزينة</span>
                   <span className="text-xs font-bold">{totalInTreasury.toLocaleString()} د.ج</span>
@@ -478,6 +484,16 @@ const ManagerTreasury = () => {
                 <div className="flex items-center justify-between rounded-lg bg-background p-2">
                   <span className="text-[10px] text-muted-foreground">المُسلَّم للجهة العليا</span>
                   <span className="text-xs font-bold">{handedOver.toLocaleString()} د.ج</span>
+                </div>
+                {totalExpenses > 0 && (
+                  <div className="flex items-center justify-between rounded-lg bg-background p-2">
+                    <span className="text-[10px] text-muted-foreground">المصاريف المعتمدة</span>
+                    <span className="text-xs font-bold">{totalExpenses.toLocaleString()} د.ج</span>
+                  </div>
+                )}
+                <div className="flex items-center justify-between rounded-lg bg-muted/50 p-2">
+                  <span className="text-[10px] font-medium">= مجموع التصرف</span>
+                  <span className="text-xs font-bold">{accountedFor.toLocaleString()} د.ج</span>
                 </div>
               </div>
 
@@ -491,7 +507,7 @@ const ManagerTreasury = () => {
                       {Math.abs(gap).toLocaleString()} د.ج
                     </p>
                     <p className="text-[10px] text-muted-foreground mt-1">
-                      {gap > 0 ? 'المبلغ الموجود أقل من المتوقع — يرجى التحقق' : 'المبلغ الموجود أكثر من المتوقع'}
+                      {gap > 0 ? 'المتوقع أكبر مما تم التصرف فيه — يرجى التحقق' : 'تم التصرف بأكثر مما هو متوقع'}
                     </p>
                   </>
                 ) : (
@@ -563,8 +579,9 @@ const ManagerTreasury = () => {
               <div className="p-3 rounded-lg bg-muted/50 space-y-2">
                 <p className="font-medium text-xs">المعادلة الأساسية:</p>
                 <div className="bg-background rounded p-2 text-xs space-y-1">
-                  <p><strong>المتوقع في الخزينة</strong> = إجمالي المبيعات − الديون الجديدة + تحصيلات الديون السابقة</p>
-                  <p><strong>الفجوة</strong> = المتوقع − الموجود فعلياً</p>
+                  <p><strong>المتوقع</strong> = إجمالي المبيعات − الديون الجديدة + تحصيلات الديون السابقة</p>
+                  <p><strong>مجموع التصرف</strong> = الموجود في الخزينة + المُسلَّم + المصاريف المعتمدة</p>
+                  <p><strong>الفجوة</strong> = المتوقع − مجموع التصرف</p>
                 </div>
               </div>
 
@@ -577,9 +594,13 @@ const ManagerTreasury = () => {
                     <p>• تحصيلات ديون سابقة = <strong>50,000 د.ج</strong></p>
                   </div>
                   <p className="font-medium mt-1">المتوقع = 1,000,000 − 200,000 + 50,000 = <strong>850,000 د.ج</strong></p>
-                  <p>إذا كان الموجود في الخزينة = <strong>840,000 د.ج</strong></p>
-                  <p className="text-orange-600 font-medium">← عجز = 10,000 د.ج ⚠️</p>
-                  <p className="text-muted-foreground/70">يجب البحث عن سبب النقص (خطأ حسابي، مبلغ ضائع...)</p>
+                  <div className="bg-background rounded p-2 space-y-1 mt-1">
+                    <p>• الموجود في الخزينة = <strong>800,000 د.ج</strong></p>
+                    <p>• المُسلَّم = <strong>30,000 د.ج</strong></p>
+                    <p>• المصاريف = <strong>10,000 د.ج</strong></p>
+                  </div>
+                  <p className="font-medium mt-1">مجموع التصرف = 800,000 + 30,000 + 10,000 = <strong>840,000 د.ج</strong></p>
+                  <p className="text-orange-600 font-medium">← عجز = 850,000 − 840,000 = 10,000 د.ج ⚠️</p>
                 </div>
               </div>
             </div>
