@@ -440,10 +440,11 @@ const ManagerTreasury = () => {
         const workerHeldAmount = summary?.workerHeldAmount || 0;
         
         // المتوقع = المبيعات - المبالغ غير المدفوعة + تحصيلات ديون نقدية
-        // ملاحظة: الهدايا ليست مشمولة في total_amount أصلاً فلا تُطرح
         const expectedInTreasury = totalSales - orderUnpaidAmount + debtCashCollected;
-        // الموجود فعلياً + المُسلَّم + المصاريف + في ذمة العمال
-        const accountedFor = totalInTreasury + handedOver + totalExpenses + workerHeldAmount;
+        // الصافي = الوارد - المسلم - المصاريف (ما يجب أن يكون فعلياً في الخزينة الآن)
+        const netInTreasury = totalInTreasury - handedOver - totalExpenses;
+        // أين ذهبت الأموال: الصافي + المسلم + المصاريف + ذمة العمال = المتوقع
+        const accountedFor = netInTreasury + handedOver + totalExpenses + workerHeldAmount;
         const gap = expectedInTreasury - accountedFor;
         const hasGap = Math.abs(gap) > 1;
         
@@ -489,8 +490,8 @@ const ManagerTreasury = () => {
                 <p className="text-[10px] text-muted-foreground text-center pt-1">📤 أين ذهبت الأموال؟</p>
 
                 <div className="flex items-center justify-between rounded-lg bg-background p-2">
-                  <span className="text-[10px] text-muted-foreground">الموجود فعلياً في الخزينة</span>
-                  <span className="text-xs font-bold">{totalInTreasury.toLocaleString()} د.ج</span>
+                  <span className="text-[10px] text-muted-foreground">الموجود فعلياً (بعد التسليم والمصاريف)</span>
+                  <span className="text-xs font-bold">{netInTreasury.toLocaleString()} د.ج</span>
                 </div>
                 <div className="flex items-center justify-between rounded-lg bg-background p-2">
                   <span className="text-[10px] text-muted-foreground">المُسلَّم للجهة العليا</span>
