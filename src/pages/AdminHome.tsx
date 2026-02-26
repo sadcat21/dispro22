@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useNavigation } from '@/hooks/useNavigation';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useFontSize } from '@/contexts/FontSizeContext';
-import { Calculator, Banknote, ArrowLeft, Navigation } from 'lucide-react';
+import { Calculator, Banknote, ArrowLeft, Navigation, Users } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -53,8 +53,9 @@ const AdminHome: React.FC = () => {
   const isAccountingHidden = useIsElementHidden('page', '/accounting');
   const isDebtsHidden = useIsElementHidden('page', '/customer-debts');
   const isGeoHidden = useIsElementHidden('page', '/geo-operations');
+  const isWorkerActionsHidden = useIsElementHidden('page', '/worker-actions');
 
-  const allItems = [...main, ...more].filter(item => item.path !== '/' && item.path !== '/accounting' && item.path !== '/customer-debts' && item.path !== '/geo-operations');
+  const allItems = [...main, ...more].filter(item => item.path !== '/' && item.path !== '/accounting' && item.path !== '/customer-debts' && item.path !== '/geo-operations' && item.path !== '/worker-actions');
 
   // Quick stats
   const { data: activeDebts } = useQuery({
@@ -113,20 +114,28 @@ const AdminHome: React.FC = () => {
         )}
       </div>
 
-      {/* Geo Operations Button */}
-      {!isGeoHidden && (
-        <div
-          className="relative overflow-hidden rounded-xl border-2 border-teal-300 bg-gradient-to-br from-teal-50 to-emerald-100 p-4 cursor-pointer active:scale-[0.97] transition-all hover:shadow-lg flex items-center gap-4"
-          onClick={() => navigate('/geo-operations')}
-        >
-          <Navigation className="w-9 h-9 text-teal-600 flex-shrink-0" />
-          <div className="flex-1">
+      {/* Quick Action Bars */}
+      <div className="grid grid-cols-2 gap-3">
+        {!isGeoHidden && (
+          <div
+            className="relative overflow-hidden rounded-xl border-2 border-teal-300 bg-gradient-to-br from-teal-50 to-emerald-100 p-4 cursor-pointer active:scale-[0.97] transition-all hover:shadow-lg"
+            onClick={() => navigate('/geo-operations')}
+          >
+            <Navigation className="w-8 h-8 text-teal-600 mb-2" />
             <p className="font-bold text-sm text-teal-900">{t('nav.geo_operations')}</p>
-            <p className="text-xs text-teal-700 mt-0.5">{t('nav.geo_operations')}</p>
           </div>
-          <ArrowLeft className="w-4 h-4 text-teal-400" />
-        </div>
-      )}
+        )}
+
+        {!isWorkerActionsHidden && (
+          <div
+            className="relative overflow-hidden rounded-xl border-2 border-indigo-300 bg-gradient-to-br from-indigo-50 to-indigo-100 p-4 cursor-pointer active:scale-[0.97] transition-all hover:shadow-lg"
+            onClick={() => navigate('/worker-actions')}
+          >
+            <Users className="w-8 h-8 text-indigo-600 mb-2" />
+            <p className="font-bold text-sm text-indigo-900">{t('nav.worker_actions')}</p>
+          </div>
+        )}
+      </div>
 
       {/* Regular Navigation Grid */}
       <div className={`grid ${gridColsClass[gridCols] || 'grid-cols-4'} gap-2`}>
