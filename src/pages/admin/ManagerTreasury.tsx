@@ -14,7 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Banknote, CreditCard, Receipt, ArrowUpRight, Plus, Send, Coins, TrendingUp, AlertCircle, CheckCircle, AlertTriangle, Info } from 'lucide-react';
+import { Banknote, CreditCard, Receipt, ArrowUpRight, Plus, Send, Coins, TrendingUp, AlertCircle, CheckCircle, AlertTriangle, Info, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import InvoiceOCRScanner from '@/components/treasury/InvoiceOCRScanner';
 import { format } from 'date-fns';
@@ -104,6 +104,56 @@ const ManagerTreasury = () => {
   const [pickedReceipts, setPickedReceipts] = useState<PickedItem[]>([]);
   const [pickedTransfers, setPickedTransfers] = useState<PickedItem[]>([]);
   const [pickerType, setPickerType] = useState<'check' | 'receipt' | 'transfer' | null>(null);
+  const [syncing, setSyncing] = useState(false);
+
+  const syncOldSessions = async () => {
+    setSyncing(true);
+    try {
+      // Get all completed sessions
+      let sessQ = supabase.from('accounting_sessions').select('id, branch_id, manager_id').eq('status', 'completed');
+      if (activeBranch?.id) sessQ = sessQ.eq('branch_id', activeBranch.id);
+      const { data: sessions } = await sessQ;
+      if (!sessions?.length) { toast.info('لا توجد جلسات للمزامنة'); setSyncing(false); return; }
+
+      // Get existing treasury entries linked to sessions
+      const { data: existing } = await supabase.from('manager_treasury').select('session_id').eq('source_type', 'accounting_session');
+      const existingSessionIds = new Set((existing || []).map((e: any) => e.session_id));
+
+      const unsynced = sessions.filter(s => !existingSessionIds.has(s.id));
+      if (!unsynced.length) { toast.info('جميع الجلسات مزامنة بالفعل'); setSyncing(false); return; }
+
+      let totalInserted = 0;
+      for (const sess of unsynced) {
+        const { data: items } = await supabase.from('accounting_session_items').select('item_type, actual_amount').eq('session_id', sess.id);
+        if (!items?.length) continue;
+
+        const rows: any[] = [];
+        for (const item of items) {
+          const amt = Number(item.actual_amount || 0);
+          if (amt <= 0) continue;
+          let pm: string | null = null;
+          if (item.item_type === 'invoice1_espace_cash' || item.item_type === 'invoice2_cash' || item.item_type === 'debt_collections_cash') pm = 'cash';
+          else if (item.item_type === 'invoice1_check' || item.item_type === 'debt_collections_check') pm = 'check';
+          else if (item.item_type === 'invoice1_receipt' || item.item_type === 'debt_collections_receipt') pm = 'bank_receipt';
+          else if (item.item_type === 'invoice1_transfer' || item.item_type === 'debt_collections_transfer') pm = 'bank_transfer';
+          if (!pm) continue;
+          rows.push({ manager_id: sess.manager_id, branch_id: sess.branch_id, session_id: sess.id, source_type: 'accounting_session', payment_method: pm, amount: amt, notes: item.item_type });
+        }
+        if (rows.length > 0) {
+          await supabase.from('manager_treasury').insert(rows);
+          totalInserted += rows.length;
+        }
+      }
+
+      toast.success(`تمت مزامنة ${unsynced.length} جلسة (${totalInserted} سجل)`);
+      queryClient.invalidateQueries({ queryKey: ['manager-treasury'] });
+      queryClient.invalidateQueries({ queryKey: ['treasury-summary'] });
+    } catch (err: any) {
+      toast.error('خطأ في المزامنة: ' + (err.message || ''));
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   const handleAddEntry = async () => {
     if (!addForm.amount || Number(addForm.amount) <= 0) {
@@ -193,6 +243,9 @@ const ManagerTreasury = () => {
           <Switch checked={showCardDetails} onCheckedChange={setShowCardDetails} />
         </div>
         <div className="flex gap-2">
+          <Button size="sm" variant="ghost" onClick={syncOldSessions} disabled={syncing}>
+            <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
+          </Button>
           <Dialog open={addOpen} onOpenChange={setAddOpen}>
             <DialogTrigger asChild>
               <Button size="sm" variant="outline"><Plus className="w-4 h-4 mx-1" />{t('treasury.add')}</Button>
