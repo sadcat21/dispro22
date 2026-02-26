@@ -278,31 +278,32 @@ const HandoverPrintView: React.FC<Props> = ({
       {deliveryMethod && (
         <div className="mt-6 text-sm" data-pdf-section style={{ direction: 'ltr', textAlign: 'left' }}>
           <div className="border-2 border-black p-3">
-            <h3 className="font-bold text-center mb-2 text-base underline" style={{ textAlign: 'center' }}>MODE D'ENVOI</h3>
-            <div style={{ display: 'flex', justifyContent: 'space-between', direction: 'ltr', marginBottom: '4px' }}>
-              <span>Mode:</span>
-              <span className="font-bold">
-                {deliveryMethod === 'direct' ? 'Remise directe' : deliveryMethod === 'bank_transfer' ? 'Virement bancaire' : 'Par intermédiaire'}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 24px', direction: 'ltr', alignItems: 'center' }}>
+              <span>
+                <span>Mode: </span>
+                <span className="font-bold">
+                  {deliveryMethod === 'direct' ? 'Remise directe' : deliveryMethod === 'bank_transfer' ? 'Virement bancaire' : 'Par intermédiaire'}
+                </span>
               </span>
+              {receivedBy && (
+                <span>
+                  <span>Destinataire: </span>
+                  <span className="font-bold">{receivedBy}</span>
+                </span>
+              )}
+              {deliveryMethod === 'intermediary' && intermediaryName && (
+                <span>
+                  <span>Intermédiaire: </span>
+                  <span className="font-bold">{intermediaryName}</span>
+                </span>
+              )}
+              {deliveryMethod === 'bank_transfer' && bankTransferReference && (
+                <span>
+                  <span>Réf. virement: </span>
+                  <span className="font-bold">{bankTransferReference}</span>
+                </span>
+              )}
             </div>
-            {receivedBy && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', direction: 'ltr', marginBottom: '4px' }}>
-                <span>Destinataire:</span>
-                <span className="font-bold">{receivedBy}</span>
-              </div>
-            )}
-            {deliveryMethod === 'intermediary' && intermediaryName && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', direction: 'ltr', marginBottom: '4px' }}>
-                <span>Intermédiaire:</span>
-                <span className="font-bold">{intermediaryName}</span>
-              </div>
-            )}
-            {deliveryMethod === 'bank_transfer' && bankTransferReference && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', direction: 'ltr', marginBottom: '4px' }}>
-                <span>Réf. virement:</span>
-                <span className="font-bold">{bankTransferReference}</span>
-              </div>
-            )}
           </div>
         </div>
       )}
