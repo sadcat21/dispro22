@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -6,13 +7,21 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Coins } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Coins, ChevronDown, ChevronUp } from 'lucide-react';
 import { format } from 'date-fns';
 import { ar, fr, enUS } from 'date-fns/locale';
 
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+}
+
+interface OrderItem {
+  product_name: string;
+  quantity: number;
+  unit_price: number;
+  total_price: number;
 }
 
 interface ProcessedOrder {
@@ -22,6 +31,7 @@ interface ProcessedOrder {
   stamp_amount: number;
   stamp_percentage: number;
   created_at: string;
+  items: OrderItem[];
 }
 
 interface CustomerGroup {
@@ -32,6 +42,60 @@ interface CustomerGroup {
   total: number;
   totalStamp: number;
 }
+
+const OrderDetails = ({ order, cur, dateLocale, t }: { order: ProcessedOrder; cur: string; dateLocale: any; t: (k: string) => string }) => {
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <Collapsible open={expanded} onOpenChange={setExpanded}>
+      <CollapsibleTrigger asChild>
+        <div className="flex items-center justify-between text-xs bg-muted/30 rounded p-2 cursor-pointer hover:bg-muted/50 transition-colors">
+          <div>
+            <p className="text-muted-foreground">
+              {format(new Date(order.created_at), 'dd/MM HH:mm', { locale: dateLocale })}
+            </p>
+            <p className="font-medium">{order.items_subtotal.toLocaleString()} {cur}</p>
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="text-end">
+              <p className="text-amber-600 font-medium">{order.stamp_amount.toLocaleString()} {cur}</p>
+              <p className="text-[10px] text-muted-foreground">{order.stamp_percentage}%</p>
+            </div>
+            {expanded ? <ChevronUp className="w-3 h-3 text-muted-foreground" /> : <ChevronDown className="w-3 h-3 text-muted-foreground" />}
+          </div>
+        </div>
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        {order.items.length > 0 && (
+          <div className="mx-1 mt-1 rounded border text-[11px]">
+            <div className="grid grid-cols-4 gap-1 p-1.5 bg-muted/50 font-medium text-muted-foreground">
+              <span>{t('nav.products')}</span>
+              <span className="text-center">{t('orders.quantity')}</span>
+              <span className="text-center">{t('orders.unit_price')}</span>
+              <span className="text-end">{t('orders.total')}</span>
+            </div>
+            {order.items.map((item, idx) => (
+              <div key={idx} className="grid grid-cols-4 gap-1 p-1.5 border-t">
+                <span className="truncate">{item.product_name}</span>
+                <span className="text-center">{item.quantity}</span>
+                <span className="text-center">{item.unit_price.toLocaleString()}</span>
+                <span className="text-end">{item.total_price.toLocaleString()}</span>
+              </div>
+            ))}
+            <div className="grid grid-cols-4 gap-1 p-1.5 border-t bg-muted/30 font-medium">
+              <span className="col-span-3">{t('treasury.total')}</span>
+              <span className="text-end">{order.items_subtotal.toLocaleString()} {cur}</span>
+            </div>
+            <div className="grid grid-cols-4 gap-1 p-1.5 border-t bg-amber-500/10 font-medium text-amber-700">
+              <span className="col-span-3">{t('treasury.stamp_total')} ({order.stamp_percentage}%)</span>
+              <span className="text-end">{order.stamp_amount.toLocaleString()} {cur}</span>
+            </div>
+          </div>
+        )}
+      </CollapsibleContent>
+    </Collapsible>
+  );
+};
 
 const StampDetailsDialog = ({ open, onOpenChange }: Props) => {
   const { activeBranch } = useAuth();
@@ -46,7 +110,7 @@ const StampDetailsDialog = ({ open, onOpenChange }: Props) => {
     queryFn: async () => {
       let query = supabase
         .from('orders')
-        .select('id, total_amount, created_at, customer_id, customer:customers(name, store_name), order_items(total_price)')
+        .select('id, total_amount, created_at, customer_id, customer:customers(name, store_name), order_items(quantity, unit_price, total_price, product:products(name))')
         .eq('status', 'delivered')
         .eq('payment_type', 'with_invoice')
         .eq('invoice_payment_method', 'cash')
@@ -62,8 +126,8 @@ const StampDetailsDialog = ({ open, onOpenChange }: Props) => {
       (data || []).forEach((o: any) => {
         const customerId = o.customer_id;
         const customer = o.customer as any;
-        const totalAmount = Number(o.total_amount || 0);
         const itemsSubtotal = (o.order_items || []).reduce((s: number, i: any) => s + Number(i.total_price || 0), 0);
+        const totalAmount = Number(o.total_amount || 0);
 
         const baseAmount = itemsSubtotal > 0 ? itemsSubtotal : totalAmount;
         const stampAmount = calculateStampAmount(baseAmount, stampTiers!);
@@ -73,6 +137,13 @@ const StampDetailsDialog = ({ open, onOpenChange }: Props) => {
 
         if (stampAmount <= 0) return;
 
+        const items: OrderItem[] = (o.order_items || []).map((i: any) => ({
+          product_name: (i.product as any)?.name || '—',
+          quantity: i.quantity || 0,
+          unit_price: Number(i.unit_price || 0),
+          total_price: Number(i.total_price || 0),
+        }));
+
         const processedOrder: ProcessedOrder = {
           id: o.id,
           total_amount: totalAmount,
@@ -80,6 +151,7 @@ const StampDetailsDialog = ({ open, onOpenChange }: Props) => {
           stamp_amount: stampAmount,
           stamp_percentage: stampPercentage,
           created_at: o.created_at,
+          items,
         };
 
         if (!groupMap.has(customerId)) {
@@ -95,7 +167,7 @@ const StampDetailsDialog = ({ open, onOpenChange }: Props) => {
 
         const group = groupMap.get(customerId)!;
         group.orders.push(processedOrder);
-        group.total += totalAmount;
+        group.total += itemsSubtotal;
         group.totalStamp += stampAmount;
       });
 
@@ -133,7 +205,6 @@ const StampDetailsDialog = ({ open, onOpenChange }: Props) => {
             {customerGroups.map((group) => (
               <Card key={group.customer_id}>
                 <CardContent className="p-3">
-                  {/* Customer header */}
                   <div className="flex items-center justify-between mb-2">
                     <div>
                       <p className="font-bold text-sm">{group.customer_name}</p>
@@ -148,21 +219,9 @@ const StampDetailsDialog = ({ open, onOpenChange }: Props) => {
                     </div>
                   </div>
 
-                  {/* Orders table */}
                   <div className="border-t pt-2 space-y-1.5">
                     {group.orders.map((order) => (
-                      <div key={order.id} className="flex items-center justify-between text-xs bg-muted/30 rounded p-2">
-                        <div>
-                          <p className="text-muted-foreground">
-                            {format(new Date(order.created_at), 'dd/MM HH:mm', { locale: dateLocale })}
-                          </p>
-                          <p className="font-medium">{order.total_amount.toLocaleString()} {cur}</p>
-                        </div>
-                        <div className="text-end">
-                          <p className="text-amber-600 font-medium">{order.stamp_amount.toLocaleString()} {cur}</p>
-                          <p className="text-[10px] text-muted-foreground">{order.stamp_percentage}%</p>
-                        </div>
-                      </div>
+                      <OrderDetails key={order.id} order={order} cur={cur} dateLocale={dateLocale} t={t} />
                     ))}
                   </div>
                 </CardContent>
