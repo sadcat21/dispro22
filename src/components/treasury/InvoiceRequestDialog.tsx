@@ -483,7 +483,7 @@ const InvoiceRequestDialog: React.FC<Props> = ({ open, onOpenChange }) => {
           </DialogTitle>
         </DialogHeader>
 
-        <QuickOrderDialog open={quickOrderOpen} onOpenChange={setQuickOrderOpen} onOrderCreated={() => { setActiveTab('status'); setStatusSubTab('sent'); queryClient.invalidateQueries({ queryKey: ['invoice-orders'] }); }} />
+        <QuickOrderDialog open={quickOrderOpen} onOpenChange={setQuickOrderOpen} onOrderCreated={() => { setActiveTab('status'); setStatusSubTab('sent'); queryClient.invalidateQueries({ queryKey: ['invoice-orders'] }); queryClient.invalidateQueries({ queryKey: ['manual-invoice-requests'] }); }} />
 
         <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v as any); resetState(); }}>
           <TabsList className="w-full grid grid-cols-3">
