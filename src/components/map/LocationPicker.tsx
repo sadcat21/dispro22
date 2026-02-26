@@ -60,6 +60,7 @@ const LocationPicker: React.FC<LocationPickerProps> = ({
   const [mapReady, setMapReady] = useState(false);
   const searchTimeoutRef = useRef<NodeJS.Timeout>();
   const initialSearchDoneRef = useRef(false);
+  const handleLocationSelectRef = useRef<(lat: number, lng: number) => void>();
 
   // Initialize map
   useEffect(() => {
@@ -75,9 +76,9 @@ const LocationPicker: React.FC<LocationPickerProps> = ({
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
     }).addTo(map);
 
-    // Add click handler
+    // Add click handler - use ref to always get latest callback
     map.on('click', (e: L.LeafletMouseEvent) => {
-      handleLocationSelect(e.latlng.lat, e.latlng.lng);
+      handleLocationSelectRef.current?.(e.latlng.lat, e.latlng.lng);
     });
 
     mapRef.current = map;
@@ -182,10 +183,22 @@ const LocationPicker: React.FC<LocationPickerProps> = ({
     setPosition([lat, lng]);
     setShowResults(false);
     
-    // Generate Plus Code address like Google Maps
-    const plusCodeAddress = await generateDetailedAddress(lat, lng);
-    onLocationChange(lat, lng, plusCodeAddress);
+    // Immediately notify parent with coordinates (no address yet)
+    onLocationChange(lat, lng);
+    
+    // Then generate address asynchronously and update
+    try {
+      const plusCodeAddress = await generateDetailedAddress(lat, lng);
+      onLocationChange(lat, lng, plusCodeAddress);
+    } catch (e) {
+      console.error('Address generation failed:', e);
+    }
   }, [onLocationChange]);
+
+  // Keep ref in sync so map click handler always uses latest version
+  useEffect(() => {
+    handleLocationSelectRef.current = handleLocationSelect;
+  }, [handleLocationSelect]);
 
   const handleSearch = async (query: string) => {
     if (query.length < 3) {

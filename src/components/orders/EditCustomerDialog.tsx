@@ -256,16 +256,14 @@ const EditCustomerDialog: React.FC<EditCustomerDialogProps> = ({
     setTranslatingStore(false);
   };
 
-  const handleLocationChange = (lat: number, lng: number, addressText?: string) => {
+  const handleLocationChange = useCallback((lat: number, lng: number, addressText?: string) => {
     setLatitude(lat);
     setLongitude(lng);
     if (addressText) {
       const parts = addressText.split(',').map(p => p.trim()).filter(Boolean);
       setAddress(parts.join(' - '));
-    } else {
-      fetchAddressFromCoords(lat, lng);
     }
-  };
+  }, []);
 
   // Phone helpers
   const addPhone = () => setPhones(prev => [...prev, '']);
