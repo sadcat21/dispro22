@@ -111,11 +111,11 @@ const HandoverPrintView: React.FC<Props> = ({
   return (
     <div className="print-handover bg-white text-black p-8 font-sans" style={{ direction: 'ltr', fontSize: '12px', textAlign: 'left', unicodeBidi: 'plaintext' }}>
 
-      <p className="mb-4" style={{ textAlign: 'left' }}><strong>Date d'envoi:</strong> {dateStr}{wilayaFr ? `  -  Depot ${wilayaFr}` : ''}</p>
+      <p className="mb-4" data-pdf-section style={{ textAlign: 'left' }}><strong>Date d'envoi:</strong> {dateStr}{wilayaFr ? `  -  Depot ${wilayaFr}` : ''}</p>
 
       {/* Checks Table */}
       {checks.length > 0 && (
-        <div className="mb-4">
+        <div className="mb-4" data-pdf-section>
           <h3 className="font-bold text-sm mb-1">CHEQUES ({checks.length})</h3>
           <table className="w-full border-collapse border border-black text-xs">
             <thead>
@@ -151,7 +151,7 @@ const HandoverPrintView: React.FC<Props> = ({
 
       {/* Versement (Bank Receipt) Table */}
       {receipts.length > 0 && (
-        <div className="mb-4">
+        <div className="mb-4" data-pdf-section>
           <h3 className="font-bold text-sm mb-1">VERSEMENTS ({receipts.length})</h3>
           <table className="w-full border-collapse border border-black text-xs">
             <thead>
@@ -185,7 +185,7 @@ const HandoverPrintView: React.FC<Props> = ({
 
       {/* Virement (Bank Transfer) Table */}
       {transfers.length > 0 && (
-        <div className="mb-4">
+        <div className="mb-4" data-pdf-section>
           <h3 className="font-bold text-sm mb-1">VIREMENTS ({transfers.length})</h3>
           <table className="w-full border-collapse border border-black text-xs">
             <thead>
@@ -218,7 +218,7 @@ const HandoverPrintView: React.FC<Props> = ({
       )}
 
       {/* Summary Footer - Separated sections */}
-      <div className="mt-6 text-sm" style={{ direction: 'ltr', textAlign: 'left' }}>
+      <div className="mt-6 text-sm" data-pdf-section style={{ direction: 'ltr', textAlign: 'left' }}>
         {/* Section 1: Argent Physique (Cash) */}
         <div className="border-2 border-black p-3 mb-4">
           <h3 className="font-bold text-center mb-2 text-base underline" style={{ textAlign: 'center' }}>ARGENT PHYSIQUE (ESPÈCES)</h3>
@@ -276,7 +276,7 @@ const HandoverPrintView: React.FC<Props> = ({
 
       {/* Delivery Method Info */}
       {deliveryMethod && (
-        <div className="mt-6 text-sm" style={{ direction: 'ltr', textAlign: 'left' }}>
+        <div className="mt-6 text-sm" data-pdf-section style={{ direction: 'ltr', textAlign: 'left' }}>
           <div className="border-2 border-black p-3">
             <h3 className="font-bold text-center mb-2 text-base underline" style={{ textAlign: 'center' }}>MODE D'ENVOI</h3>
             <div style={{ display: 'flex', justifyContent: 'space-between', direction: 'ltr', marginBottom: '4px' }}>
@@ -308,7 +308,7 @@ const HandoverPrintView: React.FC<Props> = ({
       )}
 
       {/* Signature */}
-      <div className="mt-10" style={{ textAlign: 'left' }}>
+      <div className="mt-10" data-pdf-section style={{ textAlign: 'left' }}>
         <p className="font-bold underline">Signature:</p>
       </div>
     </div>
