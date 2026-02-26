@@ -104,10 +104,10 @@ const PaymentMethodDetailsDialog = ({ open, onOpenChange, category }: Props) => 
           debtAmount = totalAmount;
         }
 
-        // For cash_invoice1: use full total_amount (not paidAmount) because debts are borrowed from invoice2
+        // For cash_invoice1 & cash_invoice2: use full total_amount to show all orders including debts
         // For other categories: use paidAmount
         let displayAmount = totalAmount;
-        if (!isCashInvoice1) {
+        if (!isCashInvoice1 && !isCashInvoice2) {
           if (o.payment_status === 'partial') {
             displayAmount = Number(o.partial_amount || 0);
           } else if (isDebt) {
@@ -115,8 +115,8 @@ const PaymentMethodDetailsDialog = ({ open, onOpenChange, category }: Props) => 
           }
         }
 
-        // Skip zero-amount orders for non-invoice1 categories
-        if (!isCashInvoice1 && displayAmount <= 0) return;
+        // Skip zero-amount orders for non-cash categories
+        if (!isCashInvoice1 && !isCashInvoice2 && displayAmount <= 0) return;
 
         // Calculate stamp for cash_invoice1
         let stampAmount = 0;
@@ -245,15 +245,28 @@ const PaymentMethodDetailsDialog = ({ open, onOpenChange, category }: Props) => 
           </>
         )}
 
-        {/* For cash_invoice2: show borrowed amount for invoice1 */}
-        {isCashInvoice2 && (invoice1DebtAmount || 0) > 0 && (
-          <div className="p-3 rounded-lg bg-orange-500/10 border border-orange-500/30 text-center mb-2">
-            <div className="flex items-center justify-center gap-1 mb-1">
-              <AlertCircle className="w-4 h-4 text-orange-600" />
-              <p className="text-xs font-medium text-orange-700">مبلغ مخصوم لصالح فاتورة 1 (ديون كاش)</p>
-            </div>
-            <p className="text-lg font-bold text-orange-600">{(invoice1DebtAmount || 0).toLocaleString()} د.ج</p>
-          </div>
+        {/* For cash_invoice2: show its own debts + borrowed amount for invoice1 */}
+        {isCashInvoice2 && (
+          <>
+            {grandDebt > 0 && (
+              <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/30 text-center mb-2">
+                <div className="flex items-center justify-center gap-1 mb-1">
+                  <AlertCircle className="w-4 h-4 text-destructive" />
+                  <p className="text-xs font-medium text-destructive">ديون غير محصلة (فاتورة 2)</p>
+                </div>
+                <p className="text-lg font-bold text-destructive">{grandDebt.toLocaleString()} د.ج</p>
+              </div>
+            )}
+            {(invoice1DebtAmount || 0) > 0 && (
+              <div className="p-3 rounded-lg bg-orange-500/10 border border-orange-500/30 text-center mb-2">
+                <div className="flex items-center justify-center gap-1 mb-1">
+                  <AlertCircle className="w-4 h-4 text-orange-600" />
+                  <p className="text-xs font-medium text-orange-700">مبلغ مخصوم لصالح فاتورة 1 (ديون كاش)</p>
+                </div>
+                <p className="text-lg font-bold text-orange-600">{(invoice1DebtAmount || 0).toLocaleString()} د.ج</p>
+              </div>
+            )}
+          </>
         )}
 
         {/* For non-invoice1 categories: show debt banner if applicable */}
