@@ -40,14 +40,15 @@ serve(async (req) => {
 1. المبلغ الإجمالي (amount) - الرقم فقط بدون عملة
 2. رقم الفاتورة (invoice_number) 
 3. اسم العميل (customer_name)
-${payment_method === 'check' ? '4. رقم الشيك (check_number)\n5. اسم البنك (check_bank)\n6. تاريخ الشيك (check_date) - بصيغة YYYY-MM-DD، حاول قراءة التاريخ المكتوب بخط اليد بأفضل تقدير ممكن' : ''}
-${payment_method === 'bank_receipt' ? '4. رقم الوصل (receipt_number)' : ''}
-${payment_method === 'bank_transfer' ? '4. مرجع التحويل (transfer_reference)' : ''}
+4. تاريخ الفاتورة (invoice_date) - بصيغة YYYY-MM-DD
+${payment_method === 'check' ? '5. رقم الشيك (check_number)\n6. اسم البنك (check_bank)\n7. تاريخ الشيك (check_date) - بصيغة YYYY-MM-DD، حاول قراءة التاريخ المكتوب بخط اليد بأفضل تقدير ممكن' : ''}
+${payment_method === 'bank_receipt' ? '5. رقم الوصل (receipt_number)' : ''}
+${payment_method === 'bank_transfer' ? '5. مرجع التحويل (transfer_reference)' : ''}
 
 مهم جداً: حاول قراءة كل الأرقام والتواريخ المكتوبة بخط اليد حتى لو كانت غير واضحة تماماً. قدّم أفضل تقدير ممكن.
 
 أجب بتنسيق JSON فقط بدون أي نص إضافي. مثال:
-{"amount": "15000", "invoice_number": "FC-2024-001", "customer_name": "محل الأمانة", "check_date": "2025-03-15"}
+{"amount": "15000", "invoice_number": "FC-2024-001", "customer_name": "محل الأمانة", "invoice_date": "2025-03-15", "check_date": "2025-03-15"}
 
 إذا لم تجد قيمة معينة، اتركها فارغة "".`;
 
