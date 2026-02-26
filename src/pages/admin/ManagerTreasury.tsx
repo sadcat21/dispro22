@@ -103,11 +103,21 @@ const ManagerTreasury = () => {
   const [stampOpen, setStampOpen] = useState(false);
   const [detailsCategory, setDetailsCategory] = useState<'cash_invoice1' | 'cash_invoice2' | 'check' | 'bank_receipt' | 'bank_transfer' | null>(null);
   const [addForm, setAddForm] = useState({ payment_method: 'cash_invoice1', amount: '', customer_name: '', invoice_number: '', invoice_date: '', check_number: '', check_bank: '', check_date: '', receipt_number: '', transfer_reference: '', notes: '' });
-  const [handoverForm, setHandoverForm] = useState({ cash_invoice1: '', cash_invoice2: '', notes: '', delivery_method: 'direct', intermediary_name: '', bank_transfer_reference: '', received_by: '' });
+  const [handoverForm, setHandoverForm] = useState({ cash_invoice1: '', cash_invoice2: '', notes: '', delivery_method: 'direct', intermediary_name: '', bank_transfer_reference: '', received_by: '', bank_account_id: '', receipt_image_url: '' });
   const [pickedChecks, setPickedChecks] = useState<PickedItem[]>([]);
   const [pickedReceipts, setPickedReceipts] = useState<PickedItem[]>([]);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const { data: contacts } = useTreasuryContacts();
+  const { data: bankAccounts } = useQuery({
+    queryKey: ['treasury-bank-accounts', activeBranch?.id],
+    queryFn: async () => {
+      let q = supabase.from('treasury_bank_accounts').select('*').eq('is_active', true).order('bank_name');
+      if (activeBranch?.id) q = q.eq('branch_id', activeBranch.id);
+      const { data, error } = await q;
+      if (error) throw error;
+      return data || [];
+    },
+  });
   const [pickedTransfers, setPickedTransfers] = useState<PickedItem[]>([]);
   const [pickerType, setPickerType] = useState<'check' | 'receipt' | 'transfer' | null>(null);
   const [syncing, setSyncing] = useState(false);
@@ -282,6 +292,8 @@ const ManagerTreasury = () => {
         delivery_method: handoverForm.delivery_method,
         intermediary_name: handoverForm.delivery_method === 'intermediary' ? handoverForm.intermediary_name || null : null,
         bank_transfer_reference: handoverForm.delivery_method === 'bank_transfer' ? handoverForm.bank_transfer_reference || null : null,
+        bank_account_id: handoverForm.delivery_method === 'bank_transfer' && handoverForm.bank_account_id ? handoverForm.bank_account_id : null,
+        receipt_image_url: handoverForm.delivery_method === 'bank_transfer' ? handoverForm.receipt_image_url || null : null,
         received_by: handoverForm.received_by || null,
       } as any).select('id').single();
 
@@ -298,7 +310,7 @@ const ManagerTreasury = () => {
 
       toast.success(t('treasury.handover_success'));
       setHandoverOpen(false);
-      setHandoverForm({ cash_invoice1: '', cash_invoice2: '', notes: '', delivery_method: 'direct', intermediary_name: '', bank_transfer_reference: '', received_by: '' });
+      setHandoverForm({ cash_invoice1: '', cash_invoice2: '', notes: '', delivery_method: 'direct', intermediary_name: '', bank_transfer_reference: '', received_by: '', bank_account_id: '', receipt_image_url: '' });
       setPickedChecks([]);
       setPickedReceipts([]);
       setPickedTransfers([]);
@@ -487,15 +499,57 @@ const ManagerTreasury = () => {
                     </div>
                   )}
 
-                  {/* Bank transfer reference - shown when bank transfer selected */}
+                  {/* Bank transfer fields */}
                   {handoverForm.delivery_method === 'bank_transfer' && (
-                    <div>
-                      <Label className="text-xs">{t('treasury.transfer_ref') || 'مرجع التحويل'}</Label>
-                      <Input
-                        placeholder={t('treasury.transfer_ref') || 'مرجع التحويل'}
-                        value={handoverForm.bank_transfer_reference}
-                        onChange={e => setHandoverForm(f => ({ ...f, bank_transfer_reference: e.target.value }))}
-                      />
+                    <div className="space-y-2">
+                      <div>
+                        <Label className="text-xs">{t('treasury.select_bank_account')}</Label>
+                        <Select value={handoverForm.bank_account_id} onValueChange={v => setHandoverForm(f => ({ ...f, bank_account_id: v }))}>
+                          <SelectTrigger className="h-9">
+                            <SelectValue placeholder={t('treasury.select_bank_account')} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {(bankAccounts || []).map((b: any) => (
+                              <SelectItem key={b.id} value={b.id}>
+                                🏦 {b.bank_name} - {b.account_number} ({b.account_holder})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label className="text-xs">{t('treasury.transfer_ref')}</Label>
+                        <Input
+                          placeholder={t('treasury.transfer_ref')}
+                          value={handoverForm.bank_transfer_reference}
+                          onChange={e => setHandoverForm(f => ({ ...f, bank_transfer_reference: e.target.value }))}
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs">{t('treasury.receipt_image')}</Label>
+                        <div className="space-y-2">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            capture="environment"
+                            className="block w-full text-sm file:mr-2 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-sm file:bg-primary file:text-primary-foreground hover:file:bg-primary/90 cursor-pointer"
+                            onChange={async (e) => {
+                              const file = e.target.files?.[0];
+                              if (!file) return;
+                              const ext = file.name.split('.').pop();
+                              const path = `handover-receipts/${Date.now()}.${ext}`;
+                              const { error } = await supabase.storage.from('receipts').upload(path, file);
+                              if (error) { toast.error(error.message); return; }
+                              const { data: urlData } = supabase.storage.from('receipts').getPublicUrl(path);
+                              setHandoverForm(f => ({ ...f, receipt_image_url: urlData.publicUrl }));
+                              toast.success(t('common.saved'));
+                            }}
+                          />
+                          {handoverForm.receipt_image_url && (
+                            <img src={handoverForm.receipt_image_url} alt="receipt" className="w-full max-h-40 object-contain rounded-lg border" />
+                          )}
+                        </div>
+                      </div>
                     </div>
                   )}
                 </div>
