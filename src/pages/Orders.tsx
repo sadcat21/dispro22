@@ -589,7 +589,7 @@ const OrdersContent: React.FC = () => {
           <div className="flex items-center gap-2 bg-primary/10 text-primary px-3 py-1.5 rounded-md text-sm animate-in fade-in slide-in-from-top-1">
             <UserCheck className="w-4 h-4" />
             <span className="font-medium">
-              {t('common.filter_by')}: {contextWorkerName}
+              {t('nav.orders')}: {contextWorkerName}
             </span>
             <Button
               variant="ghost"
