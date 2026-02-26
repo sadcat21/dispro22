@@ -35,7 +35,7 @@ const ManagerTreasury = () => {
   const [addOpen, setAddOpen] = useState(false);
   const [handoverOpen, setHandoverOpen] = useState(false);
   const [detailsCategory, setDetailsCategory] = useState<'cash_invoice1' | 'cash_invoice2' | 'check' | 'bank_receipt' | 'bank_transfer' | null>(null);
-  const [addForm, setAddForm] = useState({ payment_method: 'cash', amount: '', customer_name: '', invoice_number: '', check_number: '', check_bank: '', check_date: '', receipt_number: '', transfer_reference: '', notes: '' });
+  const [addForm, setAddForm] = useState({ payment_method: 'cash', amount: '', customer_name: '', invoice_number: '', invoice_date: '', check_number: '', check_bank: '', check_date: '', receipt_number: '', transfer_reference: '', notes: '' });
   const [handoverForm, setHandoverForm] = useState({ cash_invoice1: '', cash_invoice2: '', checks_amount: '', check_count: '', receipts_amount: '', receipt_count: '', transfers_amount: '', transfer_count: '', notes: '' });
 
   const handleAddEntry = async () => {
@@ -49,6 +49,7 @@ const ManagerTreasury = () => {
         amount: Number(addForm.amount),
         customer_name: addForm.customer_name || undefined,
         invoice_number: addForm.invoice_number || undefined,
+        invoice_date: addForm.invoice_date || undefined,
         check_number: addForm.check_number || undefined,
         check_bank: addForm.check_bank || undefined,
         check_date: addForm.check_date || undefined,
@@ -58,7 +59,7 @@ const ManagerTreasury = () => {
       });
       toast.success('تم إضافة المبلغ بنجاح');
       setAddOpen(false);
-      setAddForm({ payment_method: 'cash', amount: '', customer_name: '', invoice_number: '', check_number: '', check_bank: '', check_date: '', receipt_number: '', transfer_reference: '', notes: '' });
+      setAddForm({ payment_method: 'cash', amount: '', customer_name: '', invoice_number: '', invoice_date: '', check_number: '', check_bank: '', check_date: '', receipt_number: '', transfer_reference: '', notes: '' });
     } catch {
       toast.error('حدث خطأ');
     }
@@ -144,6 +145,10 @@ const ManagerTreasury = () => {
                 <div>
                   <Label>{addForm.payment_method === 'cash' ? 'رقم فاتورة 2' : 'رقم فاتورة 1'}</Label>
                   <Input placeholder={addForm.payment_method === 'cash' ? 'رقم فاتورة 2' : 'رقم فاتورة 1'} value={addForm.invoice_number} onChange={e => setAddForm(f => ({ ...f, invoice_number: e.target.value }))} />
+                </div>
+                <div>
+                  <Label>تاريخ الفاتورة</Label>
+                  <Input type="date" value={addForm.invoice_date} onChange={e => setAddForm(f => ({ ...f, invoice_date: e.target.value }))} />
                 </div>
                 {addForm.payment_method === 'check' && (
                   <>
