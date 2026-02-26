@@ -1288,6 +1288,8 @@ export const translations: Translations = {
   'treasury.handovers_tab': { ar: 'التسليمات', fr: 'Remises', en: 'Handovers' },
   'treasury.no_entries': { ar: 'لا توجد مستلمات بعد', fr: 'Aucune entrée pour le moment', en: 'No entries yet' },
   'treasury.no_handovers': { ar: 'لا توجد تسليمات بعد', fr: 'Aucune remise pour le moment', en: 'No handovers yet' },
+  'treasury.handover_details': { ar: 'تفاصيل التسليم', fr: 'Détails de la remise', en: 'Handover Details' },
+  'treasury.edit_handover': { ar: 'تعديل التسليم', fr: 'Modifier la remise', en: 'Edit Handover' },
   'treasury.accounting': { ar: 'محاسبة', fr: 'Comptabilité', en: 'Accounting' },
   'treasury.manual': { ar: 'يدوي', fr: 'Manuel', en: 'Manual' },
   'treasury.invoice': { ar: 'فاتورة', fr: 'Facture', en: 'Invoice' },
