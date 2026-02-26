@@ -48,6 +48,8 @@ export const translations: Translations = {
   'nav.daily_receipts': { ar: 'الفواتير اليومية', fr: 'Factures quotidiennes', en: 'Daily Receipts' },
   'nav.geo_operations': { ar: 'العمليات الجغرافية', fr: 'Opérations géographiques', en: 'Geo Operations' },
   'nav.product_offers': { ar: 'عروض المنتجات', fr: 'Offres produits', en: 'Product Offers' },
+  'nav.worker_actions': { ar: 'إجراءات العمال', fr: 'Actions employés', en: 'Worker Actions' },
+  'worker_actions.title': { ar: 'إجراءات العمال', fr: 'Actions employés', en: 'Worker Actions' },
 
   // ==================== Branches ====================
   'branches.title': { ar: 'إدارة الفروع', fr: 'Gestion des succursales', en: 'Branch Management' },

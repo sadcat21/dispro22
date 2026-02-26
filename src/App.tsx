@@ -37,6 +37,7 @@ import AccountingSessions from "./pages/admin/AccountingSessions";
 import WorkerDebts from "./pages/admin/WorkerDebts";
 import WorkerTracking from "./pages/admin/WorkerTracking";
 import GeoOperations from "./pages/admin/GeoOperations";
+import WorkerActions from "./pages/admin/WorkerActions";
 import DailyReceipts from "./pages/admin/DailyReceipts";
 import ManagerTreasury from "./pages/admin/ManagerTreasury";
 import NotFound from "./pages/NotFound";
@@ -273,6 +274,12 @@ const AppRoutes = () => {
       <Route path="/worker-tracking" element={
         <ProtectedRoute allowedRoles={['admin', 'branch_admin']}>
           <WorkerTracking />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/worker-actions" element={
+        <ProtectedRoute allowedRoles={['admin', 'branch_admin']}>
+          <WorkerActions />
         </ProtectedRoute>
       } />
 
