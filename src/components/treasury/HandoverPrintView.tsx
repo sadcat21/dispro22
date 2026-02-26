@@ -277,33 +277,34 @@ const HandoverPrintView: React.FC<Props> = ({
       {/* Delivery Method Info */}
       {deliveryMethod && (
         <div className="mt-6 text-sm" data-pdf-section style={{ direction: 'ltr', textAlign: 'left' }}>
-          <div className="border-2 border-black p-3">
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 24px', direction: 'ltr', alignItems: 'center' }}>
-              <span>
-                <span>Mode: </span>
-                <span className="font-bold">
-                  {deliveryMethod === 'direct' ? 'Remise directe' : deliveryMethod === 'bank_transfer' ? 'Virement bancaire' : 'Par intermédiaire'}
-                </span>
-              </span>
+          <div style={{ border: '2px solid black', padding: '12px', direction: 'ltr', textAlign: 'left' }}>
+            <p style={{ margin: 0, lineHeight: '1.8' }}>
+              <span>Mode: </span>
+              <strong>
+                {deliveryMethod === 'direct' ? 'Remise directe' : deliveryMethod === 'bank_transfer' ? 'Virement bancaire' : 'Par intermédiaire'}
+              </strong>
               {receivedBy && (
-                <span>
+                <>
+                  <span style={{ margin: '0 12px' }}>|</span>
                   <span>Destinataire: </span>
-                  <span className="font-bold">{receivedBy}</span>
-                </span>
+                  <strong>{receivedBy}</strong>
+                </>
               )}
               {deliveryMethod === 'intermediary' && intermediaryName && (
-                <span>
+                <>
+                  <span style={{ margin: '0 12px' }}>|</span>
                   <span>Intermédiaire: </span>
-                  <span className="font-bold">{intermediaryName}</span>
-                </span>
+                  <strong>{intermediaryName}</strong>
+                </>
               )}
               {deliveryMethod === 'bank_transfer' && bankTransferReference && (
-                <span>
+                <>
+                  <span style={{ margin: '0 12px' }}>|</span>
                   <span>Réf. virement: </span>
-                  <span className="font-bold">{bankTransferReference}</span>
-                </span>
+                  <strong>{bankTransferReference}</strong>
+                </>
               )}
-            </div>
+            </p>
           </div>
         </div>
       )}
