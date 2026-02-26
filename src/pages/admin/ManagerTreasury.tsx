@@ -15,7 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Banknote, CreditCard, Receipt, ArrowUpRight, Plus, Send, Coins, TrendingUp, AlertCircle, CheckCircle, AlertTriangle, Info, RefreshCw, Printer } from 'lucide-react';
+import { Banknote, CreditCard, Receipt, ArrowUpRight, Plus, Send, Coins, TrendingUp, AlertCircle, CheckCircle, AlertTriangle, Info, RefreshCw, Printer, Eye, Pencil, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import InvoiceOCRScanner from '@/components/treasury/InvoiceOCRScanner';
 import { format } from 'date-fns';
@@ -107,7 +107,57 @@ const ManagerTreasury = () => {
   const [pickerType, setPickerType] = useState<'check' | 'receipt' | 'transfer' | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [printHandover, setPrintHandover] = useState<string | null>(null);
+  const [viewHandover, setViewHandover] = useState<string | null>(null);
+  const [editHandover, setEditHandover] = useState<string | null>(null);
+  const [editCash1, setEditCash1] = useState(0);
+  const [editCash2, setEditCash2] = useState(0);
+  const [editNotes, setEditNotes] = useState('');
+  const [editSaving, setEditSaving] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
+  const viewRef = useRef<HTMLDivElement>(null);
+
+  const openEditHandover = (h: any) => {
+    setEditCash1(Number(h.cash_invoice1 ?? 0));
+    setEditCash2(Number(h.cash_invoice2 ?? 0));
+    setEditNotes(h.notes || '');
+    setEditHandover(h.id);
+  };
+
+  const saveEditHandover = async () => {
+    if (!editHandover) return;
+    setEditSaving(true);
+    try {
+      const h = handovers?.find(ho => ho.id === editHandover);
+      if (!h) return;
+      const newTotal = editCash1 + editCash2 + Number(h.checks_amount ?? 0) + Number(h.receipts_amount ?? 0) + Number(h.transfers_amount ?? 0);
+      const { error } = await supabase
+        .from('manager_handovers')
+        .update({ cash_invoice1: editCash1, cash_invoice2: editCash2, notes: editNotes || null, amount: newTotal })
+        .eq('id', editHandover);
+      if (error) throw error;
+      toast.success(t('common.saved'));
+      queryClient.invalidateQueries({ queryKey: ['manager-handovers'] });
+      queryClient.invalidateQueries({ queryKey: ['treasury-summary'] });
+      setEditHandover(null);
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setEditSaving(false);
+    }
+  };
+
+  const deleteHandover = async (id: string) => {
+    try {
+      await supabase.from('handover_items').delete().eq('handover_id', id);
+      const { error } = await supabase.from('manager_handovers').delete().eq('id', id);
+      if (error) throw error;
+      toast.success(t('common.deleted'));
+      queryClient.invalidateQueries({ queryKey: ['manager-handovers'] });
+      queryClient.invalidateQueries({ queryKey: ['treasury-summary'] });
+    } catch (e: any) {
+      toast.error(e.message);
+    }
+  };
 
   const syncOldSessions = async () => {
     setSyncing(true);
@@ -796,14 +846,18 @@ const ManagerTreasury = () => {
                       <Send className="w-4 h-4 text-destructive" />
                       <p className="font-bold">{Number(h.amount).toLocaleString()} {cur}</p>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-7 w-7 p-0"
-                        onClick={(e) => { e.stopPropagation(); setPrintHandover(h.id); }}
-                      >
+                    <div className="flex items-center gap-1">
+                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={(e) => { e.stopPropagation(); setViewHandover(h.id); }}>
+                        <Eye className="w-3.5 h-3.5" />
+                      </Button>
+                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={(e) => { e.stopPropagation(); openEditHandover(h); }}>
+                        <Pencil className="w-3.5 h-3.5" />
+                      </Button>
+                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={(e) => { e.stopPropagation(); setPrintHandover(h.id); }}>
                         <Printer className="w-3.5 h-3.5" />
+                      </Button>
+                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive" onClick={(e) => { e.stopPropagation(); if (confirm(t('common.confirm_delete'))) deleteHandover(h.id); }}>
+                        <Trash2 className="w-3.5 h-3.5" />
                       </Button>
                       <p className="text-xs text-muted-foreground">
                         {format(new Date(h.created_at), 'dd/MM/yyyy', { locale: dateLocale })}
@@ -874,6 +928,62 @@ const ManagerTreasury = () => {
           </Dialog>
         );
       })()}
+
+      {/* View Handover Dialog */}
+      {viewHandover && (() => {
+        const h = handovers?.find(ho => ho.id === viewHandover);
+        if (!h) return null;
+        return (
+          <Dialog open={!!viewHandover} onOpenChange={(open) => !open && setViewHandover(null)}>
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" dir="ltr">
+              <DialogHeader>
+                <DialogTitle>{t('treasury.handover_details')}</DialogTitle>
+              </DialogHeader>
+              <div ref={viewRef}>
+                <HandoverPrintView
+                  handoverId={h.id}
+                  handoverDate={h.handover_date}
+                  cashInvoice1={Number(h.cash_invoice1)}
+                  cashInvoice2={Number(h.cash_invoice2)}
+                  checksAmount={Number(h.checks_amount)}
+                  receiptsAmount={Number(h.receipts_amount)}
+                  transfersAmount={Number(h.transfers_amount)}
+                  totalAmount={Number(h.amount)}
+                  branchName={activeBranch?.name}
+                />
+              </div>
+            </DialogContent>
+          </Dialog>
+        );
+      })()}
+
+      {/* Edit Handover Dialog */}
+      {editHandover && (
+        <Dialog open={!!editHandover} onOpenChange={(open) => !open && setEditHandover(null)}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>{t('treasury.edit_handover')}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label>{t('treasury.cash_f1')}</Label>
+                <Input type="number" value={editCash1} onChange={(e) => setEditCash1(Number(e.target.value))} />
+              </div>
+              <div>
+                <Label>{t('treasury.cash_f2')}</Label>
+                <Input type="number" value={editCash2} onChange={(e) => setEditCash2(Number(e.target.value))} />
+              </div>
+              <div>
+                <Label>{t('common.notes')}</Label>
+                <Textarea value={editNotes} onChange={(e) => setEditNotes(e.target.value)} />
+              </div>
+              <Button className="w-full" onClick={saveEditHandover} disabled={editSaving}>
+                {editSaving ? t('common.saving') : t('common.save')}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 };
