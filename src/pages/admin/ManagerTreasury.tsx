@@ -432,15 +432,16 @@ const ManagerTreasury = () => {
       {(() => {
         const totalSales = summary?.totalSales || 0;
         const orderUnpaidAmount = summary?.orderUnpaidAmount || 0;
-        const collectedDebts = summary?.collectedDebts || 0;
+        const debtCashCollected = summary?.debtCashCollected || 0;
         const totalInTreasury = summary?.total || 0;
         const handedOver = summary?.handedOver || 0;
         const totalExpenses = summary?.totalExpenses || 0;
         const totalGiftsValue = summary?.totalGiftsValue || 0;
         const workerHeldAmount = summary?.workerHeldAmount || 0;
         
-        // المتوقع = المبيعات - المبالغ غير المدفوعة من الطلبيات + تحصيلات ديون - الهدايا
-        const expectedInTreasury = totalSales - orderUnpaidAmount + collectedDebts - totalGiftsValue;
+        // المتوقع = المبيعات - المبالغ غير المدفوعة + تحصيلات ديون نقدية
+        // ملاحظة: الهدايا ليست مشمولة في total_amount أصلاً فلا تُطرح
+        const expectedInTreasury = totalSales - orderUnpaidAmount + debtCashCollected;
         // الموجود فعلياً + المُسلَّم + المصاريف + في ذمة العمال
         const accountedFor = totalInTreasury + handedOver + totalExpenses + workerHeldAmount;
         const gap = expectedInTreasury - accountedFor;
@@ -463,17 +464,19 @@ const ManagerTreasury = () => {
                   <span className="text-xs font-bold">{totalSales.toLocaleString()} د.ج</span>
                 </div>
                 <div className="flex items-center justify-between rounded-lg bg-background p-2">
-                  <span className="text-[10px] text-muted-foreground">− مبالغ غير مدفوعة (ديون/جزئي)</span>
+                  <span className="text-[10px] text-muted-foreground">− غير مدفوع (ديون + دفع جزئي)</span>
                   <span className="text-xs font-bold text-orange-500">−{orderUnpaidAmount.toLocaleString()} د.ج</span>
                 </div>
-                <div className="flex items-center justify-between rounded-lg bg-background p-2">
-                  <span className="text-[10px] text-muted-foreground">+ تحصيلات ديون سابقة</span>
-                  <span className="text-xs font-bold text-green-500">+{collectedDebts.toLocaleString()} د.ج</span>
-                </div>
-                {totalGiftsValue > 0 && (
+                {debtCashCollected > 0 && (
                   <div className="flex items-center justify-between rounded-lg bg-background p-2">
-                    <span className="text-[10px] text-muted-foreground">− قيمة الهدايا (بدون مقابل مالي) 🎁</span>
-                    <span className="text-xs font-bold text-purple-500">−{totalGiftsValue.toLocaleString()} د.ج</span>
+                    <span className="text-[10px] text-muted-foreground">+ تحصيلات ديون نقدية</span>
+                    <span className="text-xs font-bold text-green-500">+{debtCashCollected.toLocaleString()} د.ج</span>
+                  </div>
+                )}
+                {totalGiftsValue > 0 && (
+                  <div className="flex items-center justify-between rounded-lg bg-background/50 p-2 opacity-60">
+                    <span className="text-[10px] text-muted-foreground">🎁 قيمة الهدايا (للعلم فقط)</span>
+                    <span className="text-xs font-bold text-purple-500">{totalGiftsValue.toLocaleString()} د.ج</span>
                   </div>
                 )}
                 <div className="border-t pt-1.5">
@@ -593,11 +596,11 @@ const ManagerTreasury = () => {
               <div className="p-3 rounded-lg bg-muted/50 space-y-2">
                 <p className="font-medium text-xs">المعادلة الأساسية:</p>
                 <div className="bg-background rounded p-2 text-xs space-y-1">
-                  <p><strong>المتوقع</strong> = إجمالي المبيعات − المبالغ غير المدفوعة (من الطلبيات الجزئية والديون) + تحصيلات الديون − قيمة الهدايا 🎁</p>
+                  <p><strong>المتوقع</strong> = إجمالي المبيعات − غير المدفوع (ديون + جزئي) + تحصيلات ديون نقدية</p>
                   <p><strong>مجموع التصرف</strong> = الموجود في الخزينة + المُسلَّم + المصاريف + <strong>في ذمة العمال 👷</strong></p>
                   <p><strong>الفجوة</strong> = المتوقع − مجموع التصرف</p>
                 </div>
-                <p className="text-[10px] text-muted-foreground mt-1">💡 الهدايا تُخصم لأنها منتجات سُلِّمت مجاناً. المبالغ في ذمة العمال هي مبيعات تمت ولم تُدرج في أي جلسة محاسبة مكتملة.</p>
+                <p className="text-[10px] text-muted-foreground mt-1">💡 الهدايا لا تُطرح لأن قيمتها غير مشمولة في إجمالي المبيعات أصلاً. تحصيلات الديون النقدية = مبالغ فعلية دخلت الخزينة.</p>
               </div>
 
               <div className="p-3 rounded-lg bg-primary/5 border border-primary/20 space-y-2">
@@ -607,15 +610,15 @@ const ManagerTreasury = () => {
                     <p>• مبيعات = <strong>1,000,000 د.ج</strong></p>
                     <p>• ديون جديدة = <strong>200,000 د.ج</strong></p>
                     <p>• تحصيلات ديون سابقة = <strong>50,000 د.ج</strong></p>
-                    <p>• قيمة الهدايا = <strong>20,000 د.ج</strong> 🎁</p>
+                    <p>• تحصيلات ديون نقدية = <strong>50,000 د.ج</strong></p>
                   </div>
-                  <p className="font-medium mt-1">المتوقع = 1,000,000 − 200,000 + 50,000 − 20,000 = <strong>830,000 د.ج</strong></p>
+                  <p className="font-medium mt-1">المتوقع = 1,000,000 − 200,000 + 50,000 = <strong>850,000 د.ج</strong></p>
                   <div className="bg-background rounded p-2 space-y-1 mt-1">
                     <p>• الموجود في الخزينة = <strong>790,000 د.ج</strong></p>
                     <p>• المُسلَّم = <strong>30,000 د.ج</strong></p>
                     <p>• المصاريف = <strong>10,000 د.ج</strong></p>
                   </div>
-                  <p className="font-medium mt-1">مجموع التصرف = 790,000 + 30,000 + 10,000 = <strong>830,000 د.ج</strong></p>
+                  <p className="font-medium mt-1">مجموع التصرف = 800,000 + 30,000 + 10,000 + 10,000 = <strong>850,000 د.ج</strong></p>
                   <p className="text-green-600 font-medium">✅ لا توجد فجوة — الميزانية متوازنة</p>
                 </div>
               </div>
