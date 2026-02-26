@@ -84,25 +84,114 @@ const InvoiceOCRScanner = ({ onDataExtracted, paymentMethod }: InvoiceOCRScanner
 
     // Try to extract structured data from OCR text
     const extracted: ExtractedData = { raw_text: text };
+    const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
 
-    // Extract amount (numbers with possible decimals)
-    const amountMatch = text.match(/(?:المبلغ|الإجمالي|المجموع|Total|Montant)[^\d]*?([\d\s,.]+)/i);
-    if (amountMatch) extracted.amount = amountMatch[1].replace(/[\s,]/g, '').replace(',', '.');
-
-    // Extract invoice number
-    const invoiceMatch = text.match(/(?:فاتورة|Facture|FC|N°)[^\w]*([\w\-\/]+)/i);
-    if (invoiceMatch) extracted.invoice_number = invoiceMatch[1];
-
-    // Extract date patterns (DD/MM/YYYY or YYYY-MM-DD)
-    const dateMatch = text.match(/(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/);
-    if (dateMatch) {
-      const [, d, m, y] = dateMatch;
-      const year = y.length === 2 ? '20' + y : y;
-      extracted.invoice_date = `${year}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+    // --- Extract amount ---
+    // Look for labeled amounts first
+    const amountPatterns = [
+      /(?:المبلغ|الإجمالي|المجموع|الكلي|Net|Total|Montant|TTC|HT)[^\d]*([\d\s.,]+)/i,
+      /(?:DA|د\.ج|دج|DZD)[^\d]*([\d\s.,]+)/i,
+      /([\d\s.,]+)\s*(?:DA|د\.ج|دج|DZD)/i,
+    ];
+    for (const pat of amountPatterns) {
+      const m = text.match(pat);
+      if (m) {
+        const cleaned = m[1].replace(/[\s.]/g, '').replace(',', '.');
+        if (cleaned && !isNaN(Number(cleaned)) && Number(cleaned) > 0) {
+          extracted.amount = String(Math.round(Number(cleaned)));
+          break;
+        }
+      }
+    }
+    // Fallback: find the largest number in text as likely amount
+    if (!extracted.amount) {
+      const allNumbers = text.match(/[\d]{3,}[.,]?\d*/g);
+      if (allNumbers) {
+        const nums = allNumbers.map(n => Number(n.replace(/[.,]/g, ''))).filter(n => n > 0);
+        if (nums.length) extracted.amount = String(Math.max(...nums));
+      }
     }
 
-    onDataExtracted(extracted);
-    toast.success('تم استخراج النص بـ OCR المجاني');
+    // --- Extract invoice number ---
+    const invoicePatterns = [
+      /(?:فاتورة|رقم الفاتورة|Facture|Fact|FC|FA|BL|N°|No|Num)[^\w]*([\w\-\/\.]+\d[\w\-\/\.]*)/i,
+      /(?:N°|#)\s*([\w\-\/]+)/i,
+      /(FC[\-\/]?\d[\w\-\/]*)/i,
+      /(FA[\-\/]?\d[\w\-\/]*)/i,
+      /(BL[\-\/]?\d[\w\-\/]*)/i,
+    ];
+    for (const pat of invoicePatterns) {
+      const m = text.match(pat);
+      if (m) {
+        extracted.invoice_number = m[1].trim();
+        break;
+      }
+    }
+
+    // --- Extract customer name ---
+    // Look for labeled customer name
+    const customerPatterns = [
+      /(?:العميل|الزبون|Client|Destinataire|Doit)[:\s]+(.+)/i,
+      /(?:السيد|M\.|Mr\.|Mme)[:\s]+(.+)/i,
+    ];
+    for (const pat of customerPatterns) {
+      const m = text.match(pat);
+      if (m) {
+        const name = m[1].trim().split(/\s{3,}/)[0].substring(0, 60);
+        if (name.length > 1) {
+          extracted.customer_name = name;
+          break;
+        }
+      }
+    }
+
+    // --- Extract dates (DD/MM/YYYY, DD-MM-YYYY, DD.MM.YYYY) ---
+    const dateMatches = text.matchAll(/(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/g);
+    const dates: string[] = [];
+    for (const dm of dateMatches) {
+      const [, p1, p2, p3] = dm;
+      let year = p3.length === 2 ? '20' + p3 : p3;
+      // Detect if format is YYYY-MM-DD already
+      if (Number(p1) > 31) {
+        year = p1.length === 2 ? '20' + p1 : p1;
+        dates.push(`${year}-${p2.padStart(2, '0')}-${p3.padStart(2, '0')}`);
+      } else {
+        dates.push(`${year}-${p2.padStart(2, '0')}-${p1.padStart(2, '0')}`);
+      }
+    }
+    if (dates.length > 0) extracted.invoice_date = dates[0];
+    if (dates.length > 1 && paymentMethod === 'check') extracted.check_date = dates[1];
+
+    // --- Check-specific fields ---
+    if (paymentMethod === 'check') {
+      const checkNumMatch = text.match(/(?:شيك|Chèque|Cheque|CHQ|N°)[^\d]*([\d]{4,})/i);
+      if (checkNumMatch) extracted.check_number = checkNumMatch[1];
+
+      const bankMatch = text.match(/(?:بنك|البنك|Bank|Banque|BNA|CPA|BDL|BEA|BADR|SGA|ABC|AGB|CNEP|TRUST)[^\n]*/i);
+      if (bankMatch) {
+        const bankName = bankMatch[0].trim().substring(0, 40);
+        if (bankName.length > 1) extracted.check_bank = bankName;
+      }
+    }
+
+    // --- Receipt/Transfer fields ---
+    if (paymentMethod === 'bank_receipt') {
+      const receiptMatch = text.match(/(?:وصل|Reçu|Récépissé|Bordereau)[^\d]*([\w\d\-\/]+)/i);
+      if (receiptMatch) extracted.receipt_number = receiptMatch[1];
+    }
+    if (paymentMethod === 'bank_transfer') {
+      const transferMatch = text.match(/(?:تحويل|Virement|Réf|Ref|مرجع)[^\w]*([\w\d\-\/]+)/i);
+      if (transferMatch) extracted.transfer_reference = transferMatch[1];
+    }
+
+    const hasData = extracted.amount || extracted.invoice_number || extracted.customer_name || extracted.invoice_date;
+    if (hasData) {
+      onDataExtracted(extracted);
+      toast.success('تم استخراج البيانات بـ OCR المجاني');
+    } else {
+      onDataExtracted({ raw_text: text });
+      toast.warning('لم يتم استخراج بيانات واضحة، جرب الذكاء الاصطناعي للدقة');
+    }
   }, [onDataExtracted]);
 
   // --- Process image (shared logic) ---
