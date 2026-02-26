@@ -1298,6 +1298,19 @@ export const translations: Translations = {
   'treasury.cash_f2': { ar: 'كاش ف2', fr: 'Esp. F2', en: 'Cash I2' },
   'treasury.currency': { ar: 'د.ج', fr: 'DA', en: 'DZD' },
 
+  // Treasury Settings & Delivery
+  'treasury.settings_title': { ar: 'إعدادات الخزينة', fr: 'Paramètres de trésorerie', en: 'Treasury Settings' },
+  'treasury.receivers': { ar: 'المستلمون', fr: 'Destinataires', en: 'Receivers' },
+  'treasury.intermediaries': { ar: 'الوسطاء', fr: 'Intermédiaires', en: 'Intermediaries' },
+  'treasury.receiver_name': { ar: 'اسم المستلم', fr: 'Nom du destinataire', en: 'Receiver Name' },
+  'treasury.intermediary_name': { ar: 'اسم الوسيط', fr: 'Nom de l\'intermédiaire', en: 'Intermediary Name' },
+  'treasury.delivery_method': { ar: 'طريقة التسليم', fr: 'Mode d\'envoi', en: 'Delivery Method' },
+  'treasury.direct_delivery': { ar: 'تسليم مباشر', fr: 'Remise directe', en: 'Direct Delivery' },
+  'treasury.bank_transfer_method': { ar: 'تحويل بنكي', fr: 'Virement bancaire', en: 'Bank Transfer' },
+  'treasury.via_intermediary': { ar: 'عبر وسيط', fr: 'Via intermédiaire', en: 'Via Intermediary' },
+  'treasury.bank_reference': { ar: 'مرجع التحويل', fr: 'Réf. virement', en: 'Transfer Reference' },
+  'treasury.received_by': { ar: 'المستلم', fr: 'Reçu par', en: 'Received By' },
+
   // Treasury item type labels
   'treasury.item.total_sales': { ar: 'إجمالي المبيعات', fr: 'Total ventes', en: 'Total Sales' },
   'treasury.item.total_paid': { ar: 'المبالغ المدفوعة', fr: 'Montants payés', en: 'Amounts Paid' },
