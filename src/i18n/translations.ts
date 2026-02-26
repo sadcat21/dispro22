@@ -1318,6 +1318,15 @@ export const translations: Translations = {
   'treasury.phone': { ar: 'رقم الهاتف', fr: 'Téléphone', en: 'Phone' },
   'treasury.name_required': { ar: 'الاسم مطلوب', fr: 'Le nom est requis', en: 'Name is required' },
   'treasury.name_fr_hint': { ar: 'يُفضل إدخال الاسم باللغة الفرنسية ليظهر في وثيقة التسليم', fr: 'Préférez saisir le nom en français pour le bordereau', en: 'Prefer entering the name in French for the handover document' },
+  'treasury.bank_accounts': { ar: 'الحسابات البنكية', fr: 'Comptes bancaires', en: 'Bank Accounts' },
+  'treasury.bank_name': { ar: 'اسم البنك', fr: 'Nom de la banque', en: 'Bank Name' },
+  'treasury.account_number': { ar: 'رقم الحساب', fr: 'N° de compte', en: 'Account Number' },
+  'treasury.account_holder': { ar: 'باسم صاحب الحساب', fr: 'Titulaire du compte', en: 'Account Holder' },
+  'treasury.select_bank_account': { ar: 'اختر الحساب البنكي', fr: 'Sélectionner le compte', en: 'Select Bank Account' },
+  'treasury.transfer_ref': { ar: 'رقم الوصل / مرجع التحويل', fr: 'N° reçu / Réf. virement', en: 'Receipt No. / Transfer Ref' },
+  'treasury.receipt_image': { ar: 'صورة الوصل', fr: 'Image du reçu', en: 'Receipt Image' },
+  'treasury.upload_receipt': { ar: 'رفع / التقاط صورة الوصل', fr: 'Télécharger / capturer le reçu', en: 'Upload / Capture Receipt' },
+  'treasury.paste_image': { ar: 'أو الصق صورة هنا', fr: 'Ou coller une image ici', en: 'Or paste an image here' },
 
   // Treasury item type labels
   'treasury.item.total_sales': { ar: 'إجمالي المبيعات', fr: 'Total ventes', en: 'Total Sales' },

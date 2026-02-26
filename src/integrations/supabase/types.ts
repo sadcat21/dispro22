@@ -1117,6 +1117,7 @@ export type Database = {
       manager_handovers: {
         Row: {
           amount: number
+          bank_account_id: string | null
           bank_transfer_reference: string | null
           branch_id: string | null
           cash_invoice1: number
@@ -1132,6 +1133,7 @@ export type Database = {
           notes: string | null
           payment_method: string
           receipt_count: number | null
+          receipt_image_url: string | null
           receipts_amount: number
           received_by: string | null
           stamp_amount: number
@@ -1140,6 +1142,7 @@ export type Database = {
         }
         Insert: {
           amount?: number
+          bank_account_id?: string | null
           bank_transfer_reference?: string | null
           branch_id?: string | null
           cash_invoice1?: number
@@ -1155,6 +1158,7 @@ export type Database = {
           notes?: string | null
           payment_method: string
           receipt_count?: number | null
+          receipt_image_url?: string | null
           receipts_amount?: number
           received_by?: string | null
           stamp_amount?: number
@@ -1163,6 +1167,7 @@ export type Database = {
         }
         Update: {
           amount?: number
+          bank_account_id?: string | null
           bank_transfer_reference?: string | null
           branch_id?: string | null
           cash_invoice1?: number
@@ -1178,6 +1183,7 @@ export type Database = {
           notes?: string | null
           payment_method?: string
           receipt_count?: number | null
+          receipt_image_url?: string | null
           receipts_amount?: number
           received_by?: string | null
           stamp_amount?: number
@@ -1185,6 +1191,13 @@ export type Database = {
           transfers_amount?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "manager_handovers_bank_account_id_fkey"
+            columns: ["bank_account_id"]
+            isOneToOne: false
+            referencedRelation: "treasury_bank_accounts"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "manager_handovers_branch_id_fkey"
             columns: ["branch_id"]
@@ -2904,6 +2917,61 @@ export type Database = {
           },
           {
             foreignKeyName: "tasks_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "workers_safe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      treasury_bank_accounts: {
+        Row: {
+          account_holder: string
+          account_number: string
+          bank_name: string
+          branch_id: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+        }
+        Insert: {
+          account_holder: string
+          account_number: string
+          bank_name: string
+          branch_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+        }
+        Update: {
+          account_holder?: string
+          account_number?: string
+          bank_name?: string
+          branch_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "treasury_bank_accounts_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "treasury_bank_accounts_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "workers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "treasury_bank_accounts_created_by_fkey"
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "workers_safe"
