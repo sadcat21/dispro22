@@ -43,7 +43,7 @@ const MyStock: React.FC = () => {
     enabled: !!workerId,
   });
 
-  // Fetch gift quantities from delivered orders
+  // Fetch gift quantities from delivered orders with offer unit info
   const { data: giftData } = useQuery({
     queryKey: ['my-stock-gifts', workerId],
     queryFn: async () => {
@@ -58,11 +58,29 @@ const MyStock: React.FC = () => {
       const orderIds = orders.map(o => o.id);
       const { data: items } = await supabase
         .from('order_items')
-        .select('product_id, gift_quantity, gift_offer_id, product:products(name, pricing_unit)')
+        .select('product_id, gift_quantity, gift_offer_id')
         .in('order_id', orderIds)
         .gt('gift_quantity', 0);
 
-      return items || [];
+      if (!items || items.length === 0) return [];
+
+      // Get unique offer IDs to fetch gift_quantity_unit
+      const offerIds = [...new Set(items.map(i => i.gift_offer_id).filter(Boolean))] as string[];
+      let offerUnits: Record<string, string> = {};
+      if (offerIds.length > 0) {
+        const { data: tiers } = await supabase
+          .from('product_offer_tiers')
+          .select('offer_id, gift_quantity_unit')
+          .in('offer_id', offerIds);
+        for (const t of (tiers || [])) {
+          offerUnits[t.offer_id] = t.gift_quantity_unit || 'piece';
+        }
+      }
+
+      return items.map(i => ({
+        ...i,
+        gift_unit: i.gift_offer_id ? (offerUnits[i.gift_offer_id] || 'piece') : 'piece',
+      }));
     },
     enabled: !!workerId,
   });
@@ -83,8 +101,7 @@ const MyStock: React.FC = () => {
     const stats: Record<string, { totalGifts: number; unit: string }> = {};
     for (const item of (giftData || [])) {
       const pid = item.product_id;
-      const product = (item as any).product;
-      const unit = product?.pricing_unit || 'box';
+      const unit = item.gift_unit || 'piece';
       if (!stats[pid]) stats[pid] = { totalGifts: 0, unit };
       stats[pid].totalGifts += item.gift_quantity;
     }
@@ -139,7 +156,7 @@ const MyStock: React.FC = () => {
             const sold = stats?.sold || 0;
             const gifts = giftStats[item.product_id];
             const giftQty = gifts?.totalGifts || 0;
-            const giftUnit = gifts?.unit === 'unit' ? 'قطعة' : gifts?.unit === 'kg' ? 'كغ' : 'صندوق';
+            const giftUnit = gifts?.unit === 'piece' ? 'قطعة' : gifts?.unit === 'box' ? 'صندوق' : gifts?.unit === 'kg' ? 'كغ' : 'قطعة';
             return (
               <Card key={item.id} className={isZero ? 'opacity-50' : ''}>
                 <CardContent className="p-3">
