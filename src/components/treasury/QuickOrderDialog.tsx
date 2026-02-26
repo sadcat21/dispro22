@@ -451,6 +451,18 @@ const QuickOrderDialog: React.FC<Props> = ({ open, onOpenChange, onOrderCreated 
                 <Button size="sm" variant="outline" className="h-8 text-xs gap-1" onClick={applyRandomQty}>
                   <Shuffle className="w-3 h-3" /> عشوائي
                 </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8 text-xs gap-1"
+                  onClick={() => {
+                    const allSelected = productItems.every(p => p.selected);
+                    setProductItems(prev => prev.map(p => ({ ...p, selected: !allSelected })));
+                  }}
+                >
+                  <Check className="w-3 h-3" />
+                  {productItems.every(p => p.selected) ? 'إلغاء الكل' : 'تحديد الكل'}
+                </Button>
                 <Badge variant="secondary" className="text-xs shrink-0">
                   {selectedProducts.length}/{productItems.length}
                 </Badge>
