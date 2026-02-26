@@ -6,9 +6,8 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Trash2, Users, UserCheck, Phone } from 'lucide-react';
+import { Plus, Trash2, Users, UserCheck, Phone, Pencil, Check, X } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Props {
@@ -23,6 +22,9 @@ const TreasurySettingsDialog: React.FC<Props> = ({ open, onOpenChange }) => {
   const [newName, setNewName] = useState('');
   const [newPhone, setNewPhone] = useState('');
   const [activeTab, setActiveTab] = useState('receivers');
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editPhone, setEditPhone] = useState('');
 
   const { data: contacts } = useQuery({
     queryKey: ['treasury-contacts', activeBranch?.id],
@@ -57,6 +59,23 @@ const TreasurySettingsDialog: React.FC<Props> = ({ open, onOpenChange }) => {
     onError: (e: any) => toast.error(e.message),
   });
 
+  const updateContact = useMutation({
+    mutationFn: async (id: string) => {
+      if (!editName.trim()) throw new Error(t('treasury.name_required') || 'الاسم مطلوب');
+      const { error } = await supabase.from('treasury_contacts').update({
+        name: editName.trim(),
+        phone: editPhone.trim() || null,
+      } as any).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      setEditingId(null);
+      queryClient.invalidateQueries({ queryKey: ['treasury-contacts'] });
+      toast.success(t('common.saved'));
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
   const deleteContact = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase.from('treasury_contacts').update({ is_active: false }).eq('id', id);
@@ -67,6 +86,18 @@ const TreasurySettingsDialog: React.FC<Props> = ({ open, onOpenChange }) => {
       toast.success(t('common.deleted'));
     },
   });
+
+  const startEdit = (c: any) => {
+    setEditingId(c.id);
+    setEditName(c.name || '');
+    setEditPhone(c.phone || '');
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditName('');
+    setEditPhone('');
+  };
 
   const receivers = (contacts || []).filter((c: any) => c.contact_type === 'receiver');
   const intermediaries = (contacts || []).filter((c: any) => c.contact_type === 'intermediary');
@@ -82,7 +113,7 @@ const TreasurySettingsDialog: React.FC<Props> = ({ open, onOpenChange }) => {
             onKeyDown={e => e.key === 'Enter' && addContact.mutate(type)}
           />
           <p className="text-[10px] text-muted-foreground px-1">
-            💡 {t('treasury.name_fr_hint') || 'يُفضل إدخال الاسم باللغة الفرنسية ليظهر في وثيقة التسليم'}
+            💡 {t('treasury.name_fr_hint')}
           </p>
         </div>
         <Button size="sm" onClick={() => addContact.mutate(type)} disabled={addContact.isPending} className="self-start">
@@ -92,7 +123,7 @@ const TreasurySettingsDialog: React.FC<Props> = ({ open, onOpenChange }) => {
       <div className="flex gap-2 items-center">
         <Phone className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
         <Input
-          placeholder={t('treasury.phone') || 'رقم الهاتف'}
+          placeholder={t('treasury.phone')}
           value={newPhone}
           onChange={e => setNewPhone(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && addContact.mutate(type)}
@@ -106,21 +137,60 @@ const TreasurySettingsDialog: React.FC<Props> = ({ open, onOpenChange }) => {
   const renderContactList = (list: any[]) => (
     <div className="space-y-1.5">
       {list.map((c: any) => (
-        <div key={c.id} className="flex items-center justify-between bg-muted/50 rounded-lg px-3 py-2">
-          <div className="flex-1 min-w-0">
-            <span className="text-sm font-medium block">{c.name}</span>
-            {c.phone && (
-              <span className="text-[11px] text-muted-foreground flex items-center gap-1" dir="ltr">
-                <Phone className="w-3 h-3" /> {c.phone}
-              </span>
-            )}
-          </div>
-          <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive shrink-0" onClick={() => deleteContact.mutate(c.id)}>
-            <Trash2 className="w-3.5 h-3.5" />
-          </Button>
+        <div key={c.id} className="bg-muted/50 rounded-lg px-3 py-2">
+          {editingId === c.id ? (
+            <div className="space-y-2">
+              <div className="flex gap-2">
+                <Input
+                  value={editName}
+                  onChange={e => setEditName(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && updateContact.mutate(c.id)}
+                  className="h-8 text-sm"
+                  autoFocus
+                />
+                <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-primary" onClick={() => updateContact.mutate(c.id)} disabled={updateContact.isPending}>
+                  <Check className="w-4 h-4" />
+                </Button>
+                <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={cancelEdit}>
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+              <div className="flex gap-2 items-center">
+                <Phone className="w-3 h-3 text-muted-foreground shrink-0" />
+                <Input
+                  value={editPhone}
+                  onChange={e => setEditPhone(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && updateContact.mutate(c.id)}
+                  type="tel"
+                  dir="ltr"
+                  className="h-8 text-sm"
+                  placeholder={t('treasury.phone')}
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between">
+              <div className="flex-1 min-w-0">
+                <span className="text-sm font-medium block">{c.name}</span>
+                {c.phone && (
+                  <span className="text-[11px] text-muted-foreground flex items-center gap-1" dir="ltr">
+                    <Phone className="w-3 h-3" /> {c.phone}
+                  </span>
+                )}
+              </div>
+              <div className="flex gap-0.5 shrink-0">
+                <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => startEdit(c)}>
+                  <Pencil className="w-3.5 h-3.5" />
+                </Button>
+                <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive" onClick={() => deleteContact.mutate(c.id)}>
+                  <Trash2 className="w-3.5 h-3.5" />
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       ))}
-      {list.length === 0 && <p className="text-xs text-muted-foreground text-center py-4">{t('common.no_data') || 'لا توجد بيانات'}</p>}
+      {list.length === 0 && <p className="text-xs text-muted-foreground text-center py-4">{t('common.no_data')}</p>}
     </div>
   );
 
@@ -130,7 +200,7 @@ const TreasurySettingsDialog: React.FC<Props> = ({ open, onOpenChange }) => {
         <DialogHeader>
           <DialogTitle>⚙️ {t('treasury.settings_title')}</DialogTitle>
         </DialogHeader>
-        <Tabs value={activeTab} onValueChange={v => { setActiveTab(v); setNewName(''); setNewPhone(''); }} dir={dir}>
+        <Tabs value={activeTab} onValueChange={v => { setActiveTab(v); setNewName(''); setNewPhone(''); cancelEdit(); }} dir={dir}>
           <TabsList className="w-full">
             <TabsTrigger value="receivers" className="flex-1 gap-1">
               <UserCheck className="w-3.5 h-3.5" />
