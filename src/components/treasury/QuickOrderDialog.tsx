@@ -225,6 +225,20 @@ const QuickOrderDialog: React.FC<Props> = ({ open, onOpenChange, onOrderCreated 
     const url = `https://wa.me/${formattedPhone}?text=${encodeURIComponent(msg)}`;
     window.open(url, '_blank');
 
+    // Save to manual_invoice_requests (same as manual orders)
+    if (selectedCustomer && workerId) {
+      await supabase.from('manual_invoice_requests').insert({
+        customer_id: selectedCustomer.id,
+        worker_id: workerId,
+        branch_id: activeBranch?.id || null,
+        products: selectedProducts.map(p => ({ productId: p.id, productName: p.name, quantity: p.quantity })),
+        payment_method: 'trigg',
+        whatsapp_contact: phone,
+        status: 'sent',
+      } as any);
+      queryClient.invalidateQueries({ queryKey: ['manual-invoice-requests'] });
+    }
+
     if (createdOrderId) {
       await supabase.from('orders').update({ invoice_sent_at: new Date().toISOString() } as any).eq('id', createdOrderId);
       queryClient.invalidateQueries({ queryKey: ['invoice-orders'] });
