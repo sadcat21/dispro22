@@ -1,12 +1,16 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
-import { Camera, Loader2, Upload, ClipboardPaste, X } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { Camera, Loader2, Upload, ClipboardPaste, X, RefreshCw, Brain, ScanText } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import Tesseract from 'tesseract.js';
 
 interface ExtractedData {
   amount?: string;
   invoice_number?: string;
+  invoice_date?: string;
   customer_name?: string;
   check_number?: string;
   check_bank?: string;
@@ -25,13 +29,87 @@ const InvoiceOCRScanner = ({ onDataExtracted, paymentMethod }: InvoiceOCRScanner
   const [isProcessing, setIsProcessing] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
   const [showCamera, setShowCamera] = useState(false);
+  const [useAI, setUseAI] = useState(true);
+  const [lastImageSource, setLastImageSource] = useState<File | Blob | string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const pasteAreaRef = useRef<HTMLDivElement>(null);
 
-  const processImage = useCallback(async (imageSource: File | Blob | string) => {
+  // --- AI-based analysis ---
+  const analyzeWithAI = useCallback(async (base64Data: string) => {
+    const { data, error } = await supabase.functions.invoke('analyze-invoice', {
+      body: { image_base64: base64Data, payment_method: paymentMethod }
+    });
+    if (error) throw error;
+    if (data?.success && data?.data) {
+      const extracted: ExtractedData = data.data;
+      if (extracted.amount || extracted.invoice_number || extracted.customer_name || extracted.check_number || extracted.invoice_date) {
+        onDataExtracted(extracted);
+        toast.success('تم استخراج البيانات بالذكاء الاصطناعي');
+      } else {
+        toast.warning('لم يتم العثور على بيانات واضحة، حاول صورة أوضح');
+        onDataExtracted({ raw_text: data.raw_text || '' });
+      }
+    } else {
+      toast.warning('لم يتم العثور على بيانات واضحة');
+      onDataExtracted({ raw_text: data?.raw_text || '' });
+    }
+  }, [paymentMethod, onDataExtracted]);
+
+  // --- Free OCR using Tesseract.js ---
+  const analyzeWithOCR = useCallback(async (imageSource: File | Blob | string) => {
+    let imageSrc: string;
+    if (typeof imageSource === 'string') {
+      imageSrc = imageSource;
+    } else {
+      imageSrc = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (ev) => resolve(ev.target?.result as string);
+        reader.readAsDataURL(imageSource);
+      });
+    }
+
+    const result = await Tesseract.recognize(imageSrc, 'ara+fra+eng', {
+      logger: () => {},
+    });
+    const text = result.data.text;
+
+    if (!text || text.trim().length < 5) {
+      toast.warning('لم يتم التعرف على نص واضح في الصورة');
+      onDataExtracted({ raw_text: text || '' });
+      return;
+    }
+
+    // Try to extract structured data from OCR text
+    const extracted: ExtractedData = { raw_text: text };
+
+    // Extract amount (numbers with possible decimals)
+    const amountMatch = text.match(/(?:المبلغ|الإجمالي|المجموع|Total|Montant)[^\d]*?([\d\s,.]+)/i);
+    if (amountMatch) extracted.amount = amountMatch[1].replace(/[\s,]/g, '').replace(',', '.');
+
+    // Extract invoice number
+    const invoiceMatch = text.match(/(?:فاتورة|Facture|FC|N°)[^\w]*([\w\-\/]+)/i);
+    if (invoiceMatch) extracted.invoice_number = invoiceMatch[1];
+
+    // Extract date patterns (DD/MM/YYYY or YYYY-MM-DD)
+    const dateMatch = text.match(/(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/);
+    if (dateMatch) {
+      const [, d, m, y] = dateMatch;
+      const year = y.length === 2 ? '20' + y : y;
+      extracted.invoice_date = `${year}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+    }
+
+    onDataExtracted(extracted);
+    toast.success('تم استخراج النص بـ OCR المجاني');
+  }, [onDataExtracted]);
+
+  // --- Process image (shared logic) ---
+  const processImage = useCallback(async (imageSource: File | Blob | string, method?: boolean) => {
+    const shouldUseAI = method !== undefined ? method : useAI;
+    setLastImageSource(imageSource);
+
     // Show preview
     let base64Data: string;
     if (typeof imageSource === 'string') {
@@ -49,32 +127,27 @@ const InvoiceOCRScanner = ({ onDataExtracted, paymentMethod }: InvoiceOCRScanner
 
     setIsProcessing(true);
     try {
-      const { data, error } = await supabase.functions.invoke('analyze-invoice', {
-        body: { image_base64: base64Data, payment_method: paymentMethod }
-      });
-
-      if (error) throw error;
-
-      if (data?.success && data?.data) {
-        const extracted: ExtractedData = data.data;
-        if (extracted.amount || extracted.invoice_number || extracted.customer_name || extracted.check_number) {
-          onDataExtracted(extracted);
-          toast.success('تم استخراج البيانات من الصورة');
-        } else {
-          toast.warning('لم يتم العثور على بيانات واضحة، حاول صورة أوضح');
-          onDataExtracted({ raw_text: data.raw_text || '' });
-        }
+      if (shouldUseAI) {
+        await analyzeWithAI(base64Data);
       } else {
-        toast.warning('لم يتم العثور على بيانات واضحة');
-        onDataExtracted({ raw_text: data?.raw_text || '' });
+        await analyzeWithOCR(imageSource);
       }
     } catch (err) {
-      console.error('OCR Error:', err);
+      console.error('OCR/AI Error:', err);
       toast.error('فشل في قراءة الصورة');
     } finally {
       setIsProcessing(false);
     }
-  }, [paymentMethod, onDataExtracted]);
+  }, [useAI, analyzeWithAI, analyzeWithOCR]);
+
+  // --- Re-analyze ---
+  const handleReanalyze = useCallback(() => {
+    if (!lastImageSource) {
+      toast.info('لا توجد صورة لإعادة تحليلها');
+      return;
+    }
+    processImage(lastImageSource);
+  }, [lastImageSource, processImage]);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -180,6 +253,21 @@ const InvoiceOCRScanner = ({ onDataExtracted, paymentMethod }: InvoiceOCRScanner
       <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileSelect} />
       <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleCameraCapture} />
 
+      {/* AI vs OCR Switch */}
+      <div className="flex items-center justify-between p-2 rounded-lg bg-muted/50 border">
+        <div className="flex items-center gap-2">
+          {useAI ? <Brain className="w-4 h-4 text-primary" /> : <ScanText className="w-4 h-4 text-muted-foreground" />}
+          <Label className="text-xs cursor-pointer" htmlFor="analysis-mode">
+            {useAI ? 'ذكاء اصطناعي (أدق)' : 'OCR مجاني (أسرع)'}
+          </Label>
+        </div>
+        <Switch
+          id="analysis-mode"
+          checked={useAI}
+          onCheckedChange={setUseAI}
+        />
+      </div>
+
       {showCamera && (
         <div className="relative rounded-lg overflow-hidden border bg-black">
           <video ref={videoRef} className="w-full h-48 object-cover" autoPlay playsInline muted />
@@ -210,7 +298,8 @@ const InvoiceOCRScanner = ({ onDataExtracted, paymentMethod }: InvoiceOCRScanner
 
       {isProcessing && (
         <Button type="button" variant="outline" className="w-full gap-2" disabled>
-          <Loader2 className="w-4 h-4 animate-spin" /> جاري تحليل الصورة بالذكاء الاصطناعي...
+          <Loader2 className="w-4 h-4 animate-spin" />
+          {useAI ? 'جاري تحليل الصورة بالذكاء الاصطناعي...' : 'جاري تحليل الصورة بـ OCR...'}
         </Button>
       )}
 
@@ -223,6 +312,13 @@ const InvoiceOCRScanner = ({ onDataExtracted, paymentMethod }: InvoiceOCRScanner
             </div>
           )}
         </div>
+      )}
+
+      {/* Re-analyze button */}
+      {preview && !isProcessing && !showCamera && (
+        <Button type="button" variant="secondary" size="sm" className="w-full gap-1.5 text-xs" onClick={handleReanalyze}>
+          <RefreshCw className="w-3.5 h-3.5" /> إعادة تحليل الصورة
+        </Button>
       )}
 
       <p className="text-[10px] text-muted-foreground text-center">
