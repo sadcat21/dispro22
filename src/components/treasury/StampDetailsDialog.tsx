@@ -58,8 +58,7 @@ const OrderDetails = ({ order, cur, dateLocale, t }: { order: ProcessedOrder; cu
             <p className="font-medium">{order.items_subtotal.toLocaleString()} {cur}</p>
           </div>
           <div className="text-end shrink-0">
-            <p className="text-amber-600 font-semibold">{order.stamp_amount.toLocaleString()} {cur}</p>
-            <p className="text-[10px] text-muted-foreground">{order.stamp_percentage}%</p>
+            <p className="text-amber-600 font-semibold">{t('treasury.stamp_total')} ({order.stamp_percentage}%): {order.stamp_amount.toLocaleString()} {cur}</p>
           </div>
         </div>
       </CollapsibleTrigger>
