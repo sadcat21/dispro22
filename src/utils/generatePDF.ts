@@ -2,31 +2,46 @@ import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 
 export async function generatePDF(element: HTMLElement, filename: string) {
-  const canvas = await html2canvas(element, {
-    scale: 2,
-    useCORS: true,
-    logging: false,
-    backgroundColor: '#ffffff',
-  });
+  const A4_WIDTH_MM = 210;
+  const A4_HEIGHT_MM = 297;
+  const MARGIN_MM = 10;
+  const CONTENT_WIDTH_MM = A4_WIDTH_MM - (MARGIN_MM * 2);
+  const SECTION_GAP_MM = 3;
 
-  const imgData = canvas.toDataURL('image/png');
-  const imgWidth = 210; // A4 width in mm
-  const pageHeight = 297; // A4 height in mm
-  const imgHeight = (canvas.height * imgWidth) / canvas.width;
+  // Find sections marked with data-pdf-section, or fallback to direct children
+  let sections = Array.from(element.querySelectorAll('[data-pdf-section]')) as HTMLElement[];
+  if (sections.length === 0) {
+    sections = [element];
+  }
 
-  const pdf = new jsPDF('p', 'mm', 'a4');
+  const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  let currentY = MARGIN_MM;
+  let isFirstSection = true;
 
-  let heightLeft = imgHeight;
-  let position = 0;
+  for (const section of sections) {
+    const canvas = await html2canvas(section, {
+      scale: 2,
+      useCORS: true,
+      logging: false,
+      backgroundColor: '#ffffff',
+    });
 
-  pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-  heightLeft -= pageHeight;
+    const widthPx = canvas.width;
+    const heightPx = canvas.height;
+    const scaleFactor = CONTENT_WIDTH_MM / widthPx;
+    const heightMM = heightPx * scaleFactor;
 
-  while (heightLeft > 0) {
-    position = heightLeft - imgHeight;
-    pdf.addPage();
-    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-    heightLeft -= pageHeight;
+    const remainingSpace = A4_HEIGHT_MM - MARGIN_MM - currentY;
+
+    if (heightMM > remainingSpace && !isFirstSection) {
+      pdf.addPage();
+      currentY = MARGIN_MM;
+    }
+
+    const imgData = canvas.toDataURL('image/png');
+    pdf.addImage(imgData, 'PNG', MARGIN_MM, currentY, CONTENT_WIDTH_MM, heightMM);
+    currentY += heightMM + SECTION_GAP_MM;
+    isFirstSection = false;
   }
 
   pdf.save(filename);
