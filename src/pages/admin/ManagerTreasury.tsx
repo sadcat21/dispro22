@@ -4,6 +4,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { useTreasurySummary, useManagerTreasury, useManagerHandovers, useCreateHandover, useAddTreasuryEntry } from '@/hooks/useManagerTreasury';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import PaymentMethodDetailsDialog from '@/components/treasury/PaymentMethodDetailsDialog';
+import StampDetailsDialog from '@/components/treasury/StampDetailsDialog';
 import HandoverItemPickerDialog, { PickedItem } from '@/components/treasury/HandoverItemPickerDialog';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -95,6 +96,7 @@ const ManagerTreasury = () => {
   const [handoverOpen, setHandoverOpen] = useState(false);
   const [showCardDetails, setShowCardDetails] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
+  const [stampOpen, setStampOpen] = useState(false);
   const [detailsCategory, setDetailsCategory] = useState<'cash_invoice1' | 'cash_invoice2' | 'check' | 'bank_receipt' | 'bank_transfer' | null>(null);
   const [addForm, setAddForm] = useState({ payment_method: 'cash_invoice1', amount: '', customer_name: '', invoice_number: '', invoice_date: '', check_number: '', check_bank: '', check_date: '', receipt_number: '', transfer_reference: '', notes: '' });
   const [handoverForm, setHandoverForm] = useState({ cash_invoice1: '', cash_invoice2: '', notes: '' });
@@ -378,7 +380,7 @@ const ManagerTreasury = () => {
           currency={cur}
           showDetails={showCardDetails}
         />
-        <Card className="border-amber-600/30 bg-amber-600/5">
+        <Card className="border-amber-600/30 bg-amber-600/5 cursor-pointer hover:shadow-md transition-shadow" onClick={() => setStampOpen(true)}>
           <CardContent className="p-3 text-center">
             <p className="text-xs text-muted-foreground leading-tight">{t('treasury.stamp_total')}</p>
             <p className="text-sm font-bold text-amber-600 truncate">{(summary?.cash_invoice1_stamp || 0).toLocaleString()} {cur}</p>
@@ -393,6 +395,8 @@ const ManagerTreasury = () => {
           category={detailsCategory}
         />
       )}
+
+      <StampDetailsDialog open={stampOpen} onOpenChange={setStampOpen} />
 
       {/* Sales & Debts Summary */}
       <Card className="border-muted">
