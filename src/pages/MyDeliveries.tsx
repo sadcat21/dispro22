@@ -10,7 +10,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { 
   ShoppingCart, Loader2, Package, User, Calendar, Store,
   CheckCircle, Clock, Truck, XCircle, UserCheck, Phone, MapPin, ChevronDown, ChevronUp, Navigation, Search, Edit2,
-  Receipt, Banknote, Route, Gift, Trash2, ListFilter
+  Receipt, Banknote, Route, Gift, Trash2, ListFilter, Map, AlertTriangle
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAssignedOrders, useOrderItems, useUpdateOrderStatus, useCancelOrder } from '@/hooks/useOrders';
@@ -29,6 +29,8 @@ import ModifyOrderDialog from '@/components/orders/ModifyOrderDialog';
 import DeliverySaleDialog from '@/components/orders/DeliverySaleDialog';
 import { useLocationBroadcast } from '@/hooks/useWorkerLocation';
 import { useIsElementHidden } from '@/hooks/useUIOverrides';
+import { getLocalizedName } from '@/utils/sectorName';
+import { supabase } from '@/integrations/supabase/client';
 
 type TabStatus = 'all' | OrderStatus;
 
@@ -56,11 +58,29 @@ const MyDeliveries: React.FC = () => {
   const { data: locationThreshold } = useLocationThreshold();
   const canBypassLocation = useHasPermission('bypass_location_check');
   const [checkingLocation, setCheckingLocation] = useState(false);
+  const [customerDebts, setCustomerDebts] = useState<Record<string, boolean>>({});
 
   // UI override checks
   const isSearchHidden = useIsElementHidden('button', 'deliveries_search');
   const isModifyHidden = useIsElementHidden('action', 'modify_delivery');
   const isCancelHidden = useIsElementHidden('action', 'cancel_delivery');
+
+  // Fetch active debts for all visible customers
+  useEffect(() => {
+    if (!orders?.length) return;
+    const customerIds = [...new Set(orders.map(o => o.customer_id).filter(Boolean))];
+    if (customerIds.length === 0) return;
+    supabase
+      .from('customer_debts')
+      .select('customer_id')
+      .in('customer_id', customerIds)
+      .eq('status', 'active')
+      .then(({ data }) => {
+        const map: Record<string, boolean> = {};
+        data?.forEach(d => { map[d.customer_id] = true; });
+        setCustomerDebts(map);
+      });
+  }, [orders]);
 
   // Auto-start location broadcasting when there are active orders
   useEffect(() => {
@@ -218,9 +238,22 @@ const MyDeliveries: React.FC = () => {
                 <div className="flex items-center gap-2 mb-0.5">
                   <Store className="w-4 h-4 text-muted-foreground shrink-0" />
                   <span className="font-bold text-sm truncate">{order.customer?.store_name || order.customer?.name}</span>
+                  {customerDebts[order.customer_id] && (
+                    <AlertTriangle className="w-4 h-4 text-destructive shrink-0" />
+                  )}
                 </div>
                 {order.customer?.store_name && order.customer?.name && (
-                  <p className="text-xs text-muted-foreground mr-6 mb-1">{order.customer.name}</p>
+                  <p className="text-xs text-muted-foreground mr-6 mb-0.5">{order.customer.name}</p>
+                )}
+                {/* Sector & Zone */}
+                {(order.customer as any)?.sector && (
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground mr-6 mb-1">
+                    <Map className="w-3 h-3 shrink-0" />
+                    <span>{getLocalizedName((order.customer as any).sector, language)}</span>
+                    {(order.customer as any)?.zone && (
+                      <span className="text-muted-foreground/70">• {getLocalizedName((order.customer as any).zone, language)}</span>
+                    )}
+                  </div>
                 )}
                 
                 {order.customer?.phone && (
@@ -464,47 +497,7 @@ const MyDeliveries: React.FC = () => {
             <DialogTitle>{t('orders.details')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            {selectedOrder?.customer && (
-              <div className="bg-muted/50 rounded-lg p-3 space-y-2">
-                <p className="font-bold">{selectedOrder.customer.store_name || selectedOrder.customer.name}</p>
-                {selectedOrder.customer.store_name && <p className="text-xs text-muted-foreground">{selectedOrder.customer.name}</p>}
-                {selectedOrder.customer.phone && (
-                  <a href={`tel:${selectedOrder.customer.phone}`} className="flex items-center gap-2 text-primary">
-                    <Phone className="w-4 h-4" />
-                    {selectedOrder.customer.phone}
-                  </a>
-                )}
-                {selectedOrder.customer.address && (
-                  <p className="flex items-center gap-2 text-sm">
-                    <MapPin className="w-4 h-4" />
-                    {selectedOrder.customer.address}
-                  </p>
-                )}
-              </div>
-            )}
-            
-            {selectedOrder?.customer?.latitude && selectedOrder?.customer?.longitude && (
-              <Collapsible defaultOpen>
-                <CollapsibleTrigger asChild>
-                  <Button type="button" variant="outline" className="w-full justify-between border-primary/30 hover:bg-primary/5">
-                    <span className="flex items-center gap-2">
-                      <Navigation className="w-4 h-4 text-primary" />
-                      <span>{t('customers.search_location')}</span>
-                    </span>
-                    <ChevronDown className="w-4 h-4" />
-                  </Button>
-                </CollapsibleTrigger>
-                <CollapsibleContent className="pt-3">
-                  <LazyCustomerLocationView
-                    latitude={selectedOrder.customer.latitude}
-                    longitude={selectedOrder.customer.longitude}
-                    customerName={selectedOrder.customer.name}
-                    address={selectedOrder.customer.address || undefined}
-                  />
-                </CollapsibleContent>
-              </Collapsible>
-            )}
-            
+            {/* Products first */}
             <div className="space-y-2">
               <p className="font-bold">{t('nav.products')}:</p>
               {selectedOrderItems?.map((item) => (
@@ -538,6 +531,65 @@ const MyDeliveries: React.FC = () => {
                 <p className="text-center text-muted-foreground py-4">{t('orders.no_products')}</p>
               )}
             </div>
+
+            {/* Customer details */}
+            {selectedOrder?.customer && (
+              <div className="bg-muted/50 rounded-lg p-3 space-y-2">
+                <div className="flex items-center gap-2">
+                  <Store className="w-4 h-4 text-muted-foreground" />
+                  <p className="font-bold">{selectedOrder.customer.store_name || selectedOrder.customer.name}</p>
+                  {customerDebts[selectedOrder.customer_id] && (
+                    <AlertTriangle className="w-4 h-4 text-destructive" />
+                  )}
+                </div>
+                {selectedOrder.customer.store_name && <p className="text-xs text-muted-foreground mr-6">{selectedOrder.customer.name}</p>}
+                {/* Sector & Zone */}
+                {(selectedOrder.customer as any)?.sector && (
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Map className="w-3.5 h-3.5" />
+                    <span>{getLocalizedName((selectedOrder.customer as any).sector, language)}</span>
+                    {(selectedOrder.customer as any)?.zone && (
+                      <span>• {getLocalizedName((selectedOrder.customer as any).zone, language)}</span>
+                    )}
+                  </div>
+                )}
+                {selectedOrder.customer.phone && (
+                  <a href={`tel:${selectedOrder.customer.phone}`} className="flex items-center gap-2 text-primary text-sm">
+                    <Phone className="w-4 h-4" />
+                    {selectedOrder.customer.phone}
+                  </a>
+                )}
+                {selectedOrder.customer.address && (
+                  <p className="flex items-start gap-2 text-sm text-muted-foreground">
+                    <MapPin className="w-4 h-4 shrink-0 mt-0.5" />
+                    {selectedOrder.customer.address}{selectedOrder.customer.wilaya ? ` - ${selectedOrder.customer.wilaya}` : ''}
+                  </p>
+                )}
+              </div>
+            )}
+            
+            {/* Location map at the bottom */}
+            {selectedOrder?.customer?.latitude && selectedOrder?.customer?.longitude && (
+              <Collapsible defaultOpen>
+                <CollapsibleTrigger asChild>
+                  <Button type="button" variant="outline" className="w-full justify-between border-primary/30 hover:bg-primary/5">
+                    <span className="flex items-center gap-2">
+                      <Navigation className="w-4 h-4 text-primary" />
+                      <span>{t('customers.search_location')}</span>
+                    </span>
+                    <ChevronDown className="w-4 h-4" />
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="pt-3">
+                  <LazyCustomerLocationView
+                    latitude={selectedOrder.customer.latitude}
+                    longitude={selectedOrder.customer.longitude}
+                    customerName={selectedOrder.customer.name}
+                    address={selectedOrder.customer.address || undefined}
+                  />
+                </CollapsibleContent>
+              </Collapsible>
+            )}
 
             {selectedOrder && (selectedOrder.status === 'assigned' || selectedOrder.status === 'in_progress') && (
               <div className="space-y-2">

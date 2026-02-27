@@ -72,7 +72,7 @@ export const useAssignedOrders = () => {
         .from('orders')
         .select(`
           *,
-          customer:customers(*),
+          customer:customers(*, sector:sectors(id, name, name_fr), zone:sector_zones(id, name, name_fr)),
           created_by_worker:workers!orders_created_by_fkey(id, full_name, username)
         `)
         .neq('status', 'cancelled')
