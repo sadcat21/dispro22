@@ -578,10 +578,12 @@ const LoadStock: React.FC = () => {
         });
       }
       setSessionItems([]);
+      setActiveSessionId(null);
       await refresh();
+      await refetchSessions();
       queryClient.invalidateQueries({ queryKey: ['my-worker-stock'] });
       queryClient.invalidateQueries({ queryKey: ['worker-truck-stock'] });
-      queryClient.invalidateQueries({ queryKey: ['worker-load-suggestions'] });
+      queryClient.invalidateQueries({ queryKey: ['worker-load-suggestions', selectedWorker] });
       toast.success(t('stock.empty_truck_success'));
     } catch (error: any) { toast.error(error.message); }
     finally { setIsEmptying(false); }
