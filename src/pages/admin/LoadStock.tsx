@@ -952,14 +952,13 @@ const LoadStock: React.FC = () => {
                 <Plus className="w-4 h-4 me-1" />
                 بدء جلسة شحن جديدة
               </Button>
-              <div className="flex gap-2">
-                <Button variant="outline" className="flex-1" onClick={() => setShowSessionHistory(true)}>
+              <div className="grid grid-cols-2 gap-2">
+                <Button variant="outline" onClick={() => setShowSessionHistory(true)}>
                   <History className="w-4 h-4 me-1" />
                   سجل الجلسات
                 </Button>
                 <Button
                   variant="default"
-                  className="flex-1"
                   onClick={handleCompleteSession}
                   disabled={!activeSessionId && !sessions.some(s => s.status === 'open')}
                 >
@@ -968,7 +967,16 @@ const LoadStock: React.FC = () => {
                 </Button>
                 <Button
                   variant="outline"
-                  className="flex-1 text-destructive border-destructive/30 hover:bg-destructive/5"
+                  className="border-orange-300 text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/10"
+                  onClick={handleEmptyTruckPreview}
+                  disabled={isEmptying}
+                >
+                  {isEmptying ? <Loader2 className="w-4 h-4 animate-spin me-2" /> : <Search className="w-4 h-4 me-1" />}
+                  بدء جلسة تأكيد
+                </Button>
+                <Button
+                  variant="outline"
+                  className="text-destructive border-destructive/30 hover:bg-destructive/5"
                   onClick={handleEmptyTruckPreview}
                   disabled={isEmptying}
                 >
