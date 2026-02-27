@@ -74,13 +74,13 @@ const DirectSaleDialog: React.FC<DirectSaleDialogProps> = ({ open, onOpenChange,
   const [selectedCustomerId, setSelectedCustomerId] = useState('');
   const [orderItems, setOrderItems] = useState<OrderItemWithPrice[]>([]);
   const [notes, setNotes] = useState('');
-  const [paymentType, setPaymentType] = useState<PaymentType>('with_invoice');
+  const [paymentType, setPaymentType] = useState<PaymentType>('without_invoice');
   const [priceSubType, setPriceSubType] = useState<PriceSubType>('gros');
   const [invoicePaymentMethod, setInvoicePaymentMethod] = useState<InvoicePaymentMethod | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
   // CRITICAL: Frozen state values captured at save time - immune to customer defaults
-  const [frozenPaymentType, setFrozenPaymentType] = useState<PaymentType>('with_invoice');
+  const [frozenPaymentType, setFrozenPaymentType] = useState<PaymentType>('without_invoice');
   const [frozenInvoiceMethod, setFrozenInvoiceMethod] = useState<InvoicePaymentMethod | null>(null);
 
   // Pricing groups
@@ -165,7 +165,7 @@ const DirectSaleDialog: React.FC<DirectSaleDialogProps> = ({ open, onOpenChange,
     setSelectedCustomerId('');
     setOrderItems([]);
     setNotes('');
-    setPaymentType('with_invoice');
+    setPaymentType('without_invoice');
     setPriceSubType('gros');
     setInvoicePaymentMethod(null);
     setCustomerDropdownOpen(false);
@@ -704,71 +704,45 @@ const DirectSaleDialog: React.FC<DirectSaleDialogProps> = ({ open, onOpenChange,
                 )}
               </section>
 
-              {/* Payment Type */}
+              {/* Payment Type - Direct sale is always without invoice */}
               <section className="space-y-3">
                 <Label className="text-base font-semibold">{t('orders.purchase_method')}</Label>
-                <div className="grid grid-cols-2 gap-3">
-                  <Button
-                    type="button"
-                    variant={paymentType === 'with_invoice' ? 'default' : 'outline'}
-                    className="h-16 flex flex-col gap-1.5"
-                    onClick={() => setPaymentType('with_invoice')}
-                  >
-                    <Receipt className="w-5 h-5" />
-                    <span className="text-sm">{t('orders.with_invoice')}</span>
-                  </Button>
-                  <Button
-                    type="button"
-                    variant={paymentType === 'without_invoice' ? 'default' : 'outline'}
-                    className="h-16 flex flex-col gap-1.5"
-                    onClick={() => setPaymentType('without_invoice')}
-                  >
-                    <ReceiptText className="w-5 h-5" />
-                    <span className="text-sm">{t('orders.without_invoice')}</span>
-                  </Button>
+                <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50 border">
+                  <ReceiptText className="w-5 h-5 text-primary" />
+                  <span className="text-sm font-medium">{t('orders.without_invoice')}</span>
                 </div>
 
-                {/* Price Sub-Type for without invoice */}
-                {paymentType === 'without_invoice' && (
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium">{t('orders.price_type')}</Label>
-                    <div className="grid grid-cols-3 gap-2">
-                      {([
-                        { value: 'super_gros' as PriceSubType, label: t('products.price_super_gros') },
-                        { value: 'gros' as PriceSubType, label: t('products.price_gros') },
-                        { value: 'retail' as PriceSubType, label: t('products.price_retail') },
-                      ]).map((option) => (
-                        <Button
-                          key={option.value}
-                          type="button"
-                          variant={priceSubType === option.value ? 'default' : 'outline'}
-                          size="sm"
-                          className="h-10 text-xs"
-                          onClick={() => setPriceSubType(option.value)}
-                        >
-                          {option.label}
-                        </Button>
-                      ))}
-                    </div>
-                    {selectedCustomer?.default_price_subtype && (
-                      <p className="text-xs text-muted-foreground">
-                        ⓘ {t('orders.customer_default')}: {
-                          selectedCustomer.default_price_subtype === 'super_gros' ? t('products.price_super_gros') :
-                            selectedCustomer.default_price_subtype === 'gros' ? t('products.price_gros') :
-                              t('products.price_retail')
-                        }
-                      </p>
-                    )}
+                {/* Price Sub-Type */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">{t('orders.price_type')}</Label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {([
+                      { value: 'super_gros' as PriceSubType, label: t('products.price_super_gros') },
+                      { value: 'gros' as PriceSubType, label: t('products.price_gros') },
+                      { value: 'retail' as PriceSubType, label: t('products.price_retail') },
+                    ]).map((option) => (
+                      <Button
+                        key={option.value}
+                        type="button"
+                        variant={priceSubType === option.value ? 'default' : 'outline'}
+                        size="sm"
+                        className="h-10 text-xs"
+                        onClick={() => setPriceSubType(option.value)}
+                      >
+                        {option.label}
+                      </Button>
+                    ))}
                   </div>
-                )}
-
-                {/* Invoice Payment Method */}
-                {paymentType === 'with_invoice' && (
-                  <InvoicePaymentMethodSelect
-                    value={invoicePaymentMethod}
-                    onChange={setInvoicePaymentMethod}
-                  />
-                )}
+                  {selectedCustomer?.default_price_subtype && (
+                    <p className="text-xs text-muted-foreground">
+                      ⓘ {t('orders.customer_default')}: {
+                        selectedCustomer.default_price_subtype === 'super_gros' ? t('products.price_super_gros') :
+                          selectedCustomer.default_price_subtype === 'gros' ? t('products.price_gros') :
+                            t('products.price_retail')
+                      }
+                    </p>
+                  )}
+                </div>
               </section>
 
               {/* Products - Grid like CreateOrderDialog */}
