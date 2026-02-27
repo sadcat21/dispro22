@@ -83,7 +83,7 @@ const StockVerificationDialog: React.FC<StockVerificationDialogProps> = ({
   };
 
   const discrepancies = items.filter(i => i.status === 'deficit' || i.status === 'surplus');
-  const allVerified = items.length > 0 && items.every(i => i.status !== 'unverified');
+  const allVerified = items.length === 0 || items.every(i => i.status !== 'unverified');
 
   const handleShowSummary = () => {
     if (!allVerified) {
@@ -246,16 +246,22 @@ const StockVerificationDialog: React.FC<StockVerificationDialogProps> = ({
               <Loader2 className="w-6 h-6 animate-spin text-primary" />
             </div>
           ) : items.length === 0 ? (
-            <div className="text-center py-10 text-muted-foreground">
-              لا توجد منتجات في رصيد العامل
+            <div className="text-center py-10 text-muted-foreground space-y-3">
+              <Package className="w-8 h-8 mx-auto opacity-40" />
+              <p>لا توجد منتجات في رصيد العامل</p>
+              <p className="text-xs">يمكنك تأكيد المراجعة مباشرة</p>
             </div>
           ) : (
             <div className="space-y-3 p-1">
-              {items.map(item => (
-                <Card key={item.product_id} className={`border ${
-                  item.status === 'match' ? 'border-green-300 bg-green-50/50 dark:bg-green-900/10' :
-                  item.status === 'deficit' ? 'border-destructive/40 bg-destructive/5' :
-                  item.status === 'surplus' ? 'border-orange-300 bg-orange-50/50 dark:bg-orange-900/10' :
+              {[...items].sort((a, b) => {
+                const aVerified = a.status !== 'unverified' ? 1 : 0;
+                const bVerified = b.status !== 'unverified' ? 1 : 0;
+                return aVerified - bVerified;
+              }).map(item => (
+                <Card key={item.product_id} className={`border transition-all duration-300 ${
+                  item.status === 'match' ? 'border-green-400 bg-green-50/50 dark:bg-green-900/10' :
+                  item.status === 'deficit' ? 'border-green-400 bg-destructive/5' :
+                  item.status === 'surplus' ? 'border-green-400 bg-orange-50/50 dark:bg-orange-900/10' :
                   ''
                 }`}>
                   <CardContent className="p-3 space-y-2">
@@ -307,7 +313,7 @@ const StockVerificationDialog: React.FC<StockVerificationDialogProps> = ({
           </Button>
           <Button
             onClick={handleShowSummary}
-            disabled={isSubmitting || items.length === 0}
+            disabled={isSubmitting}
           >
             {isSubmitting && <Loader2 className="w-4 h-4 animate-spin me-2" />}
             <CheckCircle className="w-4 h-4 me-1" />

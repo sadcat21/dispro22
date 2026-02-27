@@ -136,6 +136,12 @@ const LoadStock: React.FC = () => {
     deleteSessionItem, sessionItemsQuery, refetch: refetchSessions,
   } = useLoadingSessions(selectedWorker || null);
 
+  // Check if worker has a review session today (mandatory before load/unload)
+  const todayStr = format(new Date(), 'yyyy-MM-dd');
+  const hasReviewToday = useMemo(() => {
+    return sessions.some(s => s.status === 'review' && s.created_at.startsWith(todayStr));
+  }, [sessions, todayStr]);
+
 
   // Product offers cache (with all tiers for dynamic calc)
   const [productOffers, setProductOffers] = useState<Record<string, { offerName: string; giftQty: number; giftUnit: string; minQty: number; minUnit: string; tiers: { minQty: number; maxQty: number | null; giftQty: number; giftUnit: string }[] }>>({});
@@ -346,6 +352,11 @@ const LoadStock: React.FC = () => {
   // Start new session
   const handleStartSession = async () => {
     if (!selectedWorker) { toast.error(t('stock.select_worker')); return; }
+    if (!hasReviewToday) {
+      toast.error('يجب إجراء جلسة مراجعة أولاً قبل بدء الشحن');
+      setShowVerificationDialog(true);
+      return;
+    }
     try {
       const result = await createSession.mutateAsync({ workerId: selectedWorker });
       setActiveSessionId(result.id);
@@ -611,6 +622,11 @@ const LoadStock: React.FC = () => {
   // Empty truck handler
   const handleEmptyTruckPreview = async () => {
     if (!selectedWorker || !branchId || !currentWorkerId) return;
+    if (!hasReviewToday) {
+      toast.error('يجب إجراء جلسة مراجعة أولاً قبل التفريغ');
+      setShowVerificationDialog(true);
+      return;
+    }
     const { data: workerStock } = await supabase
       .from('worker_stock')
       .select('id, product_id, quantity, product:products(name)')
@@ -947,9 +963,27 @@ const LoadStock: React.FC = () => {
       {/* Fixed Bottom Buttons */}
       {selectedWorker && (
         <div className="p-4 pt-2 border-t bg-background space-y-2">
-          {!activeSessionId ? (
+           {!activeSessionId ? (
             <>
-              <Button onClick={handleStartSession} className="w-full" disabled={createSession.isPending}>
+              {!hasReviewToday && (
+                <div className="flex items-center gap-2 p-2 rounded-md bg-orange-50 dark:bg-orange-900/10 border border-orange-300 text-orange-700 dark:text-orange-400 text-xs">
+                  <AlertTriangle className="w-4 h-4 shrink-0" />
+                  <span>يجب إجراء جلسة مراجعة قبل الشحن أو التفريغ</span>
+                </div>
+              )}
+              <Button
+                variant="outline"
+                className={hasReviewToday 
+                  ? "w-full border-green-400 text-green-700 bg-green-50/50 dark:bg-green-900/10 hover:bg-green-100 dark:hover:bg-green-900/20"
+                  : "w-full border-blue-400 text-blue-700 bg-blue-50/50 dark:bg-blue-900/10 hover:bg-blue-100 dark:hover:bg-blue-900/20"
+                }
+                onClick={() => setShowVerificationDialog(true)}
+                disabled={isEmptying}
+              >
+                {hasReviewToday ? <CheckCircle className="w-4 h-4 me-1" /> : <Search className="w-4 h-4 me-1" />}
+                {hasReviewToday ? 'تمت المراجعة ✓ (إعادة المراجعة)' : 'بدء جلسة مراجعة (إلزامي)'}
+              </Button>
+              <Button onClick={handleStartSession} className="w-full" disabled={createSession.isPending || !hasReviewToday}>
                 {createSession.isPending && <Loader2 className="w-4 h-4 animate-spin me-2" />}
                 <Plus className="w-4 h-4 me-1" />
                 بدء جلسة شحن جديدة
@@ -969,18 +1003,9 @@ const LoadStock: React.FC = () => {
                 </Button>
                 <Button
                   variant="outline"
-                  className="border-orange-300 text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/10"
-                  onClick={() => setShowVerificationDialog(true)}
-                  disabled={isEmptying}
-                >
-                  <Search className="w-4 h-4 me-1" />
-                  بدء جلسة مراجعة
-                </Button>
-                <Button
-                  variant="outline"
                   className="text-destructive border-destructive/30 hover:bg-destructive/5"
                   onClick={handleEmptyTruckPreview}
-                  disabled={isEmptying}
+                  disabled={isEmptying || !hasReviewToday}
                 >
                   {isEmptying ? <Loader2 className="w-4 h-4 animate-spin me-2" /> : <PackageX className="w-4 h-4 me-1" />}
                   {t('stock.empty_truck')}
