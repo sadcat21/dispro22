@@ -3210,6 +3210,69 @@ export type Database = {
           },
         ]
       }
+      stock_discrepancies: {
+        Row: {
+          accounting_session_id: string | null
+          branch_id: string | null
+          created_at: string
+          discrepancy_type: string
+          id: string
+          notes: string | null
+          price_per_unit: number | null
+          pricing_method: string | null
+          product_id: string
+          quantity: number
+          remaining_quantity: number
+          resolved_at: string | null
+          resolved_by: string | null
+          source_session_id: string | null
+          status: string
+          total_value: number | null
+          updated_at: string
+          worker_id: string
+        }
+        Insert: {
+          accounting_session_id?: string | null
+          branch_id?: string | null
+          created_at?: string
+          discrepancy_type: string
+          id?: string
+          notes?: string | null
+          price_per_unit?: number | null
+          pricing_method?: string | null
+          product_id: string
+          quantity?: number
+          remaining_quantity?: number
+          resolved_at?: string | null
+          resolved_by?: string | null
+          source_session_id?: string | null
+          status?: string
+          total_value?: number | null
+          updated_at?: string
+          worker_id: string
+        }
+        Update: {
+          accounting_session_id?: string | null
+          branch_id?: string | null
+          created_at?: string
+          discrepancy_type?: string
+          id?: string
+          notes?: string | null
+          price_per_unit?: number | null
+          pricing_method?: string | null
+          product_id?: string
+          quantity?: number
+          remaining_quantity?: number
+          resolved_at?: string | null
+          resolved_by?: string | null
+          source_session_id?: string | null
+          status?: string
+          total_value?: number | null
+          updated_at?: string
+          worker_id?: string
+        }
+        Relationships: []
+      }
       stock_movements: {
         Row: {
           approved_at: string | null
