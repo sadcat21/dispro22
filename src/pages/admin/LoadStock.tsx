@@ -68,8 +68,8 @@ const LoadStock: React.FC = () => {
     deleteSessionItem, sessionItemsQuery, refetch: refetchSessions,
   } = useLoadingSessions(selectedWorker || null);
 
-  // Product offers cache
-  const [productOffers, setProductOffers] = useState<Record<string, { offerName: string; giftQty: number; giftUnit: string; minQty: number; minUnit: string }>>({});
+  // Product offers cache (with all tiers for dynamic calc)
+  const [productOffers, setProductOffers] = useState<Record<string, { offerName: string; giftQty: number; giftUnit: string; minQty: number; minUnit: string; tiers: { minQty: number; maxQty: number | null; giftQty: number; giftUnit: string }[] }>>({});
 
   // Product group map
   const [productGroupMap, setProductGroupMap] = useState<Record<string, string>>({});
@@ -143,23 +143,50 @@ const LoadStock: React.FC = () => {
     if (!offers || offers.length === 0) return null;
     const { data: tiers } = await supabase
       .from('product_offer_tiers')
-      .select('min_quantity, min_quantity_unit, gift_quantity, gift_quantity_unit, gift_type')
+      .select('min_quantity, max_quantity, min_quantity_unit, gift_quantity, gift_quantity_unit, gift_type')
       .eq('offer_id', offers[0].id)
       .eq('gift_type', 'same_product')
-      .order('tier_order', { ascending: true })
-      .limit(1);
+      .order('tier_order', { ascending: true });
     if (!tiers || tiers.length === 0) return null;
-    const tier = tiers[0];
+    const firstTier = tiers[0];
     const offer = {
       offerName: offers[0].name,
-      giftQty: tier.gift_quantity,
-      giftUnit: tier.gift_quantity_unit || 'piece',
-      minQty: tier.min_quantity,
-      minUnit: tier.min_quantity_unit || 'piece',
+      giftQty: firstTier.gift_quantity,
+      giftUnit: firstTier.gift_quantity_unit || 'piece',
+      minQty: firstTier.min_quantity,
+      minUnit: firstTier.min_quantity_unit || 'piece',
+      tiers: tiers.map(t => ({
+        minQty: t.min_quantity,
+        maxQty: t.max_quantity,
+        giftQty: t.gift_quantity,
+        giftUnit: t.gift_quantity_unit || 'piece',
+      })),
     };
     setProductOffers(prev => ({ ...prev, [productId]: offer }));
     return offer;
   };
+
+  // Auto-calculate gift quantity when product qty changes
+  useEffect(() => {
+    if (!addProductId || addProductQty <= 0) return;
+    const offer = productOffers[addProductId];
+    if (!offer) { setAddProductGiftQty(0); return; }
+
+    // Find the matching tier for the entered quantity
+    let totalGifts = 0;
+    const qty = addProductQty;
+
+    // Check tiers from highest to lowest
+    const sortedTiers = [...offer.tiers].sort((a, b) => b.minQty - a.minQty);
+    for (const tier of sortedTiers) {
+      if (qty >= tier.minQty) {
+        totalGifts = Math.floor(qty / tier.minQty) * tier.giftQty;
+        setAddProductGiftUnit(tier.giftUnit);
+        break;
+      }
+    }
+    setAddProductGiftQty(totalGifts);
+  }, [addProductQty, addProductId, productOffers]);
 
   // Start new session
   const handleStartSession = async () => {
@@ -193,15 +220,8 @@ const LoadStock: React.FC = () => {
       setAddProductQty(1);
     }
 
-    // Check for offers
-    const offer = await fetchProductOffer(productId);
-    if (offer) {
-      const suggestedGifts = Math.floor((suggestion?.suggested_load || 1) / offer.minQty) * offer.giftQty;
-      setAddProductGiftQty(suggestedGifts);
-      setAddProductGiftUnit(offer.giftUnit);
-    } else {
-      setAddProductGiftQty(0);
-    }
+    // Fetch offer data (gift calc is handled by useEffect)
+    await fetchProductOffer(productId);
 
     setShowAddProductDialog(true);
   };
@@ -211,7 +231,6 @@ const LoadStock: React.FC = () => {
     if (!activeSessionId || !addProductId || addProductQty <= 0) return;
     setIsSaving(true);
     try {
-      // Load to worker stock
       const product = products.find(p => p.id === addProductId);
       let totalLoadQty = addProductQty;
 
@@ -222,11 +241,51 @@ const LoadStock: React.FC = () => {
         totalLoadQty += giftBoxes;
       }
 
-      await loadToWorker(selectedWorker, [{
+      // Direct stock operations without full reload
+      const warehouseItem = warehouseStock.find(s => s.product_id === addProductId);
+      if (!warehouseItem || warehouseItem.quantity < totalLoadQty) {
+        throw new Error(`الكمية المتاحة من ${product?.name || ''} غير كافية`);
+      }
+
+      // Deduct from warehouse
+      await supabase
+        .from('warehouse_stock')
+        .update({ quantity: warehouseItem.quantity - totalLoadQty })
+        .eq('id', warehouseItem.id);
+
+      // Add to worker stock
+      const { data: existingWS } = await supabase
+        .from('worker_stock')
+        .select('id, quantity')
+        .eq('worker_id', selectedWorker)
+        .eq('product_id', addProductId)
+        .maybeSingle();
+
+      if (existingWS) {
+        await supabase
+          .from('worker_stock')
+          .update({ quantity: existingWS.quantity + totalLoadQty })
+          .eq('id', existingWS.id);
+      } else {
+        await supabase.from('worker_stock').insert({
+          worker_id: selectedWorker,
+          product_id: addProductId,
+          branch_id: branchId,
+          quantity: totalLoadQty,
+        });
+      }
+
+      // Movement record
+      await supabase.from('stock_movements').insert({
         product_id: addProductId,
+        branch_id: branchId,
         quantity: totalLoadQty,
+        movement_type: 'load',
+        status: 'approved',
+        created_by: currentWorkerId,
+        worker_id: selectedWorker,
         notes: `شحن من جلسة - ${product?.name || ''}`,
-      }]);
+      });
 
       // Save to session
       await addSessionItem.mutateAsync({
@@ -238,13 +297,14 @@ const LoadStock: React.FC = () => {
         notes: product?.name || '',
       });
 
-      // Refresh items
+      // Refresh session items only
       const { data } = await sessionItemsQuery(activeSessionId);
       setSessionItems(data || []);
 
-      await refresh();
+      // Targeted invalidation - realtime handles warehouse/worker stock
       queryClient.invalidateQueries({ queryKey: ['worker-load-suggestions'] });
       queryClient.invalidateQueries({ queryKey: ['my-worker-stock'] });
+      queryClient.invalidateQueries({ queryKey: ['worker-truck-stock'] });
 
       toast.success(`تم شحن ${product?.name || ''} بنجاح`);
       setShowAddProductDialog(false);
@@ -603,16 +663,21 @@ const LoadStock: React.FC = () => {
             const available = getAvailableQuantity(addProductId);
             const suggestion = suggestions.find(s => s.product_id === addProductId);
             const offer = productOffers[addProductId];
+            // Calculate loaded this session for this product
+            const loadedThisSession = sessionItems
+              .filter((si: any) => si.product_id === addProductId)
+              .reduce((sum: number, si: any) => sum + (si.quantity || 0), 0);
+            const previousStock = (suggestion?.current_stock || 0) - loadedThisSession;
             return (
               <div className="space-y-4">
                 <div className="bg-muted/50 rounded-lg p-3">
-                  <div className="font-semibold text-sm">{product?.name}</div>
-                  <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-                    <span>{t('stock.available')}: <strong>{available}</strong></span>
-                    {suggestion && (
+                  <div className="font-semibold text-sm text-center">{product?.name}</div>
+                  <div className="flex items-center justify-center gap-3 mt-1 text-xs text-muted-foreground flex-wrap">
+                    <span>المتاح: <strong>{available}</strong></span>
+                    <span>|</span>
+                    <span>في الشاحنة: <strong>{suggestion?.current_stock || previousStock}</strong></span>
+                    {suggestion && suggestion.suggested_load > 0 && (
                       <>
-                        <span>|</span>
-                        <span>{t('stock.in_truck')}: <strong>{suggestion.current_stock}</strong></span>
                         <span>|</span>
                         <span>يحتاج: <strong className="text-destructive">{suggestion.suggested_load}</strong></span>
                       </>
@@ -636,7 +701,7 @@ const LoadStock: React.FC = () => {
 
                 {offer && (
                   <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-xs bg-destructive/5 border border-destructive/20 rounded-md p-2">
+                    <div className="flex items-center justify-center gap-2 text-xs bg-destructive/5 border border-destructive/20 rounded-md p-2">
                       <Gift className="w-3.5 h-3.5 text-destructive shrink-0" />
                       <span>عرض: <strong>{offer.giftQty} {offer.giftUnit === 'piece' ? 'قطعة' : 'صندوق'}</strong> لكل <strong>{offer.minQty}</strong></span>
                     </div>
@@ -657,12 +722,14 @@ const LoadStock: React.FC = () => {
               </div>
             );
           })()}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowAddProductDialog(false)}>{t('common.cancel')}</Button>
-            <Button onClick={handleAddProductToSession} disabled={isSaving || addProductQty <= 0}>
+          <DialogFooter className="flex flex-col gap-2 sm:flex-col">
+            <Button onClick={handleAddProductToSession} disabled={isSaving || addProductQty <= 0} className="w-full">
               {isSaving && <Loader2 className="w-4 h-4 animate-spin me-2" />}
               <Plus className="w-4 h-4 me-1" />
               إضافة للشاحنة
+            </Button>
+            <Button variant="outline" onClick={() => setShowAddProductDialog(false)} className="w-full">
+              إلغاء
             </Button>
           </DialogFooter>
         </DialogContent>
