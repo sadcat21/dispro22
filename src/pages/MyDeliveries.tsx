@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -603,7 +603,13 @@ const MyDeliveries: React.FC = () => {
             
             {/* Location map + address at the bottom */}
             {selectedOrder?.customer?.latitude && selectedOrder?.customer?.longitude && (
-              <Collapsible>
+              <Collapsible onOpenChange={(open) => {
+                if (open) {
+                  setTimeout(() => {
+                    document.getElementById('order-map-section')?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+                  }, 150);
+                }
+              }}>
                 <CollapsibleTrigger asChild>
                   <Button type="button" variant="outline" className="w-full justify-between border-primary/30 hover:bg-primary/5">
                     <span className="flex items-center gap-2">
@@ -613,7 +619,7 @@ const MyDeliveries: React.FC = () => {
                     <ChevronDown className="w-4 h-4" />
                   </Button>
                 </CollapsibleTrigger>
-                <CollapsibleContent className="pt-3 space-y-2">
+                <CollapsibleContent className="pt-3 space-y-2" id="order-map-section">
                   {selectedOrder.customer.address && (
                     <p className="flex items-start gap-2 text-xs text-muted-foreground">
                       <MapPin className="w-3.5 h-3.5 shrink-0 mt-0.5" />
@@ -642,7 +648,14 @@ const MyDeliveries: React.FC = () => {
                     size="sm"
                     className="flex-1"
                     disabled={updateStatus.isPending || selectedOrder.status === status}
-                    onClick={() => handleUpdateStatus(selectedOrder.id, status as OrderStatus)}
+                    onClick={() => {
+                      if (status === 'delivered') {
+                        setSelectedOrderId(null);
+                        handleDeliverClick(selectedOrder);
+                      } else {
+                        handleUpdateStatus(selectedOrder.id, status as OrderStatus);
+                      }
+                    }}
                   >
                     {t(`orders.${status}`)}
                   </Button>
