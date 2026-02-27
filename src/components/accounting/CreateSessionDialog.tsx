@@ -18,6 +18,8 @@ import { format } from 'date-fns';
 import ProductStockSummary from './ProductStockSummary';
 import SalesDetailsSummary from './SalesDetailsSummary';
 import PromoTrackingSummary from './PromoTrackingSummary';
+import StockDiscrepancySection from './StockDiscrepancySection';
+import { usePendingDiscrepancies } from '@/hooks/useStockDiscrepancies';
 
 interface CreateSessionDialogProps {
   open: boolean;
@@ -124,6 +126,7 @@ const CreateSessionDialog: React.FC<CreateSessionDialogProps> = ({ open, onOpenC
     : null;
 
   const { data: calc, isLoading: calcLoading } = useSessionCalculations(calcParams, { refetchInterval: autoRefresh ? 600000 : false });
+  const { data: pendingDiscrepancies = [] } = usePendingDiscrepancies(selectedWorkerId || null);
 
   useEffect(() => {
     if (calc && !isEditMode) {
@@ -495,6 +498,16 @@ const CreateSessionDialog: React.FC<CreateSessionDialogProps> = ({ open, onOpenC
                       items={calc.promoTracking}
                       totalGiftValue={calc.giftOfferValue}
                     />
+                  </div>
+                )}
+                {/* Stock Discrepancies */}
+                {pendingDiscrepancies.length > 0 && (
+                  <div className="border-2 border-destructive/20 rounded-xl p-3.5">
+                    <SectionDividerWithIcon
+                      icon={<AlertTriangle className="w-4 h-4 text-destructive" />}
+                      label="فوارق المخزون (فائض / عجز)"
+                    />
+                    <StockDiscrepancySection discrepancies={pendingDiscrepancies} />
                   </div>
                 )}
               </>

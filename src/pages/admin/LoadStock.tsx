@@ -25,6 +25,7 @@ import { useLoadingSessions } from '@/hooks/useLoadingSessions';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQueryClient } from '@tanstack/react-query';
+import { useCreateDiscrepancy } from '@/hooks/useStockDiscrepancies';
 
 interface EmptyTruckItem {
   id: string;
@@ -37,6 +38,8 @@ interface EmptyTruckItem {
   keepAllocations: { reason: string; quantity: number }[];
   allocationMode: boolean;
   surplusQty: number;
+  actualQty: number; // actual physical count
+  verificationStatus: 'equivalent' | 'surplus' | 'deficit' | 'unverified';
 }
 
 const KEEP_REASONS = ['cash_sale', 'offer_gifts', 'reserve', 'other'] as const;
@@ -125,6 +128,7 @@ const LoadStock: React.FC = () => {
 
   const { data: stockAlerts = [] } = useStockAlerts();
   const { data: suggestions = [], isLoading: suggestionsLoading } = useWorkerLoadSuggestions(selectedWorker || null);
+  const createDiscrepancy = useCreateDiscrepancy();
   const {
     sessions, createSession, addSessionItem, completeSession, deleteSession,
     deleteSessionItem, sessionItemsQuery, refetch: refetchSessions,
@@ -634,6 +638,8 @@ const LoadStock: React.FC = () => {
           piecesPerBox,
           keepAllocations: [] as { reason: string; quantity: number }[], allocationMode: false,
           surplusQty: 0,
+          actualQty: ws.quantity, // default: system balance
+          verificationStatus: 'unverified' as const,
         };
       });
     if (itemsToReturn.length === 0) { toast.error(t('stock.empty_truck_nothing')); return; }
@@ -646,9 +652,9 @@ const LoadStock: React.FC = () => {
     setIsEmptying(true);
     setShowEmptyDialog(false);
     try {
-      // Calculate surplus for each item
-      const hasSurplus = emptyTruckItems.some(item => item.surplusQty > 0);
-      const surplusNotes = hasSurplus ? ' (مع فائض)' : '';
+      const hasSurplus = emptyTruckItems.some(item => item.verificationStatus === 'surplus');
+      const hasDeficitItems = emptyTruckItems.some(item => item.verificationStatus === 'deficit');
+      const discrepancyNotes = hasSurplus ? ' (مع فائض)' : hasDeficitItems ? ' (مع عجز)' : '';
 
       // Create an unloading session record
       const { data: unloadSession, error: sessionError } = await supabase
@@ -658,7 +664,7 @@ const LoadStock: React.FC = () => {
           manager_id: currentWorkerId!,
           branch_id: branchId,
           status: 'unloaded',
-          notes: `تفريغ الشاحنة${surplusNotes}`,
+          notes: `تفريغ الشاحنة${discrepancyNotes}`,
           completed_at: new Date().toISOString(),
         })
         .select()
@@ -667,39 +673,68 @@ const LoadStock: React.FC = () => {
       if (sessionError) throw sessionError;
 
       for (const item of emptyTruckItems) {
-        const totalReturn = item.returnQty + item.surplusQty;
-        if (totalReturn <= 0) continue;
+        const actualReturn = item.actualQty;
+        if (actualReturn <= 0 && item.verificationStatus !== 'deficit') continue;
 
-        // Save unloading session item with surplus info and previous balance
+        const ppb = item.piecesPerBox;
+        const surplusQty = item.verificationStatus === 'surplus' ? item.surplusQty : 0;
+        const deficitQty = item.verificationStatus === 'deficit' 
+          ? subtractCustomQty(item.quantity, item.actualQty, ppb) 
+          : 0;
+
+        // Save unloading session item
         await supabase.from('loading_session_items').insert({
           session_id: unloadSession.id,
           product_id: item.product_id,
-          quantity: item.returnQty,
+          quantity: Math.min(actualReturn, item.quantity), // returnQty capped at system balance
           gift_quantity: 0,
-          surplus_quantity: item.surplusQty,
+          surplus_quantity: surplusQty,
           previous_quantity: item.quantity,
-          notes: item.surplusQty > 0 ? `فائض: ${fmtQty(item.surplusQty)}` : null,
+          notes: surplusQty > 0 ? `فائض: ${fmtQty(surplusQty)}` : deficitQty > 0 ? `عجز: ${fmtQty(deficitQty)}` : null,
         });
 
-        const ppb = item.piecesPerBox;
-        // Deduct returnQty from worker (can't go below 0)
-        const remainingQty = subtractCustomQty(item.quantity, item.returnQty, ppb);
-        await supabase.from('worker_stock').update({ quantity: Math.max(0, remainingQty) }).eq('id', item.id);
+        // Record discrepancies
+        if (item.verificationStatus === 'surplus' && surplusQty > 0) {
+          await createDiscrepancy.mutateAsync({
+            worker_id: selectedWorker!,
+            product_id: item.product_id,
+            branch_id: branchId,
+            discrepancy_type: 'surplus',
+            quantity: surplusQty,
+            source_session_id: unloadSession.id,
+            notes: `فائض أثناء التفريغ - ${item.product_name}`,
+          });
+        }
+        if (item.verificationStatus === 'deficit' && deficitQty > 0) {
+          await createDiscrepancy.mutateAsync({
+            worker_id: selectedWorker!,
+            product_id: item.product_id,
+            branch_id: branchId,
+            discrepancy_type: 'deficit',
+            quantity: deficitQty,
+            source_session_id: unloadSession.id,
+            notes: `عجز أثناء التفريغ - ${item.product_name}`,
+          });
+        }
+
+        // Deduct from worker stock (set to 0 since everything is returned/accounted for)
+        await supabase.from('worker_stock').update({ quantity: 0 }).eq('id', item.id);
         
-        // Add totalReturn (regular + surplus) to warehouse
+        // Add actual return to warehouse (including surplus)
+        const totalToWarehouse = actualReturn;
         const existingWarehouse = warehouseStock.find(s => s.product_id === item.product_id);
         if (existingWarehouse) {
-          const newWhQty = addCustomQty(existingWarehouse.quantity, totalReturn, ppb);
+          const newWhQty = addCustomQty(existingWarehouse.quantity, totalToWarehouse, ppb);
           await supabase.from('warehouse_stock').update({ quantity: newWhQty }).eq('id', existingWarehouse.id);
-        } else {
-          await supabase.from('warehouse_stock').insert({ branch_id: branchId, product_id: item.product_id, quantity: totalReturn });
+        } else if (totalToWarehouse > 0) {
+          await supabase.from('warehouse_stock').insert({ branch_id: branchId, product_id: item.product_id, quantity: totalToWarehouse });
         }
         
-        const surplusNote = item.surplusQty > 0 ? ` | فائض: ${fmtQty(item.surplusQty)}` : '';
+        const statusNote = item.verificationStatus === 'surplus' ? ` | فائض: ${fmtQty(surplusQty)}` : item.verificationStatus === 'deficit' ? ` | عجز: ${fmtQty(deficitQty)}` : '';
         await supabase.from('stock_movements').insert({
-          product_id: item.product_id, branch_id: branchId, quantity: totalReturn,
+          product_id: item.product_id, branch_id: branchId, quantity: totalToWarehouse,
           movement_type: 'return', status: 'approved', created_by: currentWorkerId,
-          worker_id: selectedWorker, notes: `تفريغ الشاحنة - إرجاع ${fmtQty(item.returnQty)} من ${item.product_name}${surplusNote}`,
+          worker_id: selectedWorker, notes: `تفريغ الشاحنة - ${item.product_name}${statusNote}`,
         });
       }
       setSessionItems([]);
@@ -710,6 +745,8 @@ const LoadStock: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['worker-truck-stock'] });
       queryClient.invalidateQueries({ queryKey: ['worker-load-suggestions', selectedWorker] });
       queryClient.invalidateQueries({ queryKey: ['loading-sessions'] });
+      queryClient.invalidateQueries({ queryKey: ['stock-discrepancies'] });
+      queryClient.invalidateQueries({ queryKey: ['stock-discrepancies-pending'] });
       toast.success(t('stock.empty_truck_success'));
     } catch (error: any) { toast.error(error.message); }
     finally { setIsEmptying(false); }
@@ -1346,61 +1383,88 @@ const LoadStock: React.FC = () => {
                     <div className="flex items-center justify-between">
                       <span className="font-semibold text-sm">{item.product_name}</span>
                       <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <span>{t('stock.in_truck')}: <strong>{fmtQty(item.quantity)}</strong></span>
-                        <span>{t('stock.orders_need')}: <strong>{item.pendingNeeded}</strong></span>
+                        <span>رصيد النظام: <strong>{fmtQty(item.quantity)}</strong></span>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <div className="flex-1">
-                        <Label className="text-xs">{t('stock.return_qty')}</Label>
+                    
+                    {/* Stock Verification */}
+                    <div className="space-y-2 bg-muted/30 rounded-lg p-2.5">
+                      <div className="flex items-center gap-2">
+                        <Label className="text-xs font-semibold">الرصيد الفعلي:</Label>
                         <Input
-                          type="number" min={0} max={item.quantity}
-                          value={item.returnQty}
+                          type="number" min={0} step="any"
+                          value={item.actualQty}
                           onFocus={e => e.target.select()}
                           onChange={e => {
-                            const val = Math.min(parseFloat(e.target.value) || 0, item.quantity);
-                            setEmptyTruckItems(prev => prev.map((it, i) => i === idx ? { ...it, returnQty: val } : it));
+                            const val = parseFloat(e.target.value) || 0;
+                            const systemQty = item.quantity;
+                            const ppb = item.piecesPerBox;
+                            const actualPieces = customToTotalPieces(val, ppb);
+                            const systemPieces = customToTotalPieces(systemQty, ppb);
+                            let status: EmptyTruckItem['verificationStatus'] = 'equivalent';
+                            let surplusVal = 0;
+                            if (actualPieces > systemPieces) {
+                              status = 'surplus';
+                              surplusVal = totalPiecesToCustom(actualPieces - systemPieces, ppb);
+                            } else if (actualPieces < systemPieces) {
+                              status = 'deficit';
+                            }
+                            setEmptyTruckItems(prev => prev.map((it, i2) => 
+                              it.product_id === item.product_id 
+                                ? { ...it, actualQty: val, verificationStatus: status, surplusQty: surplusVal, returnQty: val }
+                                : it
+                            ));
                           }}
-                          className="text-center h-8"
+                          className="text-center h-8 flex-1"
                         />
                       </div>
-                      <div className="flex-1">
-                        <Label className="text-xs text-amber-600">فائض (كمية زائدة)</Label>
-                        <Input
-                          type="number" min={0}
-                          value={item.surplusQty}
-                          onFocus={e => e.target.select()}
-                          onChange={e => {
-                            const val = Math.max(0, parseFloat(e.target.value) || 0);
-                            setEmptyTruckItems(prev => prev.map((it, i) => i === idx ? { ...it, surplusQty: val } : it));
-                          }}
-                          className="text-center h-8 border-amber-300 focus:border-amber-500"
-                        />
-                      </div>
+                      
+                      {/* Verification status badge */}
+                      {item.verificationStatus === 'equivalent' && item.actualQty === item.quantity && (
+                        <div className="flex items-center gap-1 text-xs text-green-600 bg-green-50 dark:bg-green-900/20 rounded px-2 py-1">
+                          <CheckCircle className="w-3 h-3" />
+                          <span>مطابق ✓</span>
+                        </div>
+                      )}
+                      {item.verificationStatus === 'surplus' && (
+                        <div className="flex items-center gap-1 text-xs text-amber-600 bg-amber-50 dark:bg-amber-900/20 rounded px-2 py-1">
+                          <AlertTriangle className="w-3 h-3" />
+                          <span>فائض: {fmtQty(item.surplusQty)} — سيتم تسجيله كفائض</span>
+                        </div>
+                      )}
+                      {item.verificationStatus === 'deficit' && (
+                        <div className="flex items-center gap-1 text-xs text-destructive bg-destructive/5 rounded px-2 py-1">
+                          <AlertTriangle className="w-3 h-3" />
+                          <span>عجز: {fmtQty(subtractCustomQty(item.quantity, item.actualQty, item.piecesPerBox))} — سيتم تسجيله كعجز</span>
+                        </div>
+                      )}
                     </div>
-                    {item.surplusQty > 0 && (
-                      <div className="flex items-center gap-1 text-xs text-amber-600 bg-amber-50 dark:bg-amber-950/30 rounded px-2 py-1">
-                        <AlertTriangle className="w-3 h-3" />
-                        <span>سيتم تسجيل {fmtQty(item.surplusQty)} كفائض وإعادتها للمخزن</span>
-                      </div>
-                    )}
                   </CardContent>
                 </Card>
               );
             })}
           </div>
-          <div className="flex items-center justify-between text-sm bg-muted/50 rounded-md p-2">
-            <span className="font-medium">{t('stock.total_return')}</span>
-            <div className="flex items-center gap-2">
-              <Badge variant="destructive">{fmtQty(emptyTruckItems.reduce((s, it) => s + it.returnQty, 0))} {t('stock.boxes')}</Badge>
-              {emptyTruckItems.some(it => it.surplusQty > 0) && (
-                <Badge className="bg-amber-500 text-white">فائض: {fmtQty(emptyTruckItems.reduce((s, it) => s + it.surplusQty, 0))}</Badge>
-              )}
+          <div className="flex flex-col gap-1.5 text-sm bg-muted/50 rounded-md p-2">
+            <div className="flex items-center justify-between">
+              <span className="font-medium">إجمالي الإرجاع</span>
+              <Badge variant="secondary">{fmtQty(emptyTruckItems.reduce((s, it) => s + it.actualQty, 0))} صندوق</Badge>
             </div>
+            {emptyTruckItems.some(it => it.verificationStatus === 'surplus') && (
+              <div className="flex items-center justify-between text-xs text-amber-600">
+                <span>فائض</span>
+                <span className="font-bold">{fmtQty(emptyTruckItems.filter(it => it.verificationStatus === 'surplus').reduce((s, it) => s + it.surplusQty, 0))}</span>
+              </div>
+            )}
+            {emptyTruckItems.some(it => it.verificationStatus === 'deficit') && (
+              <div className="flex items-center justify-between text-xs text-destructive">
+                <span>عجز</span>
+                <span className="font-bold">{fmtQty(emptyTruckItems.filter(it => it.verificationStatus === 'deficit').reduce((s, it) => subtractCustomQty(it.quantity, it.actualQty, it.piecesPerBox) + s, 0))}</span>
+              </div>
+            )}
           </div>
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setShowEmptyDialog(false)}>{t('common.cancel')}</Button>
-            <Button variant="destructive" onClick={handleEmptyTruckConfirm} disabled={isEmptying || emptyTruckItems.every(it => it.returnQty === 0)}>
+            <Button variant="destructive" onClick={handleEmptyTruckConfirm} disabled={isEmptying || emptyTruckItems.every(it => it.actualQty === 0)}>
               {isEmptying && <Loader2 className="w-4 h-4 animate-spin me-2" />}
               {t('stock.confirm_return')}
             </Button>
