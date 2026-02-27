@@ -622,6 +622,11 @@ const LoadStock: React.FC = () => {
   // Empty truck handler
   const handleEmptyTruckPreview = async () => {
     if (!selectedWorker || !branchId || !currentWorkerId) return;
+    if (!hasReviewToday) {
+      toast.error('يجب إجراء جلسة مراجعة أولاً قبل التفريغ');
+      setShowVerificationDialog(true);
+      return;
+    }
     const { data: workerStock } = await supabase
       .from('worker_stock')
       .select('id, product_id, quantity, product:products(name)')
