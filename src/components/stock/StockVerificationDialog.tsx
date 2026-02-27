@@ -246,8 +246,10 @@ const StockVerificationDialog: React.FC<StockVerificationDialogProps> = ({
               <Loader2 className="w-6 h-6 animate-spin text-primary" />
             </div>
           ) : items.length === 0 ? (
-            <div className="text-center py-10 text-muted-foreground">
-              لا توجد منتجات في رصيد العامل
+            <div className="text-center py-10 text-muted-foreground space-y-3">
+              <Package className="w-8 h-8 mx-auto opacity-40" />
+              <p>لا توجد منتجات في رصيد العامل</p>
+              <p className="text-xs">يمكنك تأكيد المراجعة مباشرة</p>
             </div>
           ) : (
             <div className="space-y-3 p-1">
