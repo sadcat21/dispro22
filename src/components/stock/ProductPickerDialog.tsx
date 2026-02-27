@@ -64,6 +64,12 @@ const ProductPickerDialog: React.FC<ProductPickerDialogProps> = ({
     ? groups.find(g => g.name === activeGroup)?.products || []
     : filtered;
 
+  /** Format quantity for display */
+  const fmtQty = (n: number): string => {
+    const rounded = Math.round(n * 1000000) / 1000000;
+    return Number.isInteger(rounded) ? rounded.toString() : rounded.toFixed(6).replace(/0+$/, '').replace(/\.$/, '');
+  };
+
   const renderProductButton = (p: ProductOption) => {
     const isSelected = selectedProductIds.includes(p.id);
     const isOutOfStock = p.warehouseQty === 0;
@@ -89,7 +95,7 @@ const ProductPickerDialog: React.FC<ProductPickerDialogProps> = ({
         </div>
         <span className={`font-medium text-xs leading-tight truncate w-full ${isOutOfStock && !isSelected ? 'text-destructive' : ''}`}>{p.name}</span>
         <Badge variant={isOutOfStock ? 'destructive' : isSelected ? 'outline' : 'secondary'} className="text-[10px] px-1.5 py-0">
-          {isSelected ? '✓' : p.warehouseQty}
+          {isSelected ? '✓' : fmtQty(p.warehouseQty)}
         </Badge>
       </button>
     );
