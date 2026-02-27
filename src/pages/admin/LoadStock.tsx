@@ -236,6 +236,25 @@ const LoadStock: React.FC = () => {
     setAddProductGiftQty(totalGifts);
   }, [addProductQty, addProductId, productOffers]);
 
+  // Auto-calculate gift quantity when edit qty changes
+  useEffect(() => {
+    if (!editingItem || editQty <= 0) return;
+    const offer = productOffers[editingItem.product_id];
+    if (!offer) return;
+
+    let totalGifts = 0;
+    const qty = editQty;
+    const sortedTiers = [...offer.tiers].sort((a, b) => b.minQty - a.minQty);
+    for (const tier of sortedTiers) {
+      if (qty >= tier.minQty) {
+        totalGifts = Math.floor(qty / tier.minQty) * tier.giftQty;
+        setEditGiftUnit(tier.giftUnit);
+        break;
+      }
+    }
+    setEditGiftQty(totalGifts);
+  }, [editQty, editingItem, productOffers]);
+
   // Start new session
   const handleStartSession = async () => {
     if (!selectedWorker) { toast.error(t('stock.select_worker')); return; }
@@ -391,11 +410,13 @@ const LoadStock: React.FC = () => {
   };
 
   // Open edit dialog for session item
-  const handleEditSessionItem = (item: any) => {
+  const handleEditSessionItem = async (item: any) => {
     setEditingItem(item);
     setEditQty(item.quantity);
     setEditGiftQty(item.gift_quantity || 0);
     setEditGiftUnit(item.gift_unit || 'piece');
+    // Fetch offer data so dynamic gift calc works
+    await fetchProductOffer(item.product_id);
   };
 
   // Save edited session item
