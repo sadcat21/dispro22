@@ -1175,18 +1175,22 @@ const LoadStock: React.FC = () => {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Package className="w-5 h-5 text-primary" />
-              تفاصيل جلسة الشحن
+              {(() => {
+                const s = sessions.find(s => s.id === viewSessionId);
+                return s?.status === 'unloaded' ? 'تفاصيل جلسة التفريغ' : 'تفاصيل جلسة الشحن';
+              })()}
             </DialogTitle>
           </DialogHeader>
           {(() => {
             const session = sessions.find(s => s.id === viewSessionId);
+            const isUnload = session?.status === 'unloaded';
             return session ? (
               <div className="space-y-3">
                 <div className="grid grid-cols-2 gap-2 text-sm">
                   <div className="text-muted-foreground">الحالة:</div>
                   <div>
-                    <Badge variant={session.status === 'open' ? 'default' : session.status === 'unloaded' ? 'destructive' : 'secondary'} className="text-xs">
-                      {session.status === 'open' ? 'مفتوحة' : session.status === 'unloaded' ? 'تفريغ' : 'مكتملة'}
+                    <Badge variant={session.status === 'unloaded' ? 'destructive' : 'secondary'} className={`text-xs ${session.status !== 'unloaded' ? 'bg-green-600 text-white hover:bg-green-700' : ''}`}>
+                      {isUnload ? 'تفريغ' : 'شحن'}
                     </Badge>
                     {session.notes?.includes('فائض') && (
                       <Badge className="bg-amber-500 text-white text-[10px] px-1.5 py-0 ms-1">فائض</Badge>
@@ -1212,7 +1216,7 @@ const LoadStock: React.FC = () => {
                 <div className="border-t pt-3">
                   <h4 className="text-sm font-semibold mb-2 flex items-center gap-1">
                     <Truck className="w-4 h-4" />
-                    المنتجات المشحونة ({viewSessionItems.length})
+                    {isUnload ? `المنتجات المفرّغة (${viewSessionItems.length})` : `المنتجات المشحونة (${viewSessionItems.length})`}
                   </h4>
                   {isLoadingViewItems ? (
                     <div className="flex items-center justify-center py-4">
@@ -1222,7 +1226,7 @@ const LoadStock: React.FC = () => {
                     <p className="text-center text-muted-foreground text-xs py-4">لا توجد منتجات في هذه الجلسة</p>
                   ) : (
                     <ScrollArea className="max-h-[40vh]">
-                      <div className="space-y-1.5">
+                      <div className="space-y-2">
                         {viewSessionItems.map(item => {
                           const ppb = (item.product as any)?.pieces_per_box || 20;
                           const giftInCustom = item.gift_unit === 'box' 
@@ -1231,36 +1235,71 @@ const LoadStock: React.FC = () => {
                           const totalLoaded = item.gift_quantity > 0 
                             ? addCustomQty(item.quantity, giftInCustom, ppb)
                             : item.quantity;
-                          return (
-                            <div key={item.id} className="flex items-center justify-between bg-muted/50 rounded-md px-3 py-2">
-                              <div>
-                                <span className="text-sm font-medium">{(item.product as any)?.name || '—'}</span>
-                                {item.gift_quantity > 0 && (
-                                  <div className="flex items-center gap-1 text-xs text-green-600 mt-0.5">
-                                    <Gift className="w-3 h-3" />
-                                    هدية: {item.gift_quantity} {item.gift_unit === 'box' ? 'صندوق' : 'قطعة'}
+                          
+                          if (isUnload) {
+                            // Unloading: show returned, surplus, total
+                            const totalReturned = item.surplus_quantity > 0 
+                              ? addCustomQty(item.quantity, item.surplus_quantity, ppb) 
+                              : item.quantity;
+                            return (
+                              <div key={item.id} className="bg-muted/50 rounded-lg px-3 py-2.5">
+                                <div className="flex items-center justify-between mb-1.5">
+                                  <span className="text-sm font-semibold">{(item.product as any)?.name || '—'}</span>
+                                </div>
+                                <div className="grid grid-cols-3 gap-1 text-center">
+                                  <div className="bg-background rounded p-1.5">
+                                    <p className="text-[10px] text-muted-foreground">مُرجع</p>
+                                    <p className="text-xs font-bold">{fmtQty(item.quantity)}</p>
                                   </div>
-                                )}
-                                {item.surplus_quantity > 0 && (
-                                  <div className="flex items-center gap-1 text-xs text-amber-600 mt-0.5">
-                                    <AlertTriangle className="w-3 h-3" />
-                                    فائض: {fmtQty(item.surplus_quantity)}
+                                  <div className={`rounded p-1.5 ${item.surplus_quantity > 0 ? 'bg-amber-50 dark:bg-amber-900/20' : 'bg-background'}`}>
+                                    <p className="text-[10px] text-muted-foreground">فائض</p>
+                                    <p className={`text-xs font-bold ${item.surplus_quantity > 0 ? 'text-amber-600' : ''}`}>{fmtQty(item.surplus_quantity || 0)}</p>
                                   </div>
-                                )}
+                                  <div className="bg-destructive/10 rounded p-1.5">
+                                    <p className="text-[10px] text-muted-foreground">الكلي</p>
+                                    <p className="text-xs font-bold text-destructive">{fmtQty(totalReturned)}</p>
+                                  </div>
+                                </div>
                                 {item.is_custom_load && (
-                                  <div className="flex items-center gap-1 text-xs text-blue-600 mt-0.5">
-                                    شحن مخصص{item.custom_load_note ? `: ${item.custom_load_note}` : ''}
-                                  </div>
+                                  <div className="text-xs text-blue-600 mt-1">شحن مخصص{item.custom_load_note ? `: ${item.custom_load_note}` : ''}</div>
                                 )}
                               </div>
-                              <div className="text-end">
-                                <div className="text-sm font-bold">{fmtQty(totalLoaded)}</div>
+                            );
+                          }
+                          
+                          // Loading session: show quantity, gift, total
+                          return (
+                            <div key={item.id} className="bg-muted/50 rounded-lg px-3 py-2.5">
+                              <div className="flex items-center justify-between mb-1.5">
+                                <span className="text-sm font-semibold">{(item.product as any)?.name || '—'}</span>
+                              </div>
+                              <div className={`grid ${item.gift_quantity > 0 ? 'grid-cols-3' : 'grid-cols-1'} gap-1 text-center`}>
+                                <div className="bg-background rounded p-1.5">
+                                  <p className="text-[10px] text-muted-foreground">{item.gift_quantity > 0 ? 'بضاعة' : 'الكمية'}</p>
+                                  <p className="text-xs font-bold">{fmtQty(item.quantity)}</p>
+                                </div>
                                 {item.gift_quantity > 0 && (
-                                  <div className="text-[10px] text-muted-foreground">
-                                    بضاعة: {fmtQty(item.quantity)}
-                                  </div>
+                                  <>
+                                    <div className="bg-green-50 dark:bg-green-900/20 rounded p-1.5">
+                                      <p className="text-[10px] text-muted-foreground">هدية</p>
+                                      <p className="text-xs font-bold text-green-600">{item.gift_quantity} {item.gift_unit === 'box' ? 'صندوق' : 'قطعة'}</p>
+                                    </div>
+                                    <div className="bg-primary/10 rounded p-1.5">
+                                      <p className="text-[10px] text-muted-foreground">الكلي</p>
+                                      <p className="text-xs font-bold text-primary">{fmtQty(totalLoaded)}</p>
+                                    </div>
+                                  </>
                                 )}
                               </div>
+                              {item.surplus_quantity > 0 && (
+                                <div className="flex items-center gap-1 text-xs text-amber-600 mt-1">
+                                  <AlertTriangle className="w-3 h-3" />
+                                  فائض: {fmtQty(item.surplus_quantity)}
+                                </div>
+                              )}
+                              {item.is_custom_load && (
+                                <div className="text-xs text-blue-600 mt-1">شحن مخصص{item.custom_load_note ? `: ${item.custom_load_note}` : ''}</div>
+                              )}
                             </div>
                           );
                         })}
