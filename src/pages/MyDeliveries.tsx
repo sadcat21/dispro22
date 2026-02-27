@@ -38,7 +38,7 @@ type DeliveryType = 'orders' | 'direct_sales';
 const MyDeliveries: React.FC = () => {
   const { t, language, loadPrintSettingsFromDB } = useLanguage();
   
-  const [activeTab, setActiveTab] = useState<TabStatus>('all');
+  const [activeTab, setActiveTab] = useState<TabStatus>('assigned');
   const [deliveryType, setDeliveryType] = useState<DeliveryType>('orders');
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
@@ -449,6 +449,12 @@ const MyDeliveries: React.FC = () => {
                       </Button>
                     )}
                   </>
+                )}
+
+                {order.status === 'delivered' && !isModifyHidden && (
+                  <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => setModifyOrder(order)}>
+                    <Edit2 className="w-4 h-4" />
+                  </Button>
                 )}
               </div>
             </div>
