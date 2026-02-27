@@ -237,23 +237,62 @@ const LoadStock: React.FC = () => {
           .map(a => `${a.quantity} ${t(`stock.reason_${a.reason}`)}`)
           .join(', ');
 
-        // Check if there are gift suggestions for this product
-        const giftInfo = _gifts.find(g => g.product_id === item.product_id && g.accepted && g.gift_qty > 0);
-        const giftNote = giftInfo 
-          ? ` | هدايا العرض: ${giftInfo.gift_qty} ${giftInfo.gift_unit === 'piece' ? 'قطعة' : giftInfo.gift_unit === 'box' ? 'صندوق' : 'كغ'}`
-          : '';
-
         const notes = allocDetails
-          ? `شحن من المخزن | تخصيص: ${allocDetails}${giftNote}`
-          : `شحن من المخزن إلى عامل التوصيل${giftNote}`;
+          ? `شحن من المخزن | تخصيص: ${allocDetails}`
+          : 'شحن من المخزن إلى عامل التوصيل';
         return { product_id: item.product_id, quantity: item.quantity, notes };
       });
 
-      // Note: Gifts are NOT loaded as separate stock entries.
-      // Gift tracking is handled via order_items when sales are made.
-      // The gift suggestion is informational only - reminding admin to include gift pieces physically.
+      // Add accepted gift items - convert pieces to box equivalents
+      const acceptedGifts = _gifts.filter(g => g.accepted && g.gift_qty > 0);
+      if (acceptedGifts.length > 0) {
+        // Fetch pieces_per_box for gift products
+        const giftProductIds = [...new Set(acceptedGifts.map(g => g.product_id))];
+        const { data: giftProducts } = await supabase
+          .from('products')
+          .select('id, pieces_per_box')
+          .in('id', giftProductIds);
 
-      await loadToWorker(selectedWorker, loadItems);
+        const piecesMap: Record<string, number> = {};
+        for (const p of (giftProducts || [])) {
+          piecesMap[p.id] = p.pieces_per_box || 1;
+        }
+
+        for (const gift of acceptedGifts) {
+          const piecesPerBox = piecesMap[gift.product_id] || 1;
+          const unitLabel = gift.gift_unit === 'piece' ? 'قطعة' : gift.gift_unit === 'box' ? 'صندوق' : 'كغ';
+          
+          // Convert gift quantity to box units if gift is in pieces
+          let boxQuantity: number;
+          if (gift.gift_unit === 'piece') {
+            boxQuantity = gift.gift_qty / piecesPerBox;
+          } else {
+            boxQuantity = gift.gift_qty;
+          }
+
+          // Only add if there's a meaningful quantity
+          if (boxQuantity > 0) {
+            loadItems.push({
+              product_id: gift.product_id,
+              quantity: boxQuantity,
+              notes: `شحن هدايا العرض - ${gift.gift_qty} ${unitLabel} (${boxQuantity} صندوق)`,
+            });
+          }
+        }
+      }
+
+      // Aggregate items with same product_id to avoid double-deduction bugs
+      const aggregated: Record<string, { product_id: string; quantity: number; notes: string }> = {};
+      for (const item of loadItems) {
+        if (aggregated[item.product_id]) {
+          aggregated[item.product_id].quantity += item.quantity;
+          aggregated[item.product_id].notes += ` | ${item.notes}`;
+        } else {
+          aggregated[item.product_id] = { ...item };
+        }
+      }
+
+      await loadToWorker(selectedWorker, Object.values(aggregated));
       toast.success(t('stock.loaded_success'));
       setSelectedWorker('');
       setItems([newLoadItem()]);
