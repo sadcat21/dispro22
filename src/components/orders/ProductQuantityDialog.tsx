@@ -150,7 +150,7 @@ const ProductQuantityDialog: React.FC<ProductQuantityDialogProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-sm" dir={dir}>
+      <DialogContent className="max-w-sm max-h-[90vh] overflow-y-auto" dir={dir}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Package className="w-5 h-5 text-primary" />
