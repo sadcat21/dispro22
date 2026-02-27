@@ -449,7 +449,8 @@ const LoadStock: React.FC = () => {
         notes: `شحن من جلسة - ${product?.name || ''}`,
       });
 
-      // Save to session
+      // Save to session (include previous worker stock balance)
+      const previousWorkerQty = existingWS ? existingWS.quantity : 0;
       await addSessionItem.mutateAsync({
         sessionId: activeSessionId,
         productId: addProductId,
@@ -459,6 +460,7 @@ const LoadStock: React.FC = () => {
         notes: product?.name || '',
         isCustomLoad: addProductIsCustomLoad,
         customLoadNote: addProductIsCustomLoad ? addProductCustomLoadNote : undefined,
+        previousQuantity: previousWorkerQty,
       });
 
       // Refresh session items only
@@ -668,13 +670,14 @@ const LoadStock: React.FC = () => {
         const totalReturn = item.returnQty + item.surplusQty;
         if (totalReturn <= 0) continue;
 
-        // Save unloading session item with surplus info
+        // Save unloading session item with surplus info and previous balance
         await supabase.from('loading_session_items').insert({
           session_id: unloadSession.id,
           product_id: item.product_id,
           quantity: item.returnQty,
           gift_quantity: 0,
           surplus_quantity: item.surplusQty,
+          previous_quantity: item.quantity,
           notes: item.surplusQty > 0 ? `فائض: ${fmtQty(item.surplusQty)}` : null,
         });
 
@@ -1236,17 +1239,24 @@ const LoadStock: React.FC = () => {
                             ? addCustomQty(item.quantity, giftInCustom, ppb)
                             : item.quantity;
                           
+                          const prevQty = item.previous_quantity || 0;
+                          
                           if (isUnload) {
-                            // Unloading: show returned, surplus, total
+                            // Unloading: show previous balance, returned, surplus, remaining
                             const totalReturned = item.surplus_quantity > 0 
                               ? addCustomQty(item.quantity, item.surplus_quantity, ppb) 
                               : item.quantity;
+                            const remaining = prevQty > 0 ? subtractCustomQty(prevQty, item.quantity, ppb) : 0;
                             return (
                               <div key={item.id} className="bg-muted/50 rounded-lg px-3 py-2.5">
                                 <div className="flex items-center justify-between mb-1.5">
                                   <span className="text-sm font-semibold">{(item.product as any)?.name || '—'}</span>
                                 </div>
-                                <div className="grid grid-cols-3 gap-1 text-center">
+                                <div className="grid grid-cols-4 gap-1 text-center">
+                                  <div className="bg-muted rounded p-1.5">
+                                    <p className="text-[10px] text-muted-foreground">سابق</p>
+                                    <p className="text-xs font-bold">{fmtQty(prevQty)}</p>
+                                  </div>
                                   <div className="bg-background rounded p-1.5">
                                     <p className="text-[10px] text-muted-foreground">مُرجع</p>
                                     <p className="text-xs font-bold">{fmtQty(item.quantity)}</p>
@@ -1256,8 +1266,8 @@ const LoadStock: React.FC = () => {
                                     <p className={`text-xs font-bold ${item.surplus_quantity > 0 ? 'text-amber-600' : ''}`}>{fmtQty(item.surplus_quantity || 0)}</p>
                                   </div>
                                   <div className="bg-destructive/10 rounded p-1.5">
-                                    <p className="text-[10px] text-muted-foreground">الكلي</p>
-                                    <p className="text-xs font-bold text-destructive">{fmtQty(totalReturned)}</p>
+                                    <p className="text-[10px] text-muted-foreground">متبقي</p>
+                                    <p className="text-xs font-bold text-destructive">{fmtQty(Math.max(0, remaining))}</p>
                                   </div>
                                 </div>
                                 {item.is_custom_load && (
@@ -1267,30 +1277,35 @@ const LoadStock: React.FC = () => {
                             );
                           }
                           
-                          // Loading session: show quantity, gift, total
+                          // Loading session: show previous, new load, total
+                          const totalAfterLoad = prevQty > 0 
+                            ? addCustomQty(prevQty, totalLoaded, ppb) 
+                            : totalLoaded;
                           return (
                             <div key={item.id} className="bg-muted/50 rounded-lg px-3 py-2.5">
                               <div className="flex items-center justify-between mb-1.5">
                                 <span className="text-sm font-semibold">{(item.product as any)?.name || '—'}</span>
                               </div>
-                              <div className={`grid ${item.gift_quantity > 0 ? 'grid-cols-3' : 'grid-cols-1'} gap-1 text-center`}>
-                                <div className="bg-background rounded p-1.5">
-                                  <p className="text-[10px] text-muted-foreground">{item.gift_quantity > 0 ? 'بضاعة' : 'الكمية'}</p>
-                                  <p className="text-xs font-bold">{fmtQty(item.quantity)}</p>
+                              <div className={`grid grid-cols-3 gap-1 text-center`}>
+                                <div className="bg-muted rounded p-1.5">
+                                  <p className="text-[10px] text-muted-foreground">سابق</p>
+                                  <p className="text-xs font-bold">{fmtQty(prevQty)}</p>
                                 </div>
-                                {item.gift_quantity > 0 && (
-                                  <>
-                                    <div className="bg-green-50 dark:bg-green-900/20 rounded p-1.5">
-                                      <p className="text-[10px] text-muted-foreground">هدية</p>
-                                      <p className="text-xs font-bold text-green-600">{item.gift_quantity} {item.gift_unit === 'box' ? 'صندوق' : 'قطعة'}</p>
-                                    </div>
-                                    <div className="bg-primary/10 rounded p-1.5">
-                                      <p className="text-[10px] text-muted-foreground">الكلي</p>
-                                      <p className="text-xs font-bold text-primary">{fmtQty(totalLoaded)}</p>
-                                    </div>
-                                  </>
-                                )}
+                                <div className="bg-green-50 dark:bg-green-900/20 rounded p-1.5">
+                                  <p className="text-[10px] text-muted-foreground">جديد</p>
+                                  <p className="text-xs font-bold text-green-600">{fmtQty(totalLoaded)}</p>
+                                </div>
+                                <div className="bg-primary/10 rounded p-1.5">
+                                  <p className="text-[10px] text-muted-foreground">الكلي</p>
+                                  <p className="text-xs font-bold text-primary">{fmtQty(totalAfterLoad)}</p>
+                                </div>
                               </div>
+                              {item.gift_quantity > 0 && (
+                                <div className="flex items-center gap-1 text-xs text-green-600 mt-1">
+                                  <Gift className="w-3 h-3" />
+                                  هدية: {item.gift_quantity} {item.gift_unit === 'box' ? 'صندوق' : 'قطعة'}
+                                </div>
+                              )}
                               {item.surplus_quantity > 0 && (
                                 <div className="flex items-center gap-1 text-xs text-amber-600 mt-1">
                                   <AlertTriangle className="w-3 h-3" />

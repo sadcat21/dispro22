@@ -1494,6 +1494,7 @@ export type Database = {
           id: string
           is_custom_load: boolean
           notes: string | null
+          previous_quantity: number
           product_id: string
           quantity: number
           session_id: string
@@ -1507,6 +1508,7 @@ export type Database = {
           id?: string
           is_custom_load?: boolean
           notes?: string | null
+          previous_quantity?: number
           product_id: string
           quantity?: number
           session_id: string
@@ -1520,6 +1522,7 @@ export type Database = {
           id?: string
           is_custom_load?: boolean
           notes?: string | null
+          previous_quantity?: number
           product_id?: string
           quantity?: number
           session_id?: string
