@@ -26,6 +26,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQueryClient } from '@tanstack/react-query';
 import { useCreateDiscrepancy } from '@/hooks/useStockDiscrepancies';
+import StockVerificationDialog from '@/components/stock/StockVerificationDialog';
 
 interface EmptyTruckItem {
   id: string;
@@ -92,6 +93,7 @@ const LoadStock: React.FC = () => {
   const { workerId: contextWorkerId } = useSelectedWorker();
   const [selectedWorker, setSelectedWorker] = useState(() => contextWorkerId || '');
   const [showWorkerPicker, setShowWorkerPicker] = useState(false);
+  const [showVerificationDialog, setShowVerificationDialog] = useState(false);
   const [showProductPicker, setShowProductPicker] = useState(false);
   const [showEmptyDialog, setShowEmptyDialog] = useState(false);
   const [showSessionHistory, setShowSessionHistory] = useState(false);
@@ -968,10 +970,10 @@ const LoadStock: React.FC = () => {
                 <Button
                   variant="outline"
                   className="border-orange-300 text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/10"
-                  onClick={handleEmptyTruckPreview}
+                  onClick={() => setShowVerificationDialog(true)}
                   disabled={isEmptying}
                 >
-                  {isEmptying ? <Loader2 className="w-4 h-4 animate-spin me-2" /> : <Search className="w-4 h-4 me-1" />}
+                  <Search className="w-4 h-4 me-1" />
                   بدء جلسة تأكيد
                 </Button>
                 <Button
@@ -1552,6 +1554,15 @@ const LoadStock: React.FC = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <StockVerificationDialog
+        open={showVerificationDialog}
+        onOpenChange={setShowVerificationDialog}
+        workerId={selectedWorker}
+        onComplete={() => {
+          refresh();
+          refetchSessions();
+        }}
+      />
     </div>
   );
 };
