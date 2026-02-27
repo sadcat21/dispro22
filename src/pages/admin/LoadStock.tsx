@@ -28,6 +28,7 @@ interface EmptyTruckItem {
   quantity: number;
   pendingNeeded: number;
   returnQty: number;
+  piecesPerBox: number;
   keepAllocations: { reason: string; quantity: number }[];
   allocationMode: boolean;
 }
@@ -467,14 +468,21 @@ const LoadStock: React.FC = () => {
       }
     }
     const itemsToReturn = workerStock
-      .map(ws => ({
-        id: ws.id, product_id: ws.product_id,
-        product_name: (ws.product as any)?.name || ws.product_id,
-        quantity: ws.quantity, pendingNeeded: pendingQty[ws.product_id] || 0,
-        returnQty: Math.max(0, ws.quantity - (pendingQty[ws.product_id] || 0)),
-        keepAllocations: [] as { reason: string; quantity: number }[], allocationMode: false,
-      }))
-      .filter(ws => (ws.quantity - ws.pendingNeeded) > 0);
+      .map(ws => {
+        const product = products.find(p => p.id === ws.product_id);
+        const piecesPerBox = product?.pieces_per_box || 20;
+        const pending = pendingQty[ws.product_id] || 0;
+        const maxReturn = pending > 0 ? subtractCustomQty(ws.quantity, pending, piecesPerBox) : ws.quantity;
+        return {
+          id: ws.id, product_id: ws.product_id,
+          product_name: (ws.product as any)?.name || ws.product_id,
+          quantity: ws.quantity, pendingNeeded: pending,
+          returnQty: Math.max(0, maxReturn),
+          piecesPerBox,
+          keepAllocations: [] as { reason: string; quantity: number }[], allocationMode: false,
+        };
+      })
+      .filter(ws => ws.returnQty > 0);
     if (itemsToReturn.length === 0) { toast.error(t('stock.empty_truck_nothing')); return; }
     setEmptyTruckItems(itemsToReturn);
     setShowEmptyDialog(true);
@@ -487,10 +495,13 @@ const LoadStock: React.FC = () => {
     try {
       for (const item of emptyTruckItems) {
         if (item.returnQty <= 0) continue;
-        await supabase.from('worker_stock').update({ quantity: item.quantity - item.returnQty }).eq('id', item.id);
+        const ppb = item.piecesPerBox;
+        const remainingQty = subtractCustomQty(item.quantity, item.returnQty, ppb);
+        await supabase.from('worker_stock').update({ quantity: Math.max(0, remainingQty) }).eq('id', item.id);
         const existingWarehouse = warehouseStock.find(s => s.product_id === item.product_id);
         if (existingWarehouse) {
-          await supabase.from('warehouse_stock').update({ quantity: existingWarehouse.quantity + item.returnQty }).eq('id', existingWarehouse.id);
+          const newWhQty = addCustomQty(existingWarehouse.quantity, item.returnQty, ppb);
+          await supabase.from('warehouse_stock').update({ quantity: newWhQty }).eq('id', existingWarehouse.id);
         } else {
           await supabase.from('warehouse_stock').insert({ branch_id: branchId, product_id: item.product_id, quantity: item.returnQty });
         }
@@ -908,14 +919,15 @@ const LoadStock: React.FC = () => {
           </DialogHeader>
           <div className="max-h-[50vh] overflow-y-auto space-y-3">
             {emptyTruckItems.map((item, idx) => {
-              const maxReturn = Math.max(0, item.quantity - item.pendingNeeded);
+              const ppb = item.piecesPerBox;
+              const maxReturn = item.pendingNeeded > 0 ? Math.max(0, subtractCustomQty(item.quantity, item.pendingNeeded, ppb)) : item.quantity;
               return (
                 <Card key={item.product_id} className="border">
                   <CardContent className="p-3 space-y-2">
                     <div className="flex items-center justify-between">
                       <span className="font-semibold text-sm">{item.product_name}</span>
                       <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <span>{t('stock.in_truck')}: <strong>{item.quantity}</strong></span>
+                        <span>{t('stock.in_truck')}: <strong>{fmtQty(item.quantity)}</strong></span>
                         <span>{t('stock.orders_need')}: <strong>{item.pendingNeeded}</strong></span>
                       </div>
                     </div>
@@ -927,7 +939,7 @@ const LoadStock: React.FC = () => {
                           value={item.returnQty}
                           onFocus={e => e.target.select()}
                           onChange={e => {
-                            const val = Math.min(Math.max(0, parseInt(e.target.value) || 0), maxReturn);
+                            const val = parseFloat(e.target.value) || 0;
                             setEmptyTruckItems(prev => prev.map((it, i) => i === idx ? { ...it, returnQty: val } : it));
                           }}
                           className="text-center h-8"
@@ -941,7 +953,7 @@ const LoadStock: React.FC = () => {
           </div>
           <div className="flex items-center justify-between text-sm bg-muted/50 rounded-md p-2">
             <span className="font-medium">{t('stock.total_return')}</span>
-            <Badge variant="destructive">{emptyTruckItems.reduce((s, it) => s + it.returnQty, 0)} {t('stock.boxes')}</Badge>
+            <Badge variant="destructive">{fmtQty(emptyTruckItems.reduce((s, it) => s + it.returnQty, 0))} {t('stock.boxes')}</Badge>
           </div>
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setShowEmptyDialog(false)}>{t('common.cancel')}</Button>
