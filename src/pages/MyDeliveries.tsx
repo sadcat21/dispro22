@@ -632,7 +632,7 @@ const MyDeliveries: React.FC = () => {
 
           </div>
           {selectedOrder && (selectedOrder.status === 'assigned' || selectedOrder.status === 'in_progress') && (
-            <div className="border-t bg-card p-4 space-y-2 shrink-0">
+            <div className="border-t bg-card p-4 space-y-3 shrink-0">
               <p className="font-bold text-sm">{t('common.status')}:</p>
               <div className="flex gap-2">
                 {(['assigned', 'in_progress', 'delivered'] as const).map((status) => (
@@ -647,6 +647,29 @@ const MyDeliveries: React.FC = () => {
                     {t(`orders.${status}`)}
                   </Button>
                 ))}
+              </div>
+              <div className="flex gap-2">
+                {!isModifyHidden && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => { setSelectedOrderId(null); setModifyOrder(selectedOrder); }}
+                  >
+                    <Edit2 className="w-4 h-4 ms-1" />
+                    {t('common.edit')}
+                  </Button>
+                )}
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  className="flex-1"
+                  onClick={() => { setSelectedOrderId(null); handleCancelWithLocationCheck(selectedOrder); }}
+                  disabled={cancelOrder.isPending || checkingLocation}
+                >
+                  {checkingLocation ? <Loader2 className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4 ms-1" />}
+                  {t('orders.cancel_order')}
+                </Button>
               </div>
             </div>
           )}
