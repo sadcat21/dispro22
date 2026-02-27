@@ -128,7 +128,7 @@ const AdminHome: React.FC = () => {
         <ShoppingCart className="w-8 h-8 text-blue-600" />
         <div>
           <p className="font-bold text-sm text-blue-900">{t('orders.create_order')}</p>
-          <p className="text-xs text-blue-700">{t('orders.create_order')}</p>
+          <p className="text-xs text-blue-700">{t('orders.create_order_desc')}</p>
         </div>
       </div>
       {/* Invoice Request Quick Button */}

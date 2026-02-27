@@ -360,6 +360,8 @@ export const translations: Translations = {
   'orders.total_pieces': { ar: 'إجمالي القطع', fr: 'Total pièces', en: 'Total Pieces' },
   'orders.total_amount': { ar: 'إجمالي المبلغ', fr: 'Montant total', en: 'Total Amount' },
   'orders.manage': { ar: 'إدارة الطلبيات', fr: 'Gérer les commandes', en: 'Manage Orders' },
+  'orders.create_order': { ar: 'إنشاء طلبية سريعة', fr: 'Créer une commande rapide', en: 'Quick Create Order' },
+  'orders.create_order_desc': { ar: 'إنشاء طلبية جديدة بسرعة', fr: 'Créer rapidement une nouvelle commande', en: 'Quickly create a new order' },
   'orders.add_product': { ar: 'إضافة منتج', fr: 'Ajouter un produit', en: 'Add Product' },
   'orders.quantity_boxes': { ar: 'عدد الصناديق', fr: 'Nombre de boîtes', en: 'Number of Boxes' },
   'orders.quantity_pieces': { ar: 'عدد القطع', fr: 'Nombre de pièces', en: 'Number of Pieces' },
