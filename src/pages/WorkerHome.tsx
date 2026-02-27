@@ -200,6 +200,7 @@ const WorkerHome: React.FC = () => {
           }
           if (hasOrdersAccess && !isOrdersPageHidden && !isCreateOrderHidden) {
             quickActions.push({ key: 'orders', icon: <ShoppingCart className="w-6 h-6" />, label: t('orders.manage'), onClick: () => navigate('/orders') });
+            quickActions.push({ key: 'create-order', icon: <ShoppingCart className="w-6 h-6" />, label: t('orders.create_new'), onClick: () => setShowCreateOrderDialog(true) });
           }
           if (hasOrdersAccess && !hasDeliveryAccess && !isMyPromosPageHidden) {
             quickActions.push({ key: 'promos', icon: <Gift className="w-6 h-6" />, label: t('promos.add_new'), onClick: () => navigate('/my-promos') });
@@ -219,6 +220,7 @@ const WorkerHome: React.FC = () => {
             'direct-sale': { bg: 'bg-gradient-to-br from-emerald-500 to-teal-600', iconBg: 'bg-white/20', iconColor: 'text-white', text: 'text-white', border: '' },
             'my-stock': { bg: 'bg-gradient-to-br from-violet-500 to-purple-600', iconBg: 'bg-white/20', iconColor: 'text-white', text: 'text-white', border: '' },
             orders: { bg: 'bg-gradient-to-br from-primary to-primary/80', iconBg: 'bg-white/20', iconColor: 'text-white', text: 'text-primary-foreground', border: '' },
+            'create-order': { bg: 'bg-gradient-to-br from-indigo-500 to-blue-700', iconBg: 'bg-white/20', iconColor: 'text-white', text: 'text-white', border: '' },
             promos: { bg: 'bg-gradient-to-br from-amber-400 to-orange-500', iconBg: 'bg-white/20', iconColor: 'text-white', text: 'text-white', border: '' },
             debts: { bg: 'bg-gradient-to-br from-rose-500 to-red-600', iconBg: 'bg-white/20', iconColor: 'text-white', text: 'text-white', border: '' },
             customers: { bg: 'bg-gradient-to-br from-cyan-500 to-sky-600', iconBg: 'bg-white/20', iconColor: 'text-white', text: 'text-white', border: '' },
