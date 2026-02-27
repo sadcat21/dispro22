@@ -257,9 +257,9 @@ const StockVerificationDialog: React.FC<StockVerificationDialogProps> = ({
                 return aVerified - bVerified;
               }).map(item => (
                 <Card key={item.product_id} className={`border transition-all duration-300 ${
-                  item.status === 'match' ? 'border-green-300 bg-green-50/50 dark:bg-green-900/10' :
-                  item.status === 'deficit' ? 'border-destructive/40 bg-destructive/5' :
-                  item.status === 'surplus' ? 'border-orange-300 bg-orange-50/50 dark:bg-orange-900/10' :
+                  item.status === 'match' ? 'border-green-400 bg-green-50/50 dark:bg-green-900/10' :
+                  item.status === 'deficit' ? 'border-green-400 bg-destructive/5' :
+                  item.status === 'surplus' ? 'border-green-400 bg-orange-50/50 dark:bg-orange-900/10' :
                   ''
                 }`}>
                   <CardContent className="p-3 space-y-2">
