@@ -650,29 +650,29 @@ const CreateOrderDialog: React.FC<CreateOrderDialogProps> = ({ open, onOpenChang
                               <Plus className="w-10 h-10 text-primary/40" />
                             </div>
                           )}
-                          {/* شارة الكمية فوق الصورة */}
-                          {inCart && (
-                            <Badge variant="default" className="absolute bottom-2 start-2 text-sm px-2.5 py-0.5 shadow-lg font-bold">
-                              {inCart.quantity}
-                            </Badge>
-                          )}
+                          {/* شارات أسفل الصورة */}
+                          <div className="absolute bottom-2 start-2 end-2 flex items-center justify-between">
+                            {hasOffer ? (
+                              <span className="w-7 h-7 rounded-full bg-green-500 flex items-center justify-center shadow-lg">
+                                <Gift className="w-4 h-4 text-white" />
+                              </span>
+                            ) : <span />}
+                            {inCart ? (
+                              <Badge variant="default" className="text-sm px-2.5 py-0.5 shadow-lg font-bold">
+                                {inCart.quantity}
+                              </Badge>
+                            ) : <span />}
+                          </div>
                         </div>
 
-                        {/* السعر والتفاصيل أسفل الصورة */}
+                        {/* السعر أسفل الصورة */}
                         <div className="px-2 py-2 bg-red-50 border-t border-red-100">
                           <div className="flex items-center justify-between gap-1">
-                            <div className="flex items-center gap-1">
-                              {hasOffer && (
-                                <span className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center">
-                                  <Gift className="w-3.5 h-3.5 text-green-600" />
-                                </span>
-                              )}
-                              {(isShortage || isNotInStock) && (
-                                <span className="w-6 h-6 rounded-full bg-orange-100 flex items-center justify-center">
-                                  <AlertTriangle className="w-3.5 h-3.5 text-orange-500" />
-                                </span>
-                              )}
-                            </div>
+                            {(isShortage || isNotInStock) && (
+                              <span className="w-6 h-6 rounded-full bg-orange-100 flex items-center justify-center">
+                                <AlertTriangle className="w-3.5 h-3.5 text-orange-500" />
+                              </span>
+                            )}
                             <ProductPriceBadge product={product} boxPrice={price} />
                           </div>
                         </div>
