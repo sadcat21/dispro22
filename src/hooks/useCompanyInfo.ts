@@ -19,17 +19,17 @@ export interface CompanyInfo {
 const COMPANY_INFO_KEY = 'company_info';
 
 const defaultCompanyInfo: CompanyInfo = {
-  company_name: '',
-  company_activity: '',
-  company_address: '',
+  company_name: 'SARL LASER FOOD',
+  company_activity: "Commerce de gros lié à l'alimentation humaine",
+  company_address: '1er LOT N° 98 LOTIS 440 BELGAID Bir El Djir Oran',
   company_phone: '',
   company_mobile: '',
-  company_rc: '',
-  company_nif: '',
-  company_ai: '',
-  company_nis: '',
-  company_bank: '',
-  company_rib: '',
+  company_rc: '19B1123057-00/31',
+  company_nif: '001931112305729',
+  company_ai: '31034409244',
+  company_nis: '001931030056846',
+  company_bank: 'BNA',
+  company_rib: '00100957030000149786',
 };
 
 export const useCompanyInfo = () => {
