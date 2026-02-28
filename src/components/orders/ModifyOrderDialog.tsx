@@ -129,45 +129,42 @@ const ModifyOrderDialog: React.FC<ModifyOrderDialogProps> = ({
     return Math.floor(totalGiftPieces / safePiecesPerBox);
   }, [activeOffers]);
 
-  const recalcFromTotalQuantity = useCallback((productId: string, totalQty: number, piecesPerBox: number, unitPrice: number) => {
-    let paidQty = Math.max(0, totalQty);
-    let giftQty = 0;
-
-    for (let i = 0; i < 3; i += 1) {
-      giftQty = recalcGiftBoxes(productId, paidQty, piecesPerBox);
-      paidQty = Math.max(0, totalQty - giftQty);
-    }
-
-    const finalGift = Math.min(Math.max(0, giftQty), totalQty);
-    const finalPaid = Math.max(0, totalQty - finalGift);
+  const recalcFromPaidQuantity = useCallback((productId: string, paidQty: number, piecesPerBox: number) => {
+    const safePaidQty = Math.max(0, paidQty);
+    const giftQty = Math.max(0, recalcGiftBoxes(productId, safePaidQty, piecesPerBox));
 
     return {
-      gift_quantity: finalGift,
-      total_price: finalPaid * unitPrice,
+      gift_quantity: giftQty,
+      total_quantity: safePaidQty + giftQty,
     };
   }, [recalcGiftBoxes]);
+
+  const getPaidQuantity = useCallback((item: ModifiedItem) => {
+    return Math.max(0, item.new_quantity - (item.gift_quantity || 0));
+  }, []);
 
   const updateQuantity = (index: number, delta: number) => {
     setItems(prev => prev.map((item, i) => {
       if (i !== index) return item;
-      const newQty = Math.max(0, item.new_quantity + delta);
-      const recalculated = recalcFromTotalQuantity(item.product_id, newQty, item.pieces_per_box, item.unit_price);
+      const currentPaidQty = Math.max(0, item.new_quantity - (item.gift_quantity || 0));
+      const newPaidQty = Math.max(0, currentPaidQty + delta);
+      const recalculated = recalcFromPaidQuantity(item.product_id, newPaidQty, item.pieces_per_box);
       return {
         ...item,
-        new_quantity: newQty,
+        new_quantity: recalculated.total_quantity,
         gift_quantity: recalculated.gift_quantity,
       };
     }));
   };
 
   const setQuantity = (index: number, value: string) => {
-    const qty = Math.max(0, Number(value) || 0);
+    const paidQty = Math.max(0, Math.floor(Number(value) || 0));
     setItems(prev => prev.map((item, i) => {
       if (i !== index) return item;
-      const recalculated = recalcFromTotalQuantity(item.product_id, qty, item.pieces_per_box, item.unit_price);
+      const recalculated = recalcFromPaidQuantity(item.product_id, paidQty, item.pieces_per_box);
       return {
         ...item,
-        new_quantity: qty,
+        new_quantity: recalculated.total_quantity,
         gift_quantity: recalculated.gift_quantity,
       };
     }));
@@ -182,15 +179,15 @@ const ModifyOrderDialog: React.FC<ModifyOrderDialogProps> = ({
     const product = products.find(p => p.id === newProductId);
     if (!product) return;
 
-    const initialQuantity = 1;
+    const initialPaidQuantity = 1;
     const unitPrice = Number(product.price_gros || product.price_invoice || 0);
-    const recalculated = recalcFromTotalQuantity(product.id, initialQuantity, Number(product.pieces_per_box || 1), unitPrice);
+    const recalculated = recalcFromPaidQuantity(product.id, initialPaidQuantity, Number(product.pieces_per_box || 1));
 
     setItems(prev => [...prev, {
       product_id: product.id,
       product_name: product.name,
       original_quantity: 0,
-      new_quantity: initialQuantity,
+      new_quantity: recalculated.total_quantity,
       unit_price: unitPrice,
       gift_quantity: recalculated.gift_quantity,
       pieces_per_box: Number(product.pieces_per_box || 1),
@@ -442,7 +439,8 @@ const ModifyOrderDialog: React.FC<ModifyOrderDialogProps> = ({
                         </div>
                         {item.unit_price > 0 && (
                           <p className="text-xs text-muted-foreground">
-                            {item.unit_price.toLocaleString()} دج × {Math.max(0, item.new_quantity - (item.gift_quantity || 0))} = {(item.unit_price * Math.max(0, item.new_quantity - (item.gift_quantity || 0))).toLocaleString()} دج
+                            {item.unit_price.toLocaleString()} دج × {getPaidQuantity(item)} = {(item.unit_price * getPaidQuantity(item)).toLocaleString()} دج
+                            {item.gift_quantity > 0 ? ` (${getPaidQuantity(item)} + ${item.gift_quantity} هدية = ${item.new_quantity})` : ''}
                           </p>
                         )}
                       </div>
@@ -458,7 +456,7 @@ const ModifyOrderDialog: React.FC<ModifyOrderDialogProps> = ({
                     </Button>
                     <Input
                       type="number"
-                      value={item.new_quantity}
+                      value={getPaidQuantity(item)}
                       onChange={(e) => setQuantity(index, e.target.value)}
                       className="h-8 w-20 text-center"
                       min={0}
