@@ -121,30 +121,35 @@ const StockVerificationDialog: React.FC<StockVerificationDialogProps> = ({
       // Save ALL reviewed items as loading_session_items for history
       const verifiedItems = items.filter(i => i.status !== 'unverified');
       if (verifiedItems.length > 0) {
-        // Insert items one by one to avoid batch RLS issues
-        for (const item of verifiedItems) {
-          const { error: itemError } = await supabase
-            .from('loading_session_items')
-            .insert({
-              session_id: session.id,
-              product_id: item.product_id,
-              quantity: Number(item.actual_qty) || 0,
-              previous_quantity: item.system_qty,
-              gift_quantity: 0,
-              gift_unit: 'piece',
-              surplus_quantity: item.status === 'surplus' ? Math.abs(item.difference) : 0,
-              is_custom_load: false,
-              custom_load_note: null,
-              notes: item.status === 'match' 
-                ? 'مطابق' 
-                : item.status === 'deficit' 
-                  ? `عجز: ${Math.abs(item.difference)}` 
-                  : `فائض: ${Math.abs(item.difference)}`,
-            });
-          if (itemError) {
-            console.error('Error saving review item:', itemError);
-            throw new Error(`خطأ في حفظ المنتج ${item.product_name}: ${itemError.message}`);
-          }
+        const itemsToInsert = verifiedItems.map(item => ({
+          session_id: session.id,
+          product_id: item.product_id,
+          quantity: Number(item.actual_qty) || 0,
+          previous_quantity: item.system_qty,
+          gift_quantity: 0,
+          gift_unit: 'piece',
+          surplus_quantity: item.status === 'surplus' ? Math.abs(item.difference) : 0,
+          is_custom_load: false,
+          custom_load_note: null,
+          notes: item.status === 'match' 
+            ? 'مطابق' 
+            : item.status === 'deficit' 
+              ? `عجز: ${Math.abs(item.difference)}` 
+              : `فائض: ${Math.abs(item.difference)}`,
+        }));
+
+        const { data: insertedItems, error: batchError } = await supabase
+          .from('loading_session_items')
+          .insert(itemsToInsert)
+          .select();
+        
+        if (batchError) {
+          console.error('Error saving review items batch:', batchError);
+          throw new Error(`خطأ في حفظ المنتجات: ${batchError.message}`);
+        }
+        
+        if (!insertedItems || insertedItems.length !== verifiedItems.length) {
+          console.warn(`Expected ${verifiedItems.length} items, saved ${insertedItems?.length || 0}`);
         }
       }
 

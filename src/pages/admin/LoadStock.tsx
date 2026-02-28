@@ -252,20 +252,22 @@ const LoadStock: React.FC = () => {
           .eq('source_session_id', sessionId)
           .order('created_at', { ascending: true });
 
-        if (discError) {
-          console.error('Error loading review discrepancies:', discError);
-        }
 
-        const databaseDiscrepancies = discData || [];
-        if (databaseDiscrepancies.length === 0) {
-          setViewReviewDiscrepancies(fallbackDiscrepancies);
+        if (!discError) {
+          const databaseDiscrepancies = discData || [];
+          if (databaseDiscrepancies.length === 0) {
+            setViewReviewDiscrepancies(fallbackDiscrepancies);
+          } else {
+            const existingProductIds = new Set(databaseDiscrepancies.map((d: any) => d.product_id));
+            const mergedDiscrepancies = [
+              ...databaseDiscrepancies,
+              ...fallbackDiscrepancies.filter((d: any) => !existingProductIds.has(d.product_id)),
+            ];
+            setViewReviewDiscrepancies(mergedDiscrepancies);
+          }
         } else {
-          const existingProductIds = new Set(databaseDiscrepancies.map((d: any) => d.product_id));
-          const mergedDiscrepancies = [
-            ...databaseDiscrepancies,
-            ...fallbackDiscrepancies.filter((d: any) => !existingProductIds.has(d.product_id)),
-          ];
-          setViewReviewDiscrepancies(mergedDiscrepancies);
+          console.error('Error loading review discrepancies, using fallback:', discError);
+          setViewReviewDiscrepancies(fallbackDiscrepancies);
         }
       } else {
         setViewReviewDiscrepancies(fallbackDiscrepancies);
