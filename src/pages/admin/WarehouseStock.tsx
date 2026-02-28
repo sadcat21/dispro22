@@ -144,8 +144,26 @@ const WarehouseStock: React.FC = () => {
     // Sold from order_items (delivered)
     for (const oi of (soldData || [])) {
       if (summaries[oi.product_id]) {
-        summaries[oi.product_id].sold += Number(oi.quantity || 0);
-        summaries[oi.product_id].gifts += Number(oi.gift_quantity || 0);
+        const product = products.find(p => p.id === oi.product_id);
+        const piecesPerBox = product?.pieces_per_box || 20;
+
+        const rawQty = Number(oi.quantity || 0);
+        const rawGiftPieces = Number(oi.gift_quantity || 0);
+
+        // quantity is stored بصيغة صناديق.قطع (تعبيرية) => نحولها لإجمالي قطع أولاً
+        const qtyRounded = Math.round(rawQty * 100) / 100;
+        const qtyBoxes = Math.floor(qtyRounded);
+        const qtyPieces = Math.round((qtyRounded - qtyBoxes) * 100);
+        const totalQtyPieces = (qtyBoxes * piecesPerBox) + qtyPieces;
+
+        // الهدايا لا تُحتسب كمباع: نطرحها من المباع، ونبقيها في خانة الهدايا فقط
+        const paidPieces = Math.max(0, totalQtyPieces - rawGiftPieces);
+        const paidBoxes = Math.floor(paidPieces / piecesPerBox);
+        const paidRemPieces = paidPieces % piecesPerBox;
+        const paidQtyInBoxPieceFormat = paidBoxes + (paidRemPieces / 100);
+
+        summaries[oi.product_id].sold = Math.round((summaries[oi.product_id].sold + paidQtyInBoxPieceFormat) * 100) / 100;
+        summaries[oi.product_id].gifts += rawGiftPieces;
       }
     }
 
