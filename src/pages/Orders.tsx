@@ -156,7 +156,7 @@ const OrdersContent: React.FC = () => {
       }
 
       const [productsRes, workersRes] = await Promise.all([
-        supabase.from('products').select('*').eq('is_active', true).order('name'),
+        supabase.from('products').select('*').eq('is_active', true).order('sort_order', { ascending: true }).order('name'),
         workersQuery,
       ]);
 

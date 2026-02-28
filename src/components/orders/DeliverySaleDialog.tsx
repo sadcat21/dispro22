@@ -121,7 +121,7 @@ const DeliverySaleDialog: React.FC<DeliverySaleDialogProps> = ({ open, onOpenCha
   useEffect(() => {
     if (!open) return;
     const fetch = async () => {
-      const { data } = await supabase.from('products').select('*').eq('is_active', true).order('name');
+      const { data } = await supabase.from('products').select('*').eq('is_active', true).order('sort_order', { ascending: true }).order('name');
       setAllProducts(data || []);
     };
     fetch();

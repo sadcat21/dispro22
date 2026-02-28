@@ -127,7 +127,7 @@ const InvoiceRequestDialog: React.FC<Props> = ({ open, onOpenChange }) => {
   const { data: products } = useQuery({
     queryKey: ['products-for-invoice'],
     queryFn: async () => {
-      const { data, error } = await supabase.from('products').select('id, name').eq('is_active', true).order('name');
+      const { data, error } = await supabase.from('products').select('id, name, sort_order').eq('is_active', true).order('sort_order', { ascending: true }).order('name');
       if (error) throw error;
       return data || [];
     },

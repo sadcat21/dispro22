@@ -79,7 +79,7 @@ const MyPromosContent: React.FC = () => {
           .eq('worker_id', workerId)
           .order('promo_date', { ascending: false }),
         supabase.from('customers').select('*').order('name'),
-        supabase.from('products').select('*').eq('is_active', true).order('name'),
+        supabase.from('products').select('*').eq('is_active', true).order('sort_order', { ascending: true }).order('name'),
       ]);
 
       if (promosRes.error) throw promosRes.error;
