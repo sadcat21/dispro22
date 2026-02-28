@@ -690,7 +690,7 @@ const CreateOrderDialog: React.FC<CreateOrderDialogProps> = ({ open, onOpenChang
                             ? 'bg-green-50 border-green-100'
                             : 'bg-red-50 border-red-100'
                         )}>
-                          <ProductPriceBadge product={product} boxPrice={price} />
+                          <ProductPriceBadge product={product} boxPrice={price} totalQuantity={totalCartQuantity} giftBoxes={totalGiftBoxes} giftPieces={totalGiftPieces} />
                         </div>
                       </button>
                     );
