@@ -166,20 +166,19 @@ const ProductStockSummary: React.FC<ProductStockSummaryProps> = ({
     queryFn: async () => {
       const periodStartTz = toTz(periodStart, false);
 
-      // Fetch all loading sessions since period start
+      // Fetch all loading sessions since period start (include unloading_details for unloaded sessions)
       const { data: sessions } = await supabase
         .from('loading_sessions')
-        .select('id, status, created_at')
+        .select('id, status, created_at, unloading_details')
         .eq('worker_id', workerId)
         .gte('created_at', periodStartTz)
         .order('created_at', { ascending: false });
 
-      const allSessions = sessions || [];
+      const allSessions = (sessions || []) as any[];
       const loadCount = allSessions.filter(s => s.status === 'completed' || s.status === 'open').length;
       const unloadCount = allSessions.filter(s => s.status === 'unloaded').length;
       const reviewCount = allSessions.filter(s => s.status === 'review').length;
 
-      // Fetch all loading session items for these sessions
       const loadSessionIds = allSessions.filter(s => s.status === 'completed' || s.status === 'open').map(s => s.id);
       const unloadSessionIds = allSessions.filter(s => s.status === 'unloaded').map(s => s.id);
       const allSessionIds = allSessions.map(s => s.id);
@@ -194,6 +193,10 @@ const ProductStockSummary: React.FC<ProductStockSummaryProps> = ({
       const unloadedMap: Record<string, number> = {};
       const loadSet = new Set(loadSessionIds);
       const unloadSet = new Set(unloadSessionIds);
+      
+      // Track which unload sessions have items in loading_session_items
+      const unloadSessionsWithItems = new Set<string>();
+      
       for (const item of (items || [])) {
         const name = (item as any).product?.name || '';
         if (!name) continue;
@@ -202,6 +205,22 @@ const ProductStockSummary: React.FC<ProductStockSummaryProps> = ({
           loadedMap[name] = (loadedMap[name] || 0) + qty;
         } else if (unloadSet.has((item as any).session_id)) {
           unloadedMap[name] = (unloadedMap[name] || 0) + qty;
+          unloadSessionsWithItems.add((item as any).session_id);
+        }
+      }
+
+      // For unloaded sessions without loading_session_items, use unloading_details JSONB
+      for (const session of allSessions) {
+        if (session.status === 'unloaded' && !unloadSessionsWithItems.has(session.id) && session.unloading_details) {
+          const details = Array.isArray(session.unloading_details) ? session.unloading_details : [];
+          for (const detail of details) {
+            const name = detail.product_name || '';
+            if (!name) continue;
+            const qty = Number(detail.return_qty || detail.actual_qty || 0) + Number(detail.surplus_qty || 0);
+            if (qty > 0) {
+              unloadedMap[name] = (unloadedMap[name] || 0) + qty;
+            }
+          }
         }
       }
 

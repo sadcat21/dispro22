@@ -1635,6 +1635,7 @@ export type Database = {
           manager_id: string
           notes: string | null
           status: string
+          unloading_details: Json | null
           worker_id: string
         }
         Insert: {
@@ -1645,6 +1646,7 @@ export type Database = {
           manager_id: string
           notes?: string | null
           status?: string
+          unloading_details?: Json | null
           worker_id: string
         }
         Update: {
@@ -1655,6 +1657,7 @@ export type Database = {
           manager_id?: string
           notes?: string | null
           status?: string
+          unloading_details?: Json | null
           worker_id?: string
         }
         Relationships: [

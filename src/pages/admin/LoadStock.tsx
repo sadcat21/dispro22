@@ -810,6 +810,17 @@ const LoadStock: React.FC = () => {
       const hasDeficitItems = emptyTruckItems.some(item => item.verificationStatus === 'deficit');
       const discrepancyNotes = hasSurplus ? ' (مع فائض)' : hasDeficitItems ? ' (مع عجز)' : '';
 
+      // Build unloading details JSONB
+      const unloadingDetails = emptyTruckItems.map(item => ({
+        product_id: item.product_id,
+        product_name: item.product_name,
+        system_qty: item.quantity,
+        actual_qty: item.actualQty,
+        surplus_qty: item.verificationStatus === 'surplus' ? item.surplusQty : 0,
+        deficit_qty: item.verificationStatus === 'deficit' ? item.quantity - item.actualQty : 0,
+        status: item.verificationStatus,
+      }));
+
       // Create an unloading session record
       const { data: unloadSession, error: sessionError } = await supabase
         .from('loading_sessions')
@@ -820,7 +831,8 @@ const LoadStock: React.FC = () => {
           status: 'unloaded',
           notes: `تفريغ الشاحنة${discrepancyNotes}`,
           completed_at: new Date().toISOString(),
-        })
+          unloading_details: unloadingDetails,
+        } as any)
         .select()
         .single();
 
