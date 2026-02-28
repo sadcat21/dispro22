@@ -281,7 +281,7 @@ export const translations: Translations = {
   'products.piece_per_box': { ar: 'قطعة/صندوق', fr: 'pièces/boîte', en: 'pcs/box' },
   'products.pricing_unit': { ar: 'معيار التسعير', fr: 'Unité de tarification', en: 'Pricing Unit' },
   'products.pricing_unit_box': { ar: 'صندوق', fr: 'Boîte', en: 'Box' },
-  'products.pricing_unit_kg': { ar: 'كيلوغرام', fr: 'Kilogramme', en: 'Kilogram' },
+  'products.pricing_unit_kg': { ar: 'kg', fr: 'kg', en: 'kg' },
   'products.pricing_unit_unit': { ar: 'علبة', fr: 'Unité', en: 'Unit' },
   'products.weight_per_box': { ar: 'وزن الصندوق (كغ)', fr: 'Poids par boîte (kg)', en: 'Weight per Box (kg)' },
   'products.weight_per_unit': { ar: 'وزن العلبة', fr: 'Poids par unité', en: 'Weight per Unit' },
