@@ -613,18 +613,25 @@ const CreateOrderDialog: React.FC<CreateOrderDialogProps> = ({ open, onOpenChang
                     return (
                       <button
                         key={product.id}
+                        dir="rtl"
                         onClick={() => handleProductClick(product)}
                         className={cn(
                           "flex flex-col rounded-2xl overflow-hidden text-center transition-all relative",
-                          "bg-gradient-to-b from-neutral-900 to-neutral-800 shadow-lg border-2",
-                          inCart ? 'border-primary ring-2 ring-primary/40' : 'border-amber-600/40 hover:border-amber-500/70 hover:shadow-xl',
+                          "bg-white shadow-lg border-2",
+                          inCart ? 'border-primary ring-2 ring-primary/40' : 'border-red-200 hover:border-primary/60 hover:shadow-xl',
                           (isShortage || isNotInStock) && !inCart && "border-orange-400/60",
                           hasOffer && !isShortage && !isNotInStock && !inCart && "border-green-500/50"
                         )}
                       >
                         {/* اسم المنتج أعلى الصورة */}
-                        <div className="px-2 py-2 border-b border-amber-600/30">
-                          <span className="text-xs font-bold text-amber-100 leading-tight line-clamp-2 block">
+                        <div className={cn(
+                          "px-2 py-2 border-b",
+                          inCart ? 'bg-primary border-primary' : 'bg-red-50 border-red-100'
+                        )}>
+                          <span className={cn(
+                            "text-xs font-bold leading-tight line-clamp-2 block text-right",
+                            inCart ? 'text-white' : 'text-red-900'
+                          )}>
                             {product.name}
                           </span>
                         </div>
@@ -639,36 +646,34 @@ const CreateOrderDialog: React.FC<CreateOrderDialogProps> = ({ open, onOpenChang
                               loading="lazy"
                             />
                           ) : (
-                            <div className="w-full aspect-square bg-neutral-700/50 flex items-center justify-center">
-                              <Plus className="w-10 h-10 text-amber-400/60" />
+                            <div className="w-full aspect-square bg-red-50 flex items-center justify-center">
+                              <Plus className="w-10 h-10 text-primary/40" />
                             </div>
                           )}
                         </div>
 
                         {/* السعر والتفاصيل أسفل الصورة */}
-                        <div className="px-2 py-2 bg-neutral-950/60 border-t border-amber-600/30 space-y-1">
+                        <div className="px-2 py-2 bg-red-50 border-t border-red-100">
                           <div className="flex items-center justify-between gap-1">
                             <div className="flex items-center gap-1">
                               {hasOffer && (
-                                <span className="w-6 h-6 rounded-full bg-amber-500/20 flex items-center justify-center">
-                                  <Gift className="w-3.5 h-3.5 text-amber-400" />
+                                <span className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center">
+                                  <Gift className="w-3.5 h-3.5 text-green-600" />
                                 </span>
                               )}
                               {(isShortage || isNotInStock) && (
-                                <span className="w-6 h-6 rounded-full bg-orange-500/20 flex items-center justify-center">
-                                  <AlertTriangle className="w-3.5 h-3.5 text-orange-400" />
+                                <span className="w-6 h-6 rounded-full bg-orange-100 flex items-center justify-center">
+                                  <AlertTriangle className="w-3.5 h-3.5 text-orange-500" />
                                 </span>
                               )}
                             </div>
-                            <div className="flex flex-col items-end gap-0.5 [&_.text-primary]:text-amber-300 [&_.text-muted-foreground]:text-amber-200/70 [&_.bg-muted]:bg-amber-900/30 [&_.border-primary\\/30]:border-amber-500/30">
-                              <ProductPriceBadge product={product} boxPrice={price} />
-                            </div>
+                            <ProductPriceBadge product={product} boxPrice={price} />
                           </div>
                         </div>
 
                         {/* شارة الكمية */}
                         {inCart && (
-                          <Badge variant="default" className="absolute top-1.5 end-1.5 text-sm px-2.5 py-0.5 shadow-lg font-bold">
+                          <Badge variant="default" className="absolute top-1.5 start-1.5 text-sm px-2.5 py-0.5 shadow-lg font-bold">
                             {inCart.quantity}
                           </Badge>
                         )}
