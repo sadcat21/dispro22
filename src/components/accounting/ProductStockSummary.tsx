@@ -159,7 +159,7 @@ const ProductStockSummary: React.FC<ProductStockSummaryProps> = ({
     queryFn: async () => {
       const { data: sessions } = await supabase
         .from('loading_sessions')
-        .select('id, status')
+        .select('id, status, created_at, notes, manager:workers!loading_sessions_manager_id_fkey(full_name)')
         .eq('worker_id', workerId)
         .order('created_at', { ascending: false })
         .limit(1);
@@ -168,21 +168,32 @@ const ProductStockSummary: React.FC<ProductStockSummaryProps> = ({
         return null;
       }
 
-      const sessionId = sessions[0].id;
+      const session = sessions[0] as any;
+      const sessionId = session.id;
       const { data: items } = await supabase
         .from('loading_session_items')
         .select('product_id, previous_quantity, quantity, product:products(name)')
         .eq('session_id', sessionId);
 
-      // Build a map: product_name -> { systemQty, actualQty, diff }
       const reviewMap: Record<string, { systemQty: number; actualQty: number; diff: number }> = {};
+      let discrepancyCount = 0;
       for (const item of (items || [])) {
         const name = (item as any).product?.name || '';
         const systemQty = Number((item as any).previous_quantity || 0);
         const actualQty = Number((item as any).quantity || 0);
-        reviewMap[name] = { systemQty, actualQty, diff: actualQty - systemQty };
+        const diff = actualQty - systemQty;
+        reviewMap[name] = { systemQty, actualQty, diff };
+        if (Math.abs(diff) >= 0.001) discrepancyCount++;
       }
-      return reviewMap;
+      return {
+        items: reviewMap,
+        sessionInfo: {
+          status: session.status,
+          created_at: session.created_at,
+          manager_name: session.manager?.full_name || 'مدير النظام',
+          notes: session.notes || `جلسة مراجعة - ${discrepancyCount} فارق`,
+        },
+      };
     },
     enabled: !!workerId,
   });
@@ -212,6 +223,28 @@ const ProductStockSummary: React.FC<ProductStockSummaryProps> = ({
             <span className="font-semibold text-sm">{t('accounting.truck_stock')}</span>
           </div>
 
+          {/* Review Session Info */}
+          {reviewData?.sessionInfo && (
+            <div className="bg-muted/50 border rounded-lg p-2.5 space-y-1 text-xs">
+              <div className="grid grid-cols-2 gap-1">
+                <span className="text-muted-foreground">الحالة:</span>
+                <Badge className="text-[10px] bg-primary text-primary-foreground w-fit">مراجعة</Badge>
+              </div>
+              <div className="grid grid-cols-2 gap-1">
+                <span className="text-muted-foreground">التاريخ:</span>
+                <span>{new Date(reviewData.sessionInfo.created_at).toLocaleString('ar-DZ')}</span>
+              </div>
+              <div className="grid grid-cols-2 gap-1">
+                <span className="text-muted-foreground">المصدر:</span>
+                <span>{reviewData.sessionInfo.manager_name}</span>
+              </div>
+              <div className="grid grid-cols-2 gap-1">
+                <span className="text-muted-foreground">ملاحظات:</span>
+                <span>{reviewData.sessionInfo.notes}</span>
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-4 gap-1 text-xs text-muted-foreground text-center font-medium border-b pb-1">
             <span className="text-start">{t('stock.product')}</span>
             <span>كمية النظام</span>
@@ -220,7 +253,7 @@ const ProductStockSummary: React.FC<ProductStockSummaryProps> = ({
           </div>
 
           {truckStock.map((row) => {
-            const review = reviewData?.[row.product_name];
+            const review = reviewData?.items?.[row.product_name];
             const systemQty = review ? review.systemQty : row.quantity;
             const actualQty = review ? review.actualQty : null;
             const diff = review ? review.diff : null;
