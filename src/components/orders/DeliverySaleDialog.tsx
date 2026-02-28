@@ -52,6 +52,8 @@ interface SaleItem {
   giftQuantity: number; // gift boxes included in quantity
   giftOfferId?: string | null;
   piecesPerBox: number;
+  pricingUnit?: string;
+  weightPerBox?: number | null;
 }
 
 const DeliverySaleDialog: React.FC<DeliverySaleDialogProps> = ({ open, onOpenChange, order }) => {
@@ -189,6 +191,8 @@ const DeliverySaleDialog: React.FC<DeliverySaleDialogProps> = ({ open, onOpenCha
           giftQuantity: giftQty,
           giftOfferId: (item as any).gift_offer_id || null,
           piecesPerBox: ppb,
+          pricingUnit: item.product?.pricing_unit || 'box',
+          weightPerBox: item.product?.weight_per_box ?? null,
         };
       }));
       setNotes(order.notes || '');
@@ -299,6 +303,8 @@ const DeliverySaleDialog: React.FC<DeliverySaleDialogProps> = ({ open, onOpenCha
       giftQuantity: 0,
       giftOfferId: null,
       piecesPerBox: product.pieces_per_box || 1,
+      pricingUnit: product.pricing_unit || 'box',
+      weightPerBox: product.weight_per_box ?? null,
     }]);
     setNewProductId('');
   };
@@ -790,6 +796,11 @@ const DeliverySaleDialog: React.FC<DeliverySaleDialogProps> = ({ open, onOpenCha
                     const available = getAvailable(item.productId);
                     const changed = item.quantity !== item.originalQuantity;
                     const isShortage = shortageProductIds.has(item.productId);
+                    const unitCount = item.pricingUnit === 'kg' && item.weightPerBox && item.weightPerBox > 0
+                      ? item.weightPerBox
+                      : item.pricingUnit === 'unit' && item.piecesPerBox > 1
+                        ? item.piecesPerBox
+                        : null;
                     return (
                       <div
                         key={item.productId}
@@ -828,9 +839,16 @@ const DeliverySaleDialog: React.FC<DeliverySaleDialogProps> = ({ open, onOpenCha
                                 </Badge>
                               )}
                               {item.unitPrice > 0 && item.quantity > 0 && (
-                                <span className="text-xs text-muted-foreground">
-                                  {item.unitPrice.toLocaleString()} {t('common.currency')} × {Math.max(0, item.quantity - item.giftQuantity)} = {item.totalPrice.toLocaleString()} {t('common.currency')}
-                                </span>
+                                <div className="flex items-center gap-1 flex-wrap">
+                                  <span className="text-xs text-muted-foreground">
+                                    {item.unitPrice.toLocaleString()} {t('common.currency')} × {Math.max(0, item.quantity - item.giftQuantity)} = {item.totalPrice.toLocaleString()} {t('common.currency')}
+                                  </span>
+                                  {unitCount !== null && (
+                                    <span className="inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold">
+                                      {Number.isInteger(unitCount) ? unitCount : unitCount.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                                    </span>
+                                  )}
+                                </div>
                               )}
                               {available > 0 && (
                                 <span className="text-xs text-muted-foreground block">
