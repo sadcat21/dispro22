@@ -103,37 +103,41 @@ const CheckVerificationDialog: React.FC<CheckVerificationDialogProps> = ({
     },
   ] : documentType === 'receipt' ? [
     {
-      title: 'بيانات الوصل',
+      title: 'بيانات وصل الدفع (Versement)',
       icon: FileCheck,
       items: [
         { key: 'check_intact', label: 'وصل الدفع سليم وواضح' },
         { key: 'amount_matches', label: `المبلغ مطابق للفاتورة (${formatNumber(orderTotal, language)} DA)` },
-        { key: 'customer_stamp', label: 'ختم البنك أو المؤسسة المالية موجود' },
+        { key: 'customer_stamp', label: 'ختم البنك موجود على الوصل' },
+        { key: 'company_name_on_check', label: 'الحساب المستلم هو: BNA - RIB: 00100957030000149786' },
       ],
     },
     {
-      title: 'معلومات الفاتورة',
+      title: 'معلومات العميل والفاتورة',
       icon: FileText,
       items: [
-        { key: 'name_matches', label: 'اسم المرسل مطابق لاسم العميل' },
+        { key: 'name_matches', label: 'اسم المرسل (الدافع) مطابق لاسم العميل' },
+        { key: 'signature_present', label: 'اسم المستفيد: SARL LASER FOOD' },
         { key: 'invoice_stamped', label: 'الفاتورة مختومة بختم العميل' },
       ],
     },
   ] : [
     {
-      title: 'بيانات التحويل',
+      title: 'بيانات التحويل (Virement)',
       icon: FileCheck,
       items: [
         { key: 'check_intact', label: 'إثبات التحويل سليم وواضح' },
         { key: 'amount_matches', label: `المبلغ مطابق للفاتورة (${formatNumber(orderTotal, language)} DA)` },
         { key: 'signature_present', label: 'رقم مرجع التحويل موجود' },
+        { key: 'company_name_on_check', label: 'الحساب المستلم هو: BNA - RIB: 00100957030000149786' },
       ],
     },
     {
-      title: 'معلومات الفاتورة',
+      title: 'معلومات العميل والفاتورة',
       icon: FileText,
       items: [
         { key: 'name_matches', label: 'اسم المرسل مطابق لاسم العميل' },
+        { key: 'customer_stamp', label: 'اسم المستفيد: SARL LASER FOOD' },
         { key: 'invoice_stamped', label: 'الفاتورة مختومة بختم العميل' },
       ],
     },
