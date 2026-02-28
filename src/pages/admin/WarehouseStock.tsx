@@ -18,6 +18,7 @@ interface ProductSummary {
   received: number;
   workerStock: number;
   sold: number;
+  gifts: number;
   damaged: number;
   surplus: number;
   deficit: number;
@@ -91,7 +92,7 @@ const WarehouseStock: React.FC = () => {
       if (orderIds.length === 0) return [];
       const { data } = await supabase
         .from('order_items')
-        .select('product_id, quantity')
+        .select('product_id, quantity, gift_quantity')
         .in('order_id', orderIds);
       return data || [];
     },
@@ -111,6 +112,7 @@ const WarehouseStock: React.FC = () => {
         received: 0,
         workerStock: 0,
         sold: 0,
+        gifts: 0,
         damaged: 0,
         surplus: 0,
         deficit: 0,
@@ -138,6 +140,7 @@ const WarehouseStock: React.FC = () => {
     for (const oi of (soldData || [])) {
       if (summaries[oi.product_id]) {
         summaries[oi.product_id].sold += Number(oi.quantity || 0);
+        summaries[oi.product_id].gifts += Number(oi.gift_quantity || 0);
       }
     }
 
@@ -242,7 +245,7 @@ const WarehouseStock: React.FC = () => {
                 <Card key={s.productId} className="overflow-hidden">
                   <CardContent className="p-3">
                     <div className="font-medium text-sm mb-2 text-primary truncate">{s.productName}</div>
-                    <div className="grid grid-cols-3 gap-x-3 gap-y-1.5 text-xs">
+                    <div className="grid grid-cols-4 gap-x-3 gap-y-1.5 text-xs">
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">المستلم</span>
                         <span className="font-bold text-green-600">{s.received}</span>
@@ -254,6 +257,10 @@ const WarehouseStock: React.FC = () => {
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">المباع</span>
                         <span className="font-bold text-orange-600">{s.sold}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">الهدايا</span>
+                        <span className={`font-bold ${s.gifts > 0 ? 'text-pink-500' : 'text-muted-foreground'}`}>{s.gifts}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">التالف</span>
