@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Switch } from '@/components/ui/switch';
-import { Loader2, Calculator, Receipt, Banknote, CreditCard, ArrowDownCircle, ArrowUpCircle, Wallet, TrendingDown, Coins, AlertTriangle, Package, ShoppingBag, RefreshCw, Gift, Tag, HandCoins, FileText } from 'lucide-react';
+import { Loader2, Calculator, Receipt, Banknote, CreditCard, ArrowDownCircle, ArrowUpCircle, Wallet, TrendingDown, Coins, AlertTriangle, Package, ShoppingBag, RefreshCw, Gift, Tag, HandCoins, FileText, ClipboardList } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSessionCalculations, SessionCalculations } from '@/hooks/useSessionCalculations';
@@ -117,6 +117,7 @@ const CreateSessionDialog: React.FC<CreateSessionDialogProps> = ({ open, onOpenC
       setRegisterDeficitTreasury(false);
       setRegisterSurplus(false);
       setIsSubmitting(false);
+      setShowConfirmation(false);
     }
   }, [open, editSession, selectedWorkerId]);
 
@@ -138,6 +139,12 @@ const CreateSessionDialog: React.FC<CreateSessionDialogProps> = ({ open, onOpenC
   const cashDifference = calc ? Number(actualCash || 0) - calc.physicalCash : 0;
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showConfirmation, setShowConfirmation] = useState(false);
+
+  const handleShowConfirmation = () => {
+    if (!selectedWorkerId || !calc) { toast.error('اختر العامل'); return; }
+    setShowConfirmation(true);
+  };
 
   const handleSubmit = async () => {
     if (!selectedWorkerId || !calc || isSubmitting) { toast.error('اختر العامل'); return; }
@@ -245,6 +252,7 @@ const CreateSessionDialog: React.FC<CreateSessionDialogProps> = ({ open, onOpenC
         } catch { toast.error('خطأ في تسجيل الفائض'); }
       }
 
+      setShowConfirmation(false);
       onOpenChange(false);
     } catch (error: any) {
       toast.error(error.message);
@@ -631,15 +639,59 @@ const CreateSessionDialog: React.FC<CreateSessionDialogProps> = ({ open, onOpenC
             {/* Submit */}
             <Button
               className="w-full rounded-xl h-11 text-base font-bold"
-              onClick={handleSubmit}
+              onClick={handleShowConfirmation}
               disabled={isSubmitting || createSession.isPending || updateSession.isPending || !selectedWorkerId || !calc}
             >
-              {(isSubmitting || createSession.isPending || updateSession.isPending) && <Loader2 className="w-4 h-4 animate-spin ml-2" />}
               {isEditMode ? (t('accounting.update_session') || 'حفظ التعديلات') : t('accounting.save_session')}
             </Button>
           </div>
         </ScrollArea>
       </DialogContent>
+
+      {/* Confirmation Dialog */}
+      <Dialog open={showConfirmation} onOpenChange={setShowConfirmation}>
+        <DialogContent className="max-w-lg max-h-[90vh] p-0 gap-0 overflow-hidden" dir={dir}>
+          <DialogHeader className="p-4 pb-3 border-b bg-muted/30">
+            <DialogTitle className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                <ClipboardList className="w-5 h-5 text-primary" />
+              </div>
+              <div className="flex flex-col">
+                <span>ملخص التسليم</span>
+                {workerName && <span className="text-xs font-normal text-muted-foreground">{workerName}</span>}
+              </div>
+            </DialogTitle>
+          </DialogHeader>
+          <ScrollArea className="max-h-[calc(90vh-10rem)] px-4 py-3">
+            {calc && (
+              <WorkerHandoverSummary
+                workerId={selectedWorkerId}
+                periodStart={periodStart}
+                periodEnd={periodEnd}
+                calc={calc}
+                coinAmount={Number(coinAmount || 0)}
+              />
+            )}
+          </ScrollArea>
+          <div className="p-4 border-t flex gap-2">
+            <Button
+              variant="outline"
+              className="flex-1 rounded-xl h-11"
+              onClick={() => setShowConfirmation(false)}
+            >
+              العودة للمراجعة
+            </Button>
+            <Button
+              className="flex-1 rounded-xl h-11 text-base font-bold"
+              onClick={handleSubmit}
+              disabled={isSubmitting || createSession.isPending || updateSession.isPending}
+            >
+              {(isSubmitting || createSession.isPending || updateSession.isPending) && <Loader2 className="w-4 h-4 animate-spin ml-2" />}
+              تأكيد الحفظ
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 };
