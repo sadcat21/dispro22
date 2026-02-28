@@ -1,5 +1,5 @@
 import React from 'react';
-import { Badge } from '@/components/ui/badge';
+import { Package, Box } from 'lucide-react';
 import { Product } from '@/types/database';
 import { useLanguage } from '@/contexts/LanguageContext';
 
@@ -34,13 +34,15 @@ const ProductPriceBadge: React.FC<ProductPriceBadgeProps> = ({ product, boxPrice
   return (
     <div className="flex flex-col w-full gap-1">
       <div className="w-full rounded-md bg-primary/10 border border-primary/30 py-1 text-center">
-        <span className="text-base font-bold text-primary">
+        <span className="text-base font-bold text-primary flex items-center justify-center gap-1">
+          <Package className="w-4 h-4" />
           {boxPrice.toLocaleString()} {t('common.currency')}
         </span>
       </div>
       {unitPrice !== null && unitPrice > 0 && (
         <div className="w-full rounded-md bg-muted border border-border py-1 text-center">
-          <span className="text-sm font-semibold text-muted-foreground">
+          <span className="text-sm font-semibold text-muted-foreground flex items-center justify-center gap-1">
+            <Box className="w-3.5 h-3.5" />
             {unitPrice.toLocaleString()} {t('common.currency')}/{unitLabel}
           </span>
         </div>
