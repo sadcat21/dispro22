@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Switch } from '@/components/ui/switch';
-import { Loader2, Calculator, Receipt, Banknote, CreditCard, ArrowDownCircle, ArrowUpCircle, Wallet, TrendingDown, Coins, AlertTriangle, Package, ShoppingBag, RefreshCw, Gift, Tag, HandCoins } from 'lucide-react';
+import { Loader2, Calculator, Receipt, Banknote, CreditCard, ArrowDownCircle, ArrowUpCircle, Wallet, TrendingDown, Coins, AlertTriangle, Package, ShoppingBag, RefreshCw, Gift, Tag, HandCoins, FileText } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSessionCalculations, SessionCalculations } from '@/hooks/useSessionCalculations';
@@ -21,6 +21,7 @@ import SalesDetailsSummary from './SalesDetailsSummary';
 import PromoTrackingSummary from './PromoTrackingSummary';
 import StockDiscrepancySection from './StockDiscrepancySection';
 import DebtCollectionsSummary from './DebtCollectionsSummary';
+import DocumentCollectionsSummary from './DocumentCollectionsSummary';
 import { usePendingDiscrepancies } from '@/hooks/useStockDiscrepancies';
 
 interface CreateSessionDialogProps {
@@ -580,6 +581,18 @@ const CreateSessionDialog: React.FC<CreateSessionDialogProps> = ({ open, onOpenC
                     label="تفاصيل الديون المحصلة"
                   />
                   <DebtCollectionsSummary
+                    workerId={selectedWorkerId}
+                    periodStart={periodStart}
+                    periodEnd={periodEnd}
+                  />
+                </div>
+                {/* Collected Documents */}
+                <div className="border-2 rounded-xl p-3.5">
+                  <SectionDividerWithIcon
+                    icon={<FileText className="w-4 h-4 text-blue-600" />}
+                    label="المستندات المحصلة (شيكات / وصولات)"
+                  />
+                  <DocumentCollectionsSummary
                     workerId={selectedWorkerId}
                     periodStart={periodStart}
                     periodEnd={periodEnd}
