@@ -137,6 +137,18 @@ const EmptyTruckDialog: React.FC<EmptyTruckDialogProps> = ({ workerId, open, onO
       const hasSurplus = emptyTruckItems.some(item => item.surplusQty > 0);
       const surplusNotes = hasSurplus ? ' (مع فائض)' : '';
 
+      // Build unloading details JSONB
+      const unloadingDetails = emptyTruckItems
+        .filter(item => (item.returnQty + item.surplusQty) > 0)
+        .map(item => ({
+          product_id: item.product_id,
+          product_name: item.product_name,
+          system_qty: item.quantity,
+          return_qty: item.returnQty,
+          surplus_qty: item.surplusQty,
+          keep_allocations: item.keepAllocations.filter(a => a.quantity > 0),
+        }));
+
       // Create an unloading session in loading_sessions
       const { data: unloadSession, error: sessionError } = await supabase
         .from('loading_sessions')
@@ -147,7 +159,8 @@ const EmptyTruckDialog: React.FC<EmptyTruckDialogProps> = ({ workerId, open, onO
           status: 'unloaded',
           notes: `تفريغ الشاحنة - ${emptyMode === 'full' ? 'تفريغ كلي' : 'تفريغ الفائض'}${surplusNotes}`,
           completed_at: new Date().toISOString(),
-        })
+          unloading_details: unloadingDetails,
+        } as any)
         .select()
         .single();
 
