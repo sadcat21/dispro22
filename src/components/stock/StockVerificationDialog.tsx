@@ -10,6 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCreateDiscrepancy } from '@/hooks/useStockDiscrepancies';
 import { toast } from 'sonner';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface ReviewItem {
   product_id: string;
@@ -24,12 +25,13 @@ interface StockVerificationDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   workerId: string;
-  onComplete?: () => void;
+  onComplete?: () => void | Promise<void>;
 }
 
 const StockVerificationDialog: React.FC<StockVerificationDialogProps> = ({
   open, onOpenChange, workerId, onComplete,
 }) => {
+  const queryClient = useQueryClient();
   const { workerId: currentWorkerId, activeBranch } = useAuth();
   const createDiscrepancy = useCreateDiscrepancy();
   const [items, setItems] = useState<ReviewItem[]>([]);
@@ -188,11 +190,20 @@ const StockVerificationDialog: React.FC<StockVerificationDialogProps> = ({
         });
       }
 
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['my-worker-stock'] }),
+        queryClient.invalidateQueries({ queryKey: ['worker-truck-stock'] }),
+        queryClient.invalidateQueries({ queryKey: ['truck-review-for-stock'] }),
+        queryClient.invalidateQueries({ queryKey: ['truck-review-section'] }),
+        queryClient.invalidateQueries({ queryKey: ['worker-load-suggestions'] }),
+        queryClient.invalidateQueries({ queryKey: ['loading-sessions'] }),
+      ]);
+
       toast.success(discrepancies.length > 0 
         ? `تم تأكيد المراجعة - ${discrepancies.length} فارق مسجل`
         : 'تم تأكيد المراجعة - جميع المنتجات مطابقة');
       onOpenChange(false);
-      onComplete?.();
+      await onComplete?.();
     } catch (err: any) {
       toast.error(err.message || 'خطأ في تسجيل المراجعة');
     } finally {

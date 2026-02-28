@@ -1802,7 +1802,13 @@ const LoadStock: React.FC = () => {
         onOpenChange={setShowVerificationDialog}
         workerId={selectedWorker}
         onComplete={async () => {
-          await refetchSessions();
+          await Promise.all([
+            refresh(),
+            refetchSessions(),
+            queryClient.invalidateQueries({ queryKey: ['my-worker-stock'] }),
+            queryClient.invalidateQueries({ queryKey: ['worker-truck-stock'] }),
+            queryClient.invalidateQueries({ queryKey: ['worker-load-suggestions'] }),
+          ]);
         }}
       />
     </div>
