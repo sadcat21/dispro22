@@ -3986,7 +3986,9 @@ export type Database = {
       warehouse_stock: {
         Row: {
           branch_id: string
+          compensation_quantity: number
           damaged_quantity: number
+          factory_return_quantity: number
           id: string
           product_id: string
           quantity: number
@@ -3994,7 +3996,9 @@ export type Database = {
         }
         Insert: {
           branch_id: string
+          compensation_quantity?: number
           damaged_quantity?: number
+          factory_return_quantity?: number
           id?: string
           product_id: string
           quantity?: number
@@ -4002,7 +4006,9 @@ export type Database = {
         }
         Update: {
           branch_id?: string
+          compensation_quantity?: number
           damaged_quantity?: number
+          factory_return_quantity?: number
           id?: string
           product_id?: string
           quantity?: number
