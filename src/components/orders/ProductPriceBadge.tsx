@@ -37,34 +37,25 @@ const ProductPriceBadge: React.FC<ProductPriceBadgeProps> = ({ product, boxPrice
     unitLabel = t('products.pricing_unit_unit');
   }
 
-  // Calculate "after offer" unit price
-  // effective price = (paid boxes * boxPrice) / total units (including gift units)
+  // Calculate "after offer" price
+  // Formula: (paidBoxes * boxPrice) / totalBoxes = effective box price
+  // Then derive unit price from effective box price
   let afterOfferUnitPrice: number | null = null;
   const hasGift = totalQuantity > 0 && (giftBoxes > 0 || giftPieces > 0);
 
-  if (hasGift && unitPrice !== null) {
+  if (hasGift) {
     const paidBoxes = totalQuantity - giftBoxes;
     const totalPaid = paidBoxes * boxPrice;
+    // Effective box price after offer
+    const effectiveBoxPrice = totalPaid / totalQuantity;
 
-    // Total units received (boxes converted to units + extra gift pieces)
-    let totalUnitsReceived = 0;
-    if (pricingUnit === 'kg' && product.weight_per_box) {
-      totalUnitsReceived = totalQuantity * product.weight_per_box;
-      // Add gift pieces as fraction of box weight
-      if (giftPieces > 0 && product.pieces_per_box > 0) {
-        const pieceWeight = product.weight_per_box / product.pieces_per_box;
-        totalUnitsReceived += (giftPieces % product.pieces_per_box) * pieceWeight;
-      }
-    } else if (pricingUnit === 'unit') {
-      totalUnitsReceived = totalQuantity * product.pieces_per_box;
-      totalUnitsReceived += (giftPieces % (product.pieces_per_box || 1));
+    if (pricingUnit === 'kg' && product.weight_per_box && product.weight_per_box > 0) {
+      afterOfferUnitPrice = effectiveBoxPrice / product.weight_per_box;
+    } else if (pricingUnit === 'unit' && product.pieces_per_box > 1) {
+      afterOfferUnitPrice = effectiveBoxPrice / product.pieces_per_box;
     } else {
-      // box pricing - show per box
-      totalUnitsReceived = totalQuantity;
-    }
-
-    if (totalUnitsReceived > 0) {
-      afterOfferUnitPrice = totalPaid / totalUnitsReceived;
+      // Box pricing: show effective box price
+      afterOfferUnitPrice = effectiveBoxPrice;
     }
   }
 
@@ -85,10 +76,10 @@ const ProductPriceBadge: React.FC<ProductPriceBadgeProps> = ({ product, boxPrice
         </div>
       )}
       {afterOfferUnitPrice !== null && afterOfferUnitPrice > 0 && unitLabel && (
-        <div className="w-full rounded-md bg-green-50 border border-green-300 py-1 text-center">
-          <span className="text-sm font-bold text-green-700 flex items-center justify-center gap-1">
+        <div className="w-full rounded-md bg-accent border border-accent/50 py-1 text-center">
+          <span className="text-sm font-bold text-accent-foreground flex items-center justify-center gap-1">
             <Gift className="w-3.5 h-3.5" />
-            {afterOfferUnitPrice.toLocaleString(undefined, { maximumFractionDigits: 2 })} {t('common.currency')}/{unitLabel}
+            {afterOfferUnitPrice.toLocaleString(undefined, { maximumFractionDigits: 2 })} {t('common.currency')}/{unitLabel || t('products.box')}
           </span>
         </div>
       )}
