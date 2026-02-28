@@ -1323,7 +1323,7 @@ const LoadStock: React.FC = () => {
                   <h4 className="text-sm font-semibold mb-2 flex items-center gap-1">
                     <Truck className="w-4 h-4" />
                     {session.status === 'review' 
-                      ? `المنتجات المراجعة (${viewReviewDiscrepancies.length})`
+                      ? `المنتجات المراجعة (${viewSessionItems.length})`
                       : isUnload 
                         ? `المنتجات المفرّغة (${viewSessionItems.length})` 
                         : `المنتجات المشحونة (${viewSessionItems.length})`}
@@ -1333,7 +1333,7 @@ const LoadStock: React.FC = () => {
                       <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
                     </div>
                   ) : session.status === 'review' ? (
-                    viewReviewDiscrepancies.length === 0 ? (
+                    viewSessionItems.length === 0 && viewReviewDiscrepancies.length === 0 ? (
                       <div className="text-center py-4">
                         <CheckCircle className="w-6 h-6 text-green-600 mx-auto mb-1" />
                         <p className="text-sm text-green-600 font-medium">جميع المنتجات مطابقة</p>
@@ -1342,27 +1342,61 @@ const LoadStock: React.FC = () => {
                     ) : (
                       <ScrollArea className="max-h-[40vh]">
                         <div className="space-y-2">
-                          {viewReviewDiscrepancies.map((disc: any) => (
-                            <div key={disc.id} className={`rounded-lg px-3 py-2.5 ${
-                              disc.discrepancy_type === 'deficit' 
-                                ? 'bg-destructive/10 border border-destructive/30' 
-                                : 'bg-orange-50 dark:bg-orange-900/10 border border-orange-300'
-                            }`}>
-                              <div className="flex items-center justify-between mb-1">
-                                <span className="text-sm font-semibold">{disc.product?.name || '—'}</span>
-                                <Badge className={`text-[10px] ${
+                          {/* Show discrepancies first */}
+                          {viewReviewDiscrepancies.length > 0 && (
+                            <div className="space-y-2">
+                              <p className="text-xs font-semibold text-destructive flex items-center gap-1">
+                                <AlertTriangle className="w-3 h-3" />
+                                الفوارق ({viewReviewDiscrepancies.length})
+                              </p>
+                              {viewReviewDiscrepancies.map((disc: any) => (
+                                <div key={disc.id} className={`rounded-lg px-3 py-2.5 ${
                                   disc.discrepancy_type === 'deficit' 
-                                    ? 'bg-destructive text-white' 
-                                    : 'bg-orange-500 text-white'
+                                    ? 'bg-destructive/10 border border-destructive/30' 
+                                    : 'bg-orange-50 dark:bg-orange-900/10 border border-orange-300'
                                 }`}>
-                                  {disc.discrepancy_type === 'deficit' ? 'عجز' : 'فائض'}
-                                </Badge>
-                              </div>
-                              <div className="text-xs text-muted-foreground">
-                                الفارق: <span className="font-bold">{Number(disc.quantity).toFixed(2)}</span>
-                              </div>
+                                  <div className="flex items-center justify-between mb-1">
+                                    <span className="text-sm font-semibold">{disc.product?.name || '—'}</span>
+                                    <Badge className={`text-[10px] ${
+                                      disc.discrepancy_type === 'deficit' 
+                                        ? 'bg-destructive text-white' 
+                                        : 'bg-orange-500 text-white'
+                                    }`}>
+                                      {disc.discrepancy_type === 'deficit' ? 'عجز' : 'فائض'}
+                                    </Badge>
+                                  </div>
+                                  <div className="text-xs text-muted-foreground">
+                                    الفارق: <span className="font-bold">{Number(disc.quantity).toFixed(2)}</span>
+                                  </div>
+                                </div>
+                              ))}
                             </div>
-                          ))}
+                          )}
+                          {/* Show matched items */}
+                          {(() => {
+                            const discrepancyProductIds = new Set(viewReviewDiscrepancies.map((d: any) => d.product_id));
+                            const matchedItems = viewSessionItems.filter((item: any) => !discrepancyProductIds.has(item.product_id));
+                            if (matchedItems.length === 0) return null;
+                            return (
+                              <div className="space-y-1.5 mt-2">
+                                <p className="text-xs font-semibold text-green-600 flex items-center gap-1">
+                                  <CheckCircle className="w-3 h-3" />
+                                  مطابق ({matchedItems.length})
+                                </p>
+                                {matchedItems.map((item: any) => (
+                                  <div key={item.id} className="bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800 rounded-lg px-3 py-2">
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-sm">{(item.product as any)?.name || '—'}</span>
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-xs text-muted-foreground">{fmtQty(item.previous_quantity || 0)}</span>
+                                        <Badge className="bg-green-600 text-white text-[10px]">مطابق</Badge>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            );
+                          })()}
                         </div>
                       </ScrollArea>
                     )
