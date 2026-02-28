@@ -615,12 +615,21 @@ const CreateOrderDialog: React.FC<CreateOrderDialogProps> = ({ open, onOpenChang
                         key={product.id}
                         onClick={() => handleProductClick(product)}
                         className={cn(
-                          "flex flex-col rounded-xl border overflow-hidden text-center transition-colors relative",
-                          inCart ? 'bg-primary text-primary-foreground border-primary' : 'bg-background border-border hover:bg-primary/10 hover:border-primary/40',
+                          "flex flex-col rounded-xl border-2 overflow-hidden text-center transition-all relative shadow-sm",
+                          inCart ? 'border-primary ring-2 ring-primary/30' : 'border-border hover:border-primary/40 hover:shadow-md',
                           (isShortage || isNotInStock) && !inCart && "border-orange-400/60",
                           hasOffer && !isShortage && !isNotInStock && !inCart && "border-green-500/50"
                         )}
                       >
+                        {/* اسم المنتج أعلى الصورة */}
+                        <div className={cn(
+                          "px-2 py-1.5 text-xs font-bold leading-tight line-clamp-2 w-full",
+                          inCart ? 'bg-primary text-primary-foreground' : 'bg-muted text-foreground'
+                        )}>
+                          {product.name}
+                        </div>
+
+                        {/* الصورة */}
                         {product.image_url ? (
                           <img 
                             src={product.image_url} 
@@ -629,12 +638,13 @@ const CreateOrderDialog: React.FC<CreateOrderDialogProps> = ({ open, onOpenChang
                             loading="lazy"
                           />
                         ) : (
-                          <div className="w-full aspect-square bg-primary/10 flex items-center justify-center">
-                            <Plus className="w-10 h-10 text-primary" />
+                          <div className="w-full aspect-square bg-muted/50 flex items-center justify-center">
+                            <Plus className="w-10 h-10 text-muted-foreground" />
                           </div>
                         )}
-                        <div className="p-2 space-y-1">
-                          <span className="font-medium text-xs leading-tight line-clamp-2 w-full block">{product.name}</span>
+
+                        {/* السعر والتفاصيل أسفل الصورة */}
+                        <div className="p-2 space-y-1 bg-background">
                           <div className="flex items-center gap-1 flex-wrap justify-center">
                             {(isShortage || isNotInStock) && (
                               <AlertTriangle className="w-3.5 h-3.5 text-orange-500 shrink-0" />
@@ -647,8 +657,10 @@ const CreateOrderDialog: React.FC<CreateOrderDialogProps> = ({ open, onOpenChang
                             <ProductPriceBadge product={product} boxPrice={price} />
                           </div>
                         </div>
+
+                        {/* شارة الكمية */}
                         {inCart && (
-                          <Badge variant="default" className="absolute top-2 end-2 text-xs px-2">
+                          <Badge variant="default" className="absolute top-1 end-1 text-sm px-2.5 py-0.5 shadow-lg">
                             {inCart.quantity}
                           </Badge>
                         )}
