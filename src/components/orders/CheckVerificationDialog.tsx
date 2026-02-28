@@ -23,6 +23,7 @@ interface CheckVerification {
   has_due_date: boolean;
   due_date: string;
   is_blank_check: boolean;
+  document_amount: string;
 }
 
 interface CheckVerificationDialogProps {
@@ -51,6 +52,7 @@ const defaultVerification: CheckVerification = {
   has_due_date: false,
   due_date: '',
   is_blank_check: false,
+  document_amount: '',
 };
 
 const CheckVerificationDialog: React.FC<CheckVerificationDialogProps> = ({
@@ -81,7 +83,7 @@ const CheckVerificationDialog: React.FC<CheckVerificationDialogProps> = ({
     onOpenChange(isOpen);
   };
 
-  type CheckKey = keyof Omit<CheckVerification, 'has_due_date' | 'due_date' | 'is_blank_check'>;
+  type CheckKey = keyof Omit<CheckVerification, 'has_due_date' | 'due_date' | 'is_blank_check' | 'document_amount'>;
 
   const checkGroups: { title: string; icon: React.ElementType; items: { key: CheckKey; label: string }[] }[] = documentType === 'check' ? [
     {
@@ -285,17 +287,34 @@ const CheckVerificationDialog: React.FC<CheckVerificationDialogProps> = ({
                         </div>
                         <div className="space-y-1 bg-muted/30 rounded-lg p-2">
                           {group.items.map(item => (
-                            <div key={item.key} className="flex items-start gap-3 p-2 rounded-lg hover:bg-muted/50">
-                              <Checkbox
-                                id={item.key}
-                                checked={verification[item.key]}
-                                onCheckedChange={(checked) =>
-                                  setVerification(prev => ({ ...prev, [item.key]: !!checked }))
-                                }
-                              />
-                              <Label htmlFor={item.key} className="text-sm cursor-pointer leading-relaxed flex-1 text-right">
-                                {item.label}
-                              </Label>
+                            <div key={item.key} className="space-y-1">
+                              <div className="flex items-start gap-3 p-2 rounded-lg hover:bg-muted/50">
+                                <Checkbox
+                                  id={item.key}
+                                  checked={verification[item.key]}
+                                  onCheckedChange={(checked) =>
+                                    setVerification(prev => ({ ...prev, [item.key]: !!checked }))
+                                  }
+                                />
+                                <Label htmlFor={item.key} className="text-sm cursor-pointer leading-relaxed flex-1 text-right">
+                                  {item.label}
+                                </Label>
+                              </div>
+                              {item.key === 'amount_matches' && (
+                                <div className="flex items-center gap-2 px-2 pb-2">
+                                  <Input
+                                    type="number"
+                                    placeholder="المبلغ في الوثيقة"
+                                    value={verification.document_amount}
+                                    onChange={(e) => setVerification(prev => ({ ...prev, document_amount: e.target.value }))}
+                                    className="h-8 text-sm flex-1"
+                                    dir="ltr"
+                                  />
+                                  <span className="text-xs text-muted-foreground whitespace-nowrap">
+                                    / {formatNumber(orderTotal, language)} DA
+                                  </span>
+                                </div>
+                              )}
                             </div>
                           ))}
                         </div>
