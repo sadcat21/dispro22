@@ -122,12 +122,12 @@ export const useAllWorkersLiability = () => {
       if (activeBranch?.id) wQuery = wQuery.eq('branch_id', activeBranch.id);
       const { data: workers = [] } = await wQuery;
 
-      const results: WorkerLiabilitySummary[] = [];
-      for (const w of workers) {
-        const r = await calcWorkerLiability(w.id, activeBranch?.id);
-        if (r) results.push(r);
-      }
-      return results.sort((a, b) => b.totalLiability - a.totalLiability);
+      const allResults = await Promise.all(
+        workers.map(w => calcWorkerLiability(w.id, activeBranch?.id))
+      );
+      return allResults
+        .filter((r): r is WorkerLiabilitySummary => r !== null)
+        .sort((a, b) => b.totalLiability - a.totalLiability);
     },
   });
 };
