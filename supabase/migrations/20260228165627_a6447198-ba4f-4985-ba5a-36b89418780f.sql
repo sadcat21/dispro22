@@ -1,0 +1,1 @@
+UPDATE worker_stock SET quantity = 49 WHERE id = 'c78cf6cd-a88e-4122-9bae-8d5e23fd3ef2';
