@@ -303,7 +303,7 @@ const SalesDetailsSummary: React.FC<SalesDetailsSummaryProps> = ({ workerId, per
                         </Badge>
                         {/* Payment type: Invoice 1 or 2 */}
                         <Badge variant="outline" className="text-[10px]">
-                          {order.payment_type === 'with_invoice' ? 'فاتورة 1' : 'فاتورة 2'}
+                          {order.payment_type === 'with_invoice' ? 'Facture 1' : 'Facture 2'}
                         </Badge>
                         <span className="font-bold text-sm">{order.total_amount.toLocaleString()} DA</span>
                       </div>

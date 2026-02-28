@@ -113,7 +113,7 @@ const StockDiscrepancySection: React.FC<StockDiscrepancySectionProps> = ({ discr
                       <SelectValue placeholder="طريقة التسعير" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="invoice2">فاتورة 2</SelectItem>
+                      <SelectItem value="invoice2">Facture 2</SelectItem>
                       <SelectItem value="invoice1_gros">غرو</SelectItem>
                       <SelectItem value="invoice1_super_gros">سوبر غرو</SelectItem>
                       <SelectItem value="invoice1_retail">تجزئة</SelectItem>
