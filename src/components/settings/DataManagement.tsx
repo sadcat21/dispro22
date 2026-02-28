@@ -49,7 +49,7 @@ const DataManagement: React.FC = () => {
   const [password, setPassword] = useState('');
   const [passwordError, setPasswordError] = useState('');
 
-  const PROTECTED_CATEGORIES = ['customers', 'products'];
+  const PROTECTED_CATEGORIES = ['customers', 'products', 'workers'];
   const DELETION_PASSWORD = 'hs0909sm';
 
   const needsPassword = PROTECTED_CATEGORIES.some(id => selected.has(id));
