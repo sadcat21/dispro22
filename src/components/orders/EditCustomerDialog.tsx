@@ -731,7 +731,7 @@ const EditCustomerDialog: React.FC<EditCustomerDialogProps> = ({
                 <Switch id="edit-registered-switch" checked={isRegistered} onCheckedChange={setIsRegistered} />
               </div>
               {isRegistered && (
-                <p className="text-xs text-muted-foreground">✅ هذا العميل مسجل رسمياً ويمكنه الشراء بالفاتورة 1</p>
+                <p className="text-xs text-muted-foreground">✅ هذا العميل مسجل رسمياً ويمكنه الشراء بـ Facture 1</p>
               )}
             </div>
 
@@ -752,13 +752,13 @@ const EditCustomerDialog: React.FC<EditCustomerDialogProps> = ({
               <div className="space-y-2">
                 <Label className="text-sm">نوع الشراء الافتراضي</Label>
                 <div className="grid grid-cols-2 gap-2">
-                  <Button type="button" variant={defaultPaymentType === 'with_invoice' ? 'default' : 'outline'} size="sm" onClick={() => setDefaultPaymentType('with_invoice')}>فاتورة 1</Button>
-                  <Button type="button" variant={defaultPaymentType === 'without_invoice' ? 'default' : 'outline'} size="sm" onClick={() => setDefaultPaymentType('without_invoice')}>فاتورة 2</Button>
+                  <Button type="button" variant={defaultPaymentType === 'with_invoice' ? 'default' : 'outline'} size="sm" onClick={() => setDefaultPaymentType('with_invoice')}>Facture 1</Button>
+                  <Button type="button" variant={defaultPaymentType === 'without_invoice' ? 'default' : 'outline'} size="sm" onClick={() => setDefaultPaymentType('without_invoice')}>Facture 2</Button>
                 </div>
               </div>
               {defaultPaymentType === 'without_invoice' && (
                 <div className="space-y-2">
-                  <Label className="text-sm">تسعير فاتورة 2</Label>
+                  <Label className="text-sm">تسعير Facture 2</Label>
                   <div className="grid grid-cols-3 gap-2">
                     <Button type="button" variant={defaultPriceSubtype === 'super_gros' ? 'default' : 'outline'} size="sm" className="text-xs" onClick={() => setDefaultPriceSubtype('super_gros')}>سوبر غرو</Button>
                     <Button type="button" variant={defaultPriceSubtype === 'gros' ? 'default' : 'outline'} size="sm" className="text-xs" onClick={() => setDefaultPriceSubtype('gros')}>غرو</Button>

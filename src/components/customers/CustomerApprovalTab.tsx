@@ -555,8 +555,8 @@ const CustomerApprovalTab: React.FC = () => {
                                             <Select value={editPayload.default_payment_type || 'without_invoice'} onValueChange={(v) => setEditPayload((p: any) => ({ ...p, default_payment_type: v }))}>
                                                 <SelectTrigger><SelectValue /></SelectTrigger>
                                                 <SelectContent className="bg-popover z-[10050]">
-                                                    <SelectItem value="with_invoice">فاتورة 1 (بفاتورة)</SelectItem>
-                                                    <SelectItem value="without_invoice">فاتورة 2 (بدون فاتورة)</SelectItem>
+                                                     <SelectItem value="with_invoice">Facture 1 (بفاتورة)</SelectItem>
+                                                     <SelectItem value="without_invoice">Facture 2 (بدون فاتورة)</SelectItem>
                                                 </SelectContent>
                                             </Select>
                                         </div>

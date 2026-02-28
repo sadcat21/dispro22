@@ -308,7 +308,7 @@ const Guide: React.FC = () => {
           <Card className="p-4">
             <h4 className="font-medium mb-1">الطابع الجبائي</h4>
             <p className="text-sm text-muted-foreground">
-              يتم إضافة سعر الطابع تلقائياً لطلبيات فاتورة 1 حسب الإعدادات
+              يتم إضافة سعر الطابع تلقائياً لطلبيات Facture 1 حسب الإعدادات
             </p>
           </Card>
           <Card className="p-4">

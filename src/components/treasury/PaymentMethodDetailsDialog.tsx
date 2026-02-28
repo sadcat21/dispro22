@@ -12,8 +12,8 @@ import { Banknote, CreditCard, Receipt, ArrowUpRight, Coins, AlertCircle } from 
 type PaymentCategory = 'cash_invoice1' | 'cash_invoice2' | 'check' | 'bank_receipt' | 'bank_transfer';
 
 const categoryConfig: Record<PaymentCategory, { label: string; icon: any; colorClass: string }> = {
-  cash_invoice1: { label: 'كاش فاتورة 1', icon: Banknote, colorClass: 'text-green-500' },
-  cash_invoice2: { label: 'كاش فاتورة 2', icon: Banknote, colorClass: 'text-emerald-500' },
+  cash_invoice1: { label: 'Espèces Facture 1', icon: Banknote, colorClass: 'text-green-500' },
+  cash_invoice2: { label: 'Espèces Facture 2', icon: Banknote, colorClass: 'text-emerald-500' },
   check: { label: 'Chèques', icon: CreditCard, colorClass: 'text-blue-500' },
   bank_receipt: { label: 'Versement', icon: Receipt, colorClass: 'text-purple-500' },
   bank_transfer: { label: 'Virement', icon: ArrowUpRight, colorClass: 'text-orange-500' },
@@ -237,7 +237,7 @@ const PaymentMethodDetailsDialog = ({ open, onOpenChange, category }: Props) => 
               <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/30 text-center mb-2">
                 <div className="flex items-center justify-center gap-1 mb-1">
                   <AlertCircle className="w-4 h-4 text-destructive" />
-                  <p className="text-xs font-medium text-destructive">ديون غير محصلة (مستعارة من فاتورة 2)</p>
+                  <p className="text-xs font-medium text-destructive">ديون غير محصلة (مستعارة من Facture 2)</p>
                 </div>
                 <p className="text-lg font-bold text-destructive">{grandDebt.toLocaleString()} د.ج</p>
               </div>
@@ -252,7 +252,7 @@ const PaymentMethodDetailsDialog = ({ open, onOpenChange, category }: Props) => 
               <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/30 text-center mb-2">
                 <div className="flex items-center justify-center gap-1 mb-1">
                   <AlertCircle className="w-4 h-4 text-destructive" />
-                  <p className="text-xs font-medium text-destructive">ديون غير محصلة (فاتورة 2)</p>
+                  <p className="text-xs font-medium text-destructive">ديون غير محصلة (Facture 2)</p>
                 </div>
                 <p className="text-lg font-bold text-destructive">{grandDebt.toLocaleString()} د.ج</p>
               </div>
@@ -261,7 +261,7 @@ const PaymentMethodDetailsDialog = ({ open, onOpenChange, category }: Props) => 
               <div className="p-3 rounded-lg bg-orange-500/10 border border-orange-500/30 text-center mb-2">
                 <div className="flex items-center justify-center gap-1 mb-1">
                   <AlertCircle className="w-4 h-4 text-orange-600" />
-                  <p className="text-xs font-medium text-orange-700">مبلغ مخصوم لصالح فاتورة 1 (ديون كاش)</p>
+                  <p className="text-xs font-medium text-orange-700">مبلغ مخصوم لصالح Facture 1 (ديون كاش)</p>
                 </div>
                 <p className="text-lg font-bold text-orange-600">{(invoice1DebtAmount || 0).toLocaleString()} د.ج</p>
               </div>
