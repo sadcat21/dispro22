@@ -160,7 +160,7 @@ const CreateOrderDialog: React.FC<CreateOrderDialogProps> = ({ open, onOpenChang
 
       const [customersRes, productsRes, shortageRes, offersRes, warehouseStockRes, sectorsRes] = await Promise.all([
         customersQuery,
-        supabase.from('products').select('*').eq('is_active', true).order('name'),
+        supabase.from('products').select('*').eq('is_active', true).order('sort_order', { ascending: true }).order('name'),
         shortageQuery,
         supabase.from('product_offers').select('product_id')
           .eq('is_active', true)
