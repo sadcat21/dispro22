@@ -24,7 +24,7 @@ export const INVOICE_PAYMENT_METHODS: Record<InvoicePaymentMethod, { label: stri
     hasStamp: false,
   },
   cash: {
-    label: 'كاش',
+    label: 'Espèces',
     description: 'العميل يسلم المبلغ نقداً - يتم احتساب الطابع',
     hasStamp: true,
   },
