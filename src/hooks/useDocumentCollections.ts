@@ -191,6 +191,49 @@ export const useCreateDocCollection = () => {
           .from('orders')
           .update({ document_status: 'verified' })
           .eq('id', params.orderId);
+
+        // Auto-deduct linked debt: find debt for this order and register payment
+        const { data: linkedDebt } = await supabase
+          .from('customer_debts')
+          .select('id, remaining_amount, paid_amount, total_amount, status')
+          .eq('order_id', params.orderId)
+          .in('status', ['active', 'partially_paid'])
+          .maybeSingle();
+
+        if (linkedDebt && Number(linkedDebt.remaining_amount) > 0) {
+          // Get order details for amount and payment method
+          const { data: order } = await supabase
+            .from('orders')
+            .select('total_amount, invoice_payment_method')
+            .eq('id', params.orderId)
+            .single();
+
+          const amountToPay = Number(linkedDebt.remaining_amount);
+          const paymentMethod = order?.invoice_payment_method || 'check';
+
+          // Create debt payment record
+          await supabase
+            .from('debt_payments')
+            .insert({
+              debt_id: linkedDebt.id,
+              worker_id: params.workerId,
+              amount: amountToPay,
+              payment_method: paymentMethod,
+              notes: `تسديد تلقائي - تحصيل مستند للطلبية`,
+            });
+
+          // Update debt status
+          const newPaid = Number(linkedDebt.paid_amount) + amountToPay;
+          const newStatus = newPaid >= Number(linkedDebt.total_amount) ? 'paid' : 'partially_paid';
+
+          await supabase
+            .from('customer_debts')
+            .update({
+              paid_amount: newPaid,
+              status: newStatus,
+            })
+            .eq('id', linkedDebt.id);
+        }
       } else if (params.nextDueDate) {
         // Update next due date on order
         await supabase
@@ -207,6 +250,10 @@ export const useCreateDocCollection = () => {
       queryClient.invalidateQueries({ queryKey: ['pending-documents'] });
       queryClient.invalidateQueries({ queryKey: ['session-document-collections'] });
       queryClient.invalidateQueries({ queryKey: ['session-calculations'] });
+      queryClient.invalidateQueries({ queryKey: ['customer-debts'] });
+      queryClient.invalidateQueries({ queryKey: ['customer-debt-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['due-debts'] });
+      queryClient.invalidateQueries({ queryKey: ['debt-payments'] });
     },
   });
 };
