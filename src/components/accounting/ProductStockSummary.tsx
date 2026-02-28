@@ -227,15 +227,15 @@ const ProductStockSummary: React.FC<ProductStockSummaryProps> = ({
           {/* Review Session Info - single line */}
           {reviewData?.sessionInfo && (
             <div className="flex items-center gap-2 flex-wrap text-xs bg-muted/50 border rounded-lg px-3 py-2" dir="rtl">
-              <span>
+              <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-md bg-background/70 px-2 py-1">
                 <span className="font-semibold">{new Date(reviewData.sessionInfo.created_at).toLocaleDateString('ar-DZ')}</span>
-                <span className="text-muted-foreground mx-1">،</span>
+                <span className="text-muted-foreground">،</span>
                 <span className="text-primary font-bold">{new Date(reviewData.sessionInfo.created_at).toLocaleTimeString('ar-DZ', { hour12: false, hour: '2-digit', minute: '2-digit' })}</span>
               </span>
-              <span className="text-muted-foreground/40">|</span>
-              <span>المراجع: <span className="font-semibold">{reviewData.sessionInfo.manager_name}</span></span>
-              <span className="text-muted-foreground/40">|</span>
-              <span className="font-semibold">{reviewData.sessionInfo.discrepancyCount} فارق</span>
+              <span className="text-muted-foreground/40 whitespace-nowrap">|</span>
+              <span className="whitespace-nowrap">المراجع: <span className="font-semibold">{reviewData.sessionInfo.manager_name}</span></span>
+              <span className="text-muted-foreground/40 whitespace-nowrap">|</span>
+              <span className="font-semibold whitespace-nowrap">{reviewData.sessionInfo.discrepancyCount} فارق</span>
             </div>
           )}
 
