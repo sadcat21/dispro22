@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,6 +15,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { OrderWithDetails, OrderItem, Product } from '@/types/database';
 import DeliveryWorkerSelect from './DeliveryWorkerSelect';
 import PostDeliveryConfirmDialog from './PostDeliveryConfirmDialog';
+import { useProductOffers } from '@/hooks/useProductOffers';
 
 interface ModifyOrderDialogProps {
   open: boolean;
@@ -31,6 +32,7 @@ interface ModifiedItem {
   new_quantity: number;
   unit_price: number;
   gift_quantity: number;
+  pieces_per_box: number;
 }
 
 const ModifyOrderDialog: React.FC<ModifyOrderDialogProps> = ({
@@ -40,6 +42,7 @@ const ModifyOrderDialog: React.FC<ModifyOrderDialogProps> = ({
   const { workerId, role } = useAuth();
   const logActivity = useLogActivity();
   const queryClient = useQueryClient();
+  const { activeOffers } = useProductOffers();
 
   const [items, setItems] = useState<ModifiedItem[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -61,6 +64,7 @@ const ModifyOrderDialog: React.FC<ModifyOrderDialogProps> = ({
         new_quantity: item.quantity,
         unit_price: Number(item.unit_price || 0),
         gift_quantity: Number(item.gift_quantity || 0),
+        pieces_per_box: Number(item.product?.pieces_per_box || 1),
       })));
       setAssignedWorkerId(order.assigned_worker_id || '');
     }
@@ -80,17 +84,93 @@ const ModifyOrderDialog: React.FC<ModifyOrderDialogProps> = ({
     fetchProducts();
   }, [open]);
 
+  const recalcGiftBoxes = useCallback((productId: string, paidQty: number, piecesPerBox: number) => {
+    const offersForProduct = activeOffers.filter((o: any) => o.product_id === productId);
+    if (offersForProduct.length === 0) return 0;
+
+    let totalGiftPieces = 0;
+    const safePiecesPerBox = piecesPerBox > 0 ? piecesPerBox : 1;
+
+    for (const offer of offersForProduct as any[]) {
+      const tiers = offer.tiers && offer.tiers.length > 0 ? offer.tiers : null;
+      if (tiers) {
+        if (offer.condition_type === 'multiplier') {
+          const sortedTiers = [...tiers].sort((a: any, b: any) => b.min_quantity - a.min_quantity);
+          let remaining = paidQty;
+          for (const tier of sortedTiers) {
+            if (remaining < tier.min_quantity) continue;
+            const timesApplied = Math.floor(remaining / tier.min_quantity);
+            remaining = remaining % tier.min_quantity;
+            const giftUnit = tier.gift_quantity_unit || 'piece';
+            const giftAmount = timesApplied * tier.gift_quantity;
+            totalGiftPieces += giftUnit === 'box' ? giftAmount * safePiecesPerBox : giftAmount;
+          }
+        } else {
+          for (const tier of [...tiers].sort((a: any, b: any) => b.min_quantity - a.min_quantity)) {
+            if (paidQty >= tier.min_quantity && (tier.max_quantity === null || paidQty <= tier.max_quantity)) {
+              const giftUnit = tier.gift_quantity_unit || 'piece';
+              totalGiftPieces += giftUnit === 'box' ? tier.gift_quantity * safePiecesPerBox : tier.gift_quantity;
+              break;
+            }
+          }
+        }
+      } else {
+        if (paidQty < offer.min_quantity) continue;
+        const timesApplied = offer.condition_type === 'multiplier' ? Math.floor(paidQty / offer.min_quantity) : 1;
+        const giftPerThreshold = offer.gift_quantity;
+        if (offer.gift_quantity_unit === 'box') {
+          totalGiftPieces += timesApplied * giftPerThreshold * safePiecesPerBox;
+        } else {
+          totalGiftPieces += timesApplied * giftPerThreshold;
+        }
+      }
+    }
+
+    return Math.floor(totalGiftPieces / safePiecesPerBox);
+  }, [activeOffers]);
+
+  const recalcFromTotalQuantity = useCallback((productId: string, totalQty: number, piecesPerBox: number, unitPrice: number) => {
+    let paidQty = Math.max(0, totalQty);
+    let giftQty = 0;
+
+    for (let i = 0; i < 3; i += 1) {
+      giftQty = recalcGiftBoxes(productId, paidQty, piecesPerBox);
+      paidQty = Math.max(0, totalQty - giftQty);
+    }
+
+    const finalGift = Math.min(Math.max(0, giftQty), totalQty);
+    const finalPaid = Math.max(0, totalQty - finalGift);
+
+    return {
+      gift_quantity: finalGift,
+      total_price: finalPaid * unitPrice,
+    };
+  }, [recalcGiftBoxes]);
+
   const updateQuantity = (index: number, delta: number) => {
     setItems(prev => prev.map((item, i) => {
       if (i !== index) return item;
       const newQty = Math.max(0, item.new_quantity + delta);
-      return { ...item, new_quantity: newQty };
+      const recalculated = recalcFromTotalQuantity(item.product_id, newQty, item.pieces_per_box, item.unit_price);
+      return {
+        ...item,
+        new_quantity: newQty,
+        gift_quantity: recalculated.gift_quantity,
+      };
     }));
   };
 
   const setQuantity = (index: number, value: string) => {
     const qty = Math.max(0, Number(value) || 0);
-    setItems(prev => prev.map((item, i) => i === index ? { ...item, new_quantity: qty } : item));
+    setItems(prev => prev.map((item, i) => {
+      if (i !== index) return item;
+      const recalculated = recalcFromTotalQuantity(item.product_id, qty, item.pieces_per_box, item.unit_price);
+      return {
+        ...item,
+        new_quantity: qty,
+        gift_quantity: recalculated.gift_quantity,
+      };
+    }));
   };
 
   const addProduct = () => {
@@ -102,13 +182,18 @@ const ModifyOrderDialog: React.FC<ModifyOrderDialogProps> = ({
     const product = products.find(p => p.id === newProductId);
     if (!product) return;
 
+    const initialQuantity = 1;
+    const unitPrice = Number(product.price_gros || product.price_invoice || 0);
+    const recalculated = recalcFromTotalQuantity(product.id, initialQuantity, Number(product.pieces_per_box || 1), unitPrice);
+
     setItems(prev => [...prev, {
       product_id: product.id,
       product_name: product.name,
       original_quantity: 0,
-      new_quantity: 1,
-      unit_price: Number(product.price_gros || product.price_invoice || 0),
-      gift_quantity: 0,
+      new_quantity: initialQuantity,
+      unit_price: unitPrice,
+      gift_quantity: recalculated.gift_quantity,
+      pieces_per_box: Number(product.pieces_per_box || 1),
     }]);
     setNewProductId('');
   };
@@ -123,8 +208,16 @@ const ModifyOrderDialog: React.FC<ModifyOrderDialogProps> = ({
   const hasChanges = items.some(i => i.new_quantity !== i.original_quantity) ||
     items.some(i => !i.id && i.new_quantity > 0) || workerChanged;
 
-  const originalTotal = orderItems.reduce((sum, item) => sum + (item.quantity * Number(item.unit_price || 0)), 0);
-  const orderTotal = items.reduce((sum, item) => sum + (item.new_quantity * item.unit_price), 0);
+  const originalTotal = orderItems.reduce((sum, item) => {
+    const giftQty = Number((item as any).gift_quantity || 0);
+    const paidQty = Math.max(0, Number(item.quantity) - giftQty);
+    return sum + (paidQty * Number(item.unit_price || 0));
+  }, 0);
+
+  const orderTotal = items.reduce((sum, item) => {
+    const paidQty = Math.max(0, item.new_quantity - (item.gift_quantity || 0));
+    return sum + (paidQty * item.unit_price);
+  }, 0);
 
   const productChanges = items
     .filter(i => i.new_quantity !== i.original_quantity)
@@ -170,40 +263,54 @@ const ModifyOrderDialog: React.FC<ModifyOrderDialogProps> = ({
               عملية: 'حذف',
             });
           } else {
-            // Update quantity
+            // Update quantity + gift after recalculation
+            const paidQty = Math.max(0, item.new_quantity - (item.gift_quantity || 0));
             await supabase.from('order_items')
-              .update({ quantity: item.new_quantity })
+              .update({
+                quantity: item.new_quantity,
+                gift_quantity: item.gift_quantity || 0,
+                unit_price: item.unit_price,
+                total_price: paidQty * item.unit_price,
+              })
               .eq('id', item.id);
             changes.push({
               منتج: item.product_name,
               من: item.original_quantity,
               إلى: item.new_quantity,
+              هدية: item.gift_quantity || 0,
               عملية: item.new_quantity > item.original_quantity ? 'زيادة' : 'تقليص',
             });
           }
         } else if (!item.id && item.new_quantity > 0) {
           // New product added
+          const paidQty = Math.max(0, item.new_quantity - (item.gift_quantity || 0));
           await supabase.from('order_items').insert({
             order_id: order.id,
             product_id: item.product_id,
             quantity: item.new_quantity,
+            gift_quantity: item.gift_quantity || 0,
+            unit_price: item.unit_price,
+            total_price: paidQty * item.unit_price,
           });
           changes.push({
             منتج: item.product_name,
             كمية: item.new_quantity,
+            هدية: item.gift_quantity || 0,
             عملية: 'إضافة جديد',
           });
         }
       }
 
-      // Recalculate total
+      // Recalculate total (paid qty only)
       const { data: updatedItems } = await supabase
         .from('order_items')
-        .select('quantity, unit_price')
+        .select('quantity, unit_price, gift_quantity')
         .eq('order_id', order.id);
 
-      const newTotal = updatedItems?.reduce((sum, i) =>
-        sum + (Number(i.quantity) * Number(i.unit_price || 0)), 0) || 0;
+      const newTotal = updatedItems?.reduce((sum, i: any) => {
+        const paidQty = Math.max(0, Number(i.quantity) - Number(i.gift_quantity || 0));
+        return sum + (paidQty * Number(i.unit_price || 0));
+      }, 0) || 0;
 
       const orderUpdate: Record<string, any> = {};
       if (newTotal > 0) orderUpdate.total_amount = newTotal;
@@ -335,7 +442,7 @@ const ModifyOrderDialog: React.FC<ModifyOrderDialogProps> = ({
                         </div>
                         {item.unit_price > 0 && (
                           <p className="text-xs text-muted-foreground">
-                            {item.unit_price.toLocaleString()} دج × {item.new_quantity} = {(item.unit_price * item.new_quantity).toLocaleString()} دج
+                            {item.unit_price.toLocaleString()} دج × {Math.max(0, item.new_quantity - (item.gift_quantity || 0))} = {(item.unit_price * Math.max(0, item.new_quantity - (item.gift_quantity || 0))).toLocaleString()} دج
                           </p>
                         )}
                       </div>
