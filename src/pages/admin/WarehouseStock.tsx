@@ -249,47 +249,41 @@ const WarehouseStock: React.FC = () => {
         ) : (
           <ScrollArea className="max-h-[calc(100vh-22rem)]">
             <div className="space-y-2 pb-2">
-              {filteredSummaries.map(s => (
-                <Card key={s.productId} className="overflow-hidden">
-                  <CardContent className="p-3">
-                    <div className="font-medium text-sm mb-2 text-primary truncate">{s.productName}</div>
-                    <div className="grid grid-cols-4 gap-x-3 gap-y-1.5 text-xs">
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">المستلم</span>
-                        <span className="font-bold text-green-600">{s.received}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">عند العمال</span>
-                        <span className="font-bold text-blue-600">{s.workerStock}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">المباع</span>
-                        <span className="font-bold text-orange-600">{s.sold}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">الهدايا</span>
-                        <span className={`font-bold ${s.gifts > 0 ? 'text-pink-500' : 'text-muted-foreground'}`}>{s.gifts}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">التالف</span>
-                        <span className={`font-bold ${s.damaged > 0 ? 'text-destructive' : 'text-muted-foreground'}`}>{s.damaged}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">الفائض</span>
-                        <span className={`font-bold ${s.surplus > 0 ? 'text-amber-600' : 'text-muted-foreground'}`}>{s.surplus}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">العجز</span>
-                        <span className={`font-bold ${s.deficit > 0 ? 'text-destructive' : 'text-muted-foreground'}`}>{s.deficit}</span>
-                      </div>
+              {filteredSummaries.map(s => {
+                const stats = [
+                  { label: 'المستلم', value: s.received, color: 'text-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-950/30' },
+                  { label: 'عند العمال', value: s.workerStock, color: 'text-blue-600', bg: 'bg-blue-50 dark:bg-blue-950/30' },
+                  { label: 'المباع', value: s.sold, color: 'text-orange-600', bg: 'bg-orange-50 dark:bg-orange-950/30' },
+                  { label: 'الهدايا', value: s.gifts, color: 'text-pink-500', bg: 'bg-pink-50 dark:bg-pink-950/30' },
+                  { label: 'التالف', value: s.damaged, color: 'text-destructive', bg: 'bg-red-50 dark:bg-red-950/30' },
+                  { label: 'الفائض', value: s.surplus, color: 'text-amber-600', bg: 'bg-amber-50 dark:bg-amber-950/30' },
+                  { label: 'العجز', value: s.deficit, color: 'text-destructive', bg: 'bg-red-50 dark:bg-red-950/30' },
+                ];
+                return (
+                  <Card key={s.productId} className="overflow-hidden border-border/60 shadow-sm">
+                    {/* Product name header */}
+                    <div className="bg-primary/5 border-b border-border/40 px-3 py-2">
+                      <span className="font-semibold text-sm text-primary truncate block">{s.productName}</span>
                     </div>
-                    <div className="mt-2 pt-2 border-t flex justify-between items-center">
-                      <span className="text-xs font-semibold">المتبقي في المخزن</span>
-                      <span className={`text-sm font-bold ${s.remaining > 0 ? 'text-primary' : 'text-muted-foreground'}`}>{s.remaining}</span>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                    <CardContent className="p-3 space-y-2.5">
+                      {/* Stats grid */}
+                      <div className="grid grid-cols-4 gap-1.5">
+                        {stats.map(st => (
+                          <div key={st.label} className={`rounded-md px-2 py-1.5 text-center ${st.value > 0 ? st.bg : 'bg-muted/30'}`}>
+                            <div className={`text-[11px] leading-tight mb-0.5 ${st.value > 0 ? 'text-muted-foreground' : 'text-muted-foreground/50'}`}>{st.label}</div>
+                            <div className={`text-sm font-bold tabular-nums ${st.value > 0 ? st.color : 'text-muted-foreground/40'}`}>{st.value}</div>
+                          </div>
+                        ))}
+                      </div>
+                      {/* Remaining footer */}
+                      <div className="flex items-center justify-between bg-primary/5 rounded-lg px-3 py-2">
+                        <span className="text-xs font-semibold text-foreground/80">المتبقي في المخزن</span>
+                        <span className={`text-base font-extrabold tabular-nums ${s.remaining > 0 ? 'text-primary' : 'text-muted-foreground/50'}`}>{s.remaining}</span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           </ScrollArea>
         )}
