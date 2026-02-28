@@ -113,6 +113,16 @@ const MyDeliveries: React.FC = () => {
     cancelled: { label: t('orders.cancelled'), color: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400', icon: XCircle, tabColor: 'text-red-600' },
   };
 
+  const isCheckOrder = (order: OrderWithDetails) => (
+    order.status === 'delivered' && order.invoice_payment_method === 'check'
+  );
+
+  const isCheckVerificationPending = (order: OrderWithDetails) => {
+    if (!isCheckOrder(order)) return false;
+    const verification = (order as any).document_verification as any | null;
+    return (order as any).document_status === 'pending' || verification?.skipped === true || !verification;
+  };
+
   const handleDeliverClick = (order: OrderWithDetails) => {
     setPendingDeliveryOrder(order);
     setShowDeliverySaleDialog(true);
@@ -324,8 +334,8 @@ const MyDeliveries: React.FC = () => {
                     </Badge>
                   )}
 
-                  {(order as any).document_status === 'pending' && (
-                    <Badge className="text-[10px] px-1.5 py-0.5 bg-amber-100 text-amber-800 border border-amber-300 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-700 gap-0.5">
+                  {isCheckVerificationPending(order) && (
+                    <Badge className="text-[10px] px-1.5 py-0.5 bg-accent/10 text-accent border border-accent/30 gap-0.5">
                       <FileCheck className="w-3 h-3" />
                       تحقق معلق
                     </Badge>
@@ -462,15 +472,15 @@ const MyDeliveries: React.FC = () => {
 
                 {order.status === 'delivered' && (
                   <>
-                    {(order as any).document_status === 'pending' && (
+                    {isCheckOrder(order) && (
                       <Button
                         size="sm"
                         variant="outline"
-                        className="h-8 gap-1 border-amber-300 text-amber-700 hover:bg-amber-50 dark:border-amber-700 dark:text-amber-400 dark:hover:bg-amber-950/30"
+                        className="h-8 gap-1 border-accent/30 text-accent hover:bg-accent/10"
                         onClick={() => setCheckVerifyOrder(order)}
                       >
                         <FileCheck className="w-4 h-4" />
-                        <span className="text-xs">إكمال التحقق</span>
+                        <span className="text-xs">{isCheckVerificationPending(order) ? 'إكمال التحقق' : 'تعديل التحقق'}</span>
                       </Button>
                     )}
                     {!isModifyHidden && (
@@ -724,15 +734,15 @@ const MyDeliveries: React.FC = () => {
               </div>
             </div>
           )}
-          {selectedOrder && selectedOrder.status === 'delivered' && (selectedOrder as any).document_status === 'pending' && (
+          {selectedOrder && isCheckOrder(selectedOrder) && (
             <div className="border-t bg-card p-4 shrink-0">
               <Button
-                className="w-full gap-2 border-amber-300 text-amber-700 hover:bg-amber-50 dark:border-amber-700 dark:text-amber-400 dark:hover:bg-amber-950/30"
+                className="w-full gap-2 border-accent/30 text-accent hover:bg-accent/10"
                 variant="outline"
                 onClick={() => { setShowDetailsDialog(false); setCheckVerifyOrder(selectedOrder); }}
               >
                 <FileCheck className="w-4 h-4" />
-                إكمال التحقق من الشيك
+                {isCheckVerificationPending(selectedOrder) ? 'إكمال التحقق من الشيك' : 'تعديل التحقق من الشيك'}
               </Button>
             </div>
           )}
