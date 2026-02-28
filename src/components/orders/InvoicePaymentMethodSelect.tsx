@@ -16,6 +16,13 @@ const METHOD_ICONS: Record<InvoicePaymentMethod, React.ReactNode> = {
   transfer: <Building2 className="w-3.5 h-3.5" />,
 };
 
+const METHOD_COLORS: Record<InvoicePaymentMethod, { active: string; inactive: string }> = {
+  receipt: { active: 'bg-blue-600 hover:bg-blue-700 text-white border-blue-600', inactive: 'border-blue-300 text-blue-700 hover:bg-blue-50' },
+  check: { active: 'bg-purple-600 hover:bg-purple-700 text-white border-purple-600', inactive: 'border-purple-300 text-purple-700 hover:bg-purple-50' },
+  cash: { active: 'bg-amber-600 hover:bg-amber-700 text-white border-amber-600', inactive: 'border-amber-300 text-amber-700 hover:bg-amber-50' },
+  transfer: { active: 'bg-teal-600 hover:bg-teal-700 text-white border-teal-600', inactive: 'border-teal-300 text-teal-700 hover:bg-teal-50' },
+};
+
 const InvoicePaymentMethodSelect: React.FC<InvoicePaymentMethodSelectProps> = ({
   value,
   onChange,
@@ -31,7 +38,7 @@ const InvoicePaymentMethodSelect: React.FC<InvoicePaymentMethodSelectProps> = ({
           type="button"
           variant={value === methodKey ? 'default' : 'outline'}
           size="sm"
-          className="h-8 flex items-center gap-1 text-xs"
+          className={`h-8 flex items-center gap-1 text-xs ${value === methodKey ? METHOD_COLORS[methodKey].active : METHOD_COLORS[methodKey].inactive}`}
           disabled={disabled}
           onClick={() => onChange(methodKey)}
         >
