@@ -121,24 +121,31 @@ const StockVerificationDialog: React.FC<StockVerificationDialogProps> = ({
       // Save ALL reviewed items as loading_session_items for history
       const verifiedItems = items.filter(i => i.status !== 'unverified');
       if (verifiedItems.length > 0) {
-        const itemsToInsert = verifiedItems.map(item => ({
-          session_id: session.id,
-          product_id: item.product_id,
-          quantity: Number(item.actual_qty) || 0, // actual quantity found
-          previous_quantity: item.system_qty, // expected system quantity
-          gift_quantity: 0,
-          gift_unit: 'piece',
-          surplus_quantity: item.status === 'surplus' ? Math.abs(item.difference) : 0,
-          notes: item.status === 'match' 
-            ? 'مطابق' 
-            : item.status === 'deficit' 
-              ? `عجز: ${Math.abs(item.difference)}` 
-              : `فائض: ${Math.abs(item.difference)}`,
-        }));
-        const { error: itemsError } = await supabase
-          .from('loading_session_items')
-          .insert(itemsToInsert);
-        if (itemsError) console.error('Error saving review items:', itemsError);
+        // Insert items one by one to avoid batch RLS issues
+        for (const item of verifiedItems) {
+          const { error: itemError } = await supabase
+            .from('loading_session_items')
+            .insert({
+              session_id: session.id,
+              product_id: item.product_id,
+              quantity: Number(item.actual_qty) || 0,
+              previous_quantity: item.system_qty,
+              gift_quantity: 0,
+              gift_unit: 'piece',
+              surplus_quantity: item.status === 'surplus' ? Math.abs(item.difference) : 0,
+              is_custom_load: false,
+              custom_load_note: null,
+              notes: item.status === 'match' 
+                ? 'مطابق' 
+                : item.status === 'deficit' 
+                  ? `عجز: ${Math.abs(item.difference)}` 
+                  : `فائض: ${Math.abs(item.difference)}`,
+            });
+          if (itemError) {
+            console.error('Error saving review item:', itemError);
+            throw new Error(`خطأ في حفظ المنتج ${item.product_name}: ${itemError.message}`);
+          }
+        }
       }
 
       // Record each discrepancy
