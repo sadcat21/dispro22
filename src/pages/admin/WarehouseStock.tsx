@@ -22,6 +22,8 @@ interface ProductSummary {
   sold: number;
   gifts: number;
   damaged: number;
+  factoryReturn: number;
+  compensation: number;
   surplus: number;
   deficit: number;
   remaining: number;
@@ -75,7 +77,7 @@ const WarehouseStock: React.FC = () => {
         // Damaged stock tracked directly on warehouse stock rows
         supabase
           .from('warehouse_stock')
-          .select('product_id, damaged_quantity')
+          .select('product_id, damaged_quantity, factory_return_quantity, compensation_quantity')
           .eq('branch_id', branchId),
       ]);
 
@@ -125,6 +127,8 @@ const WarehouseStock: React.FC = () => {
         sold: 0,
         gifts: 0,
         damaged: 0,
+        factoryReturn: 0,
+        compensation: 0,
         surplus: 0,
         deficit: 0,
         remaining: 0,
@@ -184,10 +188,12 @@ const WarehouseStock: React.FC = () => {
       }
     }
 
-    // Damaged from warehouse stock (current snapshot)
+    // Damaged, factory return, compensation from warehouse stock (current snapshot)
     for (const ws of (summaryData?.warehouseDamaged || [])) {
       if (!summaries[ws.product_id]) continue;
       summaries[ws.product_id].damaged += Number(ws.damaged_quantity || 0);
+      summaries[ws.product_id].factoryReturn += Number(ws.factory_return_quantity || 0);
+      summaries[ws.product_id].compensation += Number(ws.compensation_quantity || 0);
     }
 
     // Remaining = warehouse stock
@@ -199,7 +205,7 @@ const WarehouseStock: React.FC = () => {
 
     // Hide products where all values are zero
     return Object.values(summaries)
-      .filter(s => s.received + s.workerStock + s.sold + s.gifts + s.damaged + s.surplus + s.deficit + s.remaining > 0)
+      .filter(s => s.received + s.workerStock + s.sold + s.gifts + s.damaged + s.factoryReturn + s.compensation + s.surplus + s.deficit + s.remaining > 0)
       .sort((a, b) => a.productName.localeCompare(b.productName));
   }, [products, summaryData, soldData, warehouseStock]);
 
@@ -296,6 +302,8 @@ const WarehouseStock: React.FC = () => {
                 const row2 = [
                   { label: 'الهدايا', value: s.gifts, display: giftFormatted, color: 'text-pink-500', bg: 'bg-pink-50 dark:bg-pink-950/30' },
                   { label: 'التالف', value: s.damaged, display: String(s.damaged), color: 'text-destructive', bg: 'bg-red-50 dark:bg-red-950/30' },
+                  { label: 'المسترجع', value: s.factoryReturn, display: String(s.factoryReturn), color: 'text-violet-600', bg: 'bg-violet-50 dark:bg-violet-950/30' },
+                  { label: 'التعويض', value: s.compensation, display: String(s.compensation), color: 'text-teal-600', bg: 'bg-teal-50 dark:bg-teal-950/30' },
                 ];
                 return (
                   <Card key={s.productId} className="overflow-hidden border-border/60 shadow-sm">
@@ -329,7 +337,7 @@ const WarehouseStock: React.FC = () => {
                             </div>
                           ))}
                         </div>
-                        <div className="grid grid-cols-2 gap-1.5">
+                        <div className="grid grid-cols-4 gap-1.5">
                           {row2.map(st => (
                             <div key={st.label} className={`rounded-md px-2 py-1.5 text-center ${st.value > 0 ? st.bg : 'bg-muted/30'}`}>
                               <div className={`text-[11px] leading-tight mb-0.5 ${st.value > 0 ? 'text-muted-foreground' : 'text-muted-foreground/50'}`}>{st.label}</div>
