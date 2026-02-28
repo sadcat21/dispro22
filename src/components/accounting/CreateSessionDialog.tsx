@@ -22,6 +22,7 @@ import PromoTrackingSummary from './PromoTrackingSummary';
 import StockDiscrepancySection from './StockDiscrepancySection';
 import DebtCollectionsSummary from './DebtCollectionsSummary';
 import DocumentCollectionsSummary from './DocumentCollectionsSummary';
+import WorkerHandoverSummary from './WorkerHandoverSummary';
 import { usePendingDiscrepancies } from '@/hooks/useStockDiscrepancies';
 
 interface CreateSessionDialogProps {
@@ -533,6 +534,17 @@ const CreateSessionDialog: React.FC<CreateSessionDialogProps> = ({ open, onOpenC
                   </div>
                 </div>
               </div>
+            )}
+
+            {/* Worker Handover Summary */}
+            {selectedWorkerId && periodStart && periodEnd && calc && (
+              <WorkerHandoverSummary
+                workerId={selectedWorkerId}
+                periodStart={periodStart}
+                periodEnd={periodEnd}
+                calc={calc}
+                coinAmount={Number(coinAmount || 0)}
+              />
             )}
 
             {/* Product & Sales Tracking */}
