@@ -110,11 +110,23 @@ const DirectSaleDialog: React.FC<DirectSaleDialogProps> = ({ open, onOpenChange,
 
   // Available products from worker stock
   const availableProducts = useMemo(() => {
-    return stockItems
+    const productsMap = new Map<string, Product>();
+
+    stockItems
       .filter(s => s.quantity > 0 && s.product)
-      .map(s => s.product!)
-      .sort((a, b) => ((a as any).sort_order || 0) - ((b as any).sort_order || 0) || a.name.localeCompare(b.name));
-  }, [stockItems]);
+      .forEach((s) => {
+        const fullProduct = allProducts.find(p => p.id === s.product_id);
+        const product = fullProduct || s.product;
+        if (product) productsMap.set(product.id, product);
+      });
+
+    return Array.from(productsMap.values()).sort((a, b) => {
+      const aOrder = (a as any).sort_order ?? Number.MAX_SAFE_INTEGER;
+      const bOrder = (b as any).sort_order ?? Number.MAX_SAFE_INTEGER;
+      if (aOrder !== bOrder) return aOrder - bOrder;
+      return a.name.localeCompare(b.name);
+    });
+  }, [stockItems, allProducts]);
 
   useEffect(() => {
     if (open && workerId) {
@@ -750,16 +762,16 @@ const DirectSaleDialog: React.FC<DirectSaleDialogProps> = ({ open, onOpenChange,
                   <Label className="text-sm font-medium">{t('orders.price_type')}</Label>
                   <div className="grid grid-cols-3 gap-2">
                     {([
-                      { value: 'super_gros' as PriceSubType, label: t('products.price_super_gros') },
-                      { value: 'gros' as PriceSubType, label: t('products.price_gros') },
-                      { value: 'retail' as PriceSubType, label: t('products.price_retail') },
+                      { value: 'super_gros' as PriceSubType, label: t('products.price_super_gros'), colors: { active: 'bg-indigo-600 hover:bg-indigo-700 text-white border-indigo-600 ring-2 ring-indigo-400', inactive: 'bg-indigo-600 hover:bg-indigo-700 text-white border-indigo-600' } },
+                      { value: 'gros' as PriceSubType, label: t('products.price_gros'), colors: { active: 'bg-cyan-600 hover:bg-cyan-700 text-white border-cyan-600 ring-2 ring-cyan-400', inactive: 'bg-cyan-600 hover:bg-cyan-700 text-white border-cyan-600' } },
+                      { value: 'retail' as PriceSubType, label: t('products.price_retail'), colors: { active: 'bg-rose-600 hover:bg-rose-700 text-white border-rose-600 ring-2 ring-rose-400', inactive: 'bg-rose-600 hover:bg-rose-700 text-white border-rose-600' } },
                     ]).map((option) => (
                       <Button
                         key={option.value}
                         type="button"
                         variant={priceSubType === option.value ? 'default' : 'outline'}
                         size="sm"
-                        className="h-10 text-xs"
+                        className={`h-12 text-sm font-bold transition-opacity ${priceSubType === option.value ? option.colors.active : option.colors.inactive} ${priceSubType !== option.value ? 'opacity-50' : ''}`}
                         onClick={() => setPriceSubType(option.value)}
                       >
                         {option.label}
@@ -781,7 +793,7 @@ const DirectSaleDialog: React.FC<DirectSaleDialogProps> = ({ open, onOpenChange,
               {/* Products - Grid like CreateOrderDialog */}
               <section className="space-y-3">
                 <Label className="text-base font-semibold">{t('products.title')}</Label>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-2 gap-3 p-1">
                   {availableProducts.map((product) => {
                     const productCartItems = orderItems.filter(item => item.productId === product.id);
                     const inCart = productCartItems.length > 0 ? productCartItems[0] : null;
