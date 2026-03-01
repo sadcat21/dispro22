@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Send, Image, Mic, Paperclip, ArrowRight, Play, Pause } from 'lucide-react';
+import { Send, Image, Mic, Paperclip, ArrowRight, Check, CheckCheck } from 'lucide-react';
 import { Conversation, ChatMessage } from '@/hooks/useChat';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatDistanceToNow } from 'date-fns';
@@ -96,8 +96,26 @@ const ChatView = ({ conversation, onSend, onUpload, onBack }: Props) => {
     }
   };
 
+  const getMessageStatus = (msg: ChatMessage): 'sent' | 'delivered' | 'read' => {
+    // Only show status for my messages
+    if (msg.sender_id !== user?.id) return 'sent';
+    const others = conversation.participants?.filter(p => p.worker_id !== user?.id) || [];
+    if (others.length === 0) return 'sent';
+    const allRead = others.every(p => p.last_read_at && p.last_read_at >= msg.timestamp);
+    if (allRead) return 'read';
+    // If message is in the conversation, it's "delivered" to server
+    return 'delivered';
+  };
+
+  const MessageStatusIcon = ({ status }: { status: 'sent' | 'delivered' | 'read' }) => {
+    if (status === 'sent') return <Check className="h-3.5 w-3.5 text-muted-foreground/70 inline-block" />;
+    if (status === 'delivered') return <CheckCheck className="h-3.5 w-3.5 text-muted-foreground/70 inline-block" />;
+    return <CheckCheck className="h-3.5 w-3.5 text-blue-500 inline-block" />;
+  };
+
   const renderMessage = (msg: ChatMessage) => {
     const isMine = msg.sender_id === user?.id;
+    const status = isMine ? getMessageStatus(msg) : null;
 
     return (
       <div key={msg.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'} mb-2`}>
@@ -124,9 +142,12 @@ const ChatView = ({ conversation, onSend, onUpload, onBack }: Props) => {
               </a>
             )}
           </div>
-          <p className={`text-[9px] text-muted-foreground mt-0.5 px-1 ${isMine ? 'text-left' : 'text-right'}`}>
-            {formatDistanceToNow(new Date(msg.timestamp), { addSuffix: true, locale: ar })}
-          </p>
+          <div className={`flex items-center gap-1 mt-0.5 px-1 ${isMine ? 'justify-start' : 'justify-end'}`}>
+            <span className="text-[9px] text-muted-foreground">
+              {formatDistanceToNow(new Date(msg.timestamp), { addSuffix: true, locale: ar })}
+            </span>
+            {status && <MessageStatusIcon status={status} />}
+          </div>
         </div>
       </div>
     );

@@ -24,7 +24,7 @@ export interface Conversation {
   messages: ChatMessage[];
   last_message_at: string;
   created_at: string;
-  participants?: { worker_id: string; worker?: { id: string; full_name: string; username: string } }[];
+  participants?: { worker_id: string; last_read_at?: string | null; worker?: { id: string; full_name: string; username: string } }[];
   unread_count?: number;
 }
 
@@ -68,7 +68,7 @@ export const useChat = () => {
       // Fetch participants for all conversations
       const { data: allParticipants } = await supabase
         .from('conversation_participants')
-        .select('conversation_id, worker_id')
+        .select('conversation_id, worker_id, last_read_at')
         .in('conversation_id', convIds);
 
       // Fetch worker names
@@ -93,7 +93,7 @@ export const useChat = () => {
         const msgs = (Array.isArray(conv.messages) ? conv.messages : []) as unknown as ChatMessage[];
         const participants = allParticipants
           ?.filter(p => p.conversation_id === conv.id)
-          .map(p => ({ worker_id: p.worker_id, worker: workersMap.get(p.worker_id) })) || [];
+          .map(p => ({ worker_id: p.worker_id, last_read_at: p.last_read_at, worker: workersMap.get(p.worker_id) })) || [];
 
         const lastRead = lastReadMap.get(conv.id);
         const unreadCount = lastRead
