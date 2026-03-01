@@ -39,17 +39,25 @@ const PalletSettingsDialog: React.FC<Props> = ({ open, onOpenChange, branchId, p
 
   const fetchSettings = async () => {
     setIsLoading(true);
-    const { data } = await supabase
-      .from('pallet_settings')
-      .select('*')
-      .eq('branch_id', branchId);
-    setSettings((data || []).map(d => ({
-      id: d.id,
-      product_id: d.product_id,
-      boxes_per_pallet: d.boxes_per_pallet,
-      boxes_per_layer: (d as any).boxes_per_layer || 0,
-    })));
-    setIsLoading(false);
+    try {
+      const { data, error } = await supabase
+        .from('pallet_settings')
+        .select('*')
+        .eq('branch_id', branchId);
+
+      if (error) throw error;
+
+      setSettings((data || []).map(d => ({
+        id: d.id,
+        product_id: d.product_id,
+        boxes_per_pallet: d.boxes_per_pallet,
+        boxes_per_layer: d.boxes_per_layer ?? 0,
+      })));
+    } catch (e: any) {
+      toast.error(e.message || 'تعذر تحميل إعدادات الباليطات');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const addSetting = () => {
@@ -58,11 +66,20 @@ const PalletSettingsDialog: React.FC<Props> = ({ open, onOpenChange, branchId, p
 
   const removeSetting = async (index: number) => {
     const setting = settings[index];
-    if (setting.id) {
-      await supabase.from('pallet_settings').delete().eq('id', setting.id);
+    try {
+      if (setting.id) {
+        const { error } = await supabase
+          .from('pallet_settings')
+          .delete()
+          .eq('id', setting.id)
+          .eq('branch_id', branchId);
+        if (error) throw error;
+      }
+      setSettings(prev => prev.filter((_, i) => i !== index));
+      toast.success('تم الحذف');
+    } catch (e: any) {
+      toast.error(e.message || 'تعذر حذف الإعداد');
     }
-    setSettings(prev => prev.filter((_, i) => i !== index));
-    toast.success('تم الحذف');
   };
 
   const updateSetting = (index: number, field: keyof PalletSetting, value: any) => {
@@ -79,13 +96,26 @@ const PalletSettingsDialog: React.FC<Props> = ({ open, onOpenChange, branchId, p
           boxes_per_layer: setting.boxes_per_layer ?? 0,
         };
         if (setting.id) {
-          await supabase.from('pallet_settings').update(payload).eq('id', setting.id);
+          const { data: updatedRow, error } = await supabase
+            .from('pallet_settings')
+            .update(payload)
+            .eq('id', setting.id)
+            .eq('branch_id', branchId)
+            .select('id')
+            .maybeSingle();
+
+          if (error) throw error;
+          if (!updatedRow) throw new Error('لم يتم تحديث الإعداد. تأكد من الصلاحيات أو الفرع.');
         } else {
-          await supabase.from('pallet_settings').insert({
-            product_id: setting.product_id,
-            branch_id: branchId,
-            ...payload,
-          });
+          const { error } = await supabase
+            .from('pallet_settings')
+            .insert({
+              product_id: setting.product_id,
+              branch_id: branchId,
+              ...payload,
+            });
+
+          if (error) throw error;
         }
       }
       toast.success('تم حفظ إعدادات الباليطات');
