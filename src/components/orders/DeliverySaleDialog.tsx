@@ -904,31 +904,12 @@ const DeliverySaleDialog: React.FC<DeliverySaleDialogProps> = ({ open, onOpenCha
                         </div>
                         {!isShortage && (
                           <div className="flex items-center gap-1.5">
-                            <Button
-                              type="button" variant="outline" size="icon" className="h-7 w-7"
-                              onClick={() => handleUpdateQuantity(item.productId, -1)}
-                            >
-                              <Minus className="w-3 h-3" />
-                            </Button>
                             <div className="flex flex-col items-center min-w-8">
                               <span className="font-bold text-sm">{Math.max(0, item.quantity - item.giftQuantity)}</span>
                               {item.giftQuantity > 0 && (
                                 <span className="text-[9px] text-green-600 dark:text-green-400 leading-none">+{item.giftQuantity} 🎁</span>
                               )}
                             </div>
-                            <Button
-                              type="button" variant="outline" size="icon" className="h-7 w-7"
-                              onClick={() => handleUpdateQuantity(item.productId, 1)}
-                              disabled={item.quantity >= available}
-                            >
-                              <Plus className="w-3 h-3" />
-                            </Button>
-                            <Button
-                              type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive"
-                              onClick={() => handleRemoveItem(item.productId)}
-                            >
-                              <XCircle className="w-4 h-4" />
-                            </Button>
                           </div>
                         )}
                         {changed && item.originalQuantity > 0 && !isShortage && (
@@ -947,29 +928,6 @@ const DeliverySaleDialog: React.FC<DeliverySaleDialogProps> = ({ open, onOpenCha
                 </div>
               </section>
 
-              {/* Add new product from worker stock */}
-              {availableNewProducts.length > 0 && (
-                <section className="space-y-2">
-                  <Label className="text-sm font-medium text-muted-foreground">{t('orders.add_product')}</Label>
-                  <div className="flex gap-2">
-                    <Select value={newProductId} onValueChange={setNewProductId}>
-                      <SelectTrigger className="flex-1 h-9">
-                        <SelectValue placeholder={t('stock.product')} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {availableNewProducts.map(p => (
-                          <SelectItem key={p.id} value={p.id}>
-                            {p.name} ({getAvailable(p.id)})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Button size="sm" onClick={handleAddNewProduct} disabled={!newProductId}>
-                      <PlusCircle className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </section>
-              )}
 
               {/* Partial Delivery Alert */}
               {hasPartialDelivery && (
