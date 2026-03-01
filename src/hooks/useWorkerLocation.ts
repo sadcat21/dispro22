@@ -13,6 +13,7 @@ export interface WorkerLocationData {
   is_tracking: boolean;
   updated_at: string;
   worker_name?: string;
+  has_location?: boolean;
 }
 
 // Hook for workers to broadcast their location
@@ -159,26 +160,49 @@ export const useWorkerLocations = () => {
   return useQuery({
     queryKey: ['worker-locations', branchId],
     queryFn: async () => {
-      // Fetch ALL worker locations (no branch filter) to show every worker
       const { data: locations, error } = await supabase
         .from('worker_locations')
         .select('*');
+
       if (error) throw error;
 
-      const workerIds = (locations || []).map(l => l.worker_id);
-      if (workerIds.length === 0) return [];
-
-      const { data: workers } = await supabase
+      const { data: workers, error: workersError } = await supabase
         .from('workers_safe')
         .select('id, full_name')
-        .in('id', workerIds);
+        .order('full_name');
 
-      const workerMap = new Map((workers || []).map(w => [w.id, w.full_name]));
+      if (workersError) throw workersError;
 
-      return (locations || []).map(l => ({
-        ...l,
-        worker_name: workerMap.get(l.worker_id) || '',
-      })) as WorkerLocationData[];
+      const locationsMap = new Map((locations || []).map((l) => [l.worker_id, l]));
+      const fallbackBaseLat = 35.90775;
+      const fallbackBaseLng = 0.10253;
+      const fallbackRadius = 0.0025;
+
+      return (workers || []).map((w: any, index: number) => {
+        const location = locationsMap.get(w.id);
+
+        if (location) {
+          return {
+            ...location,
+            worker_name: w.full_name || '',
+            has_location: true,
+          };
+        }
+
+        const angle = (index * 45 * Math.PI) / 180;
+        return {
+          worker_id: w.id,
+          latitude: fallbackBaseLat + Math.sin(angle) * fallbackRadius,
+          longitude: fallbackBaseLng + Math.cos(angle) * fallbackRadius,
+          accuracy: null,
+          heading: null,
+          speed: null,
+          is_tracking: false,
+          updated_at: new Date(0).toISOString(),
+          worker_name: w.full_name || '',
+          has_location: false,
+        };
+      }) as WorkerLocationData[];
     },
     enabled: isAdmin,
     refetchInterval: 30000,
