@@ -14,8 +14,8 @@ import CustomerPickerDialog from '@/components/orders/CustomerPickerDialog';
 import { useTrackVisit } from '@/hooks/useVisitTracking';
 import { Customer } from '@/types/database';
 import { toast } from 'sonner';
-import { ShoppingCart, Gift, Loader2, ShoppingBag, Truck, Package, Banknote, Users, Wallet, ClipboardList, MapPin, Trophy } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { ShoppingCart, Gift, Loader2, ShoppingBag, Truck, Package, Banknote, Users, Wallet, ClipboardList, MapPin, Trophy, MessageCircle } from 'lucide-react';
+import { useNavigate, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -196,6 +196,13 @@ const WorkerHome: React.FC = () => {
             >
               <Package className="w-5 h-5" />
             </button>
+            <Link
+              to="/chat"
+              className="bg-white/20 hover:bg-white/30 rounded-xl p-2.5 transition-colors"
+              title="المحادثات"
+            >
+              <MessageCircle className="w-5 h-5" />
+            </Link>
             <button
               onClick={() => setShowHandoverPreview(true)}
               className="bg-white/20 hover:bg-white/30 rounded-xl p-2.5 transition-colors"
