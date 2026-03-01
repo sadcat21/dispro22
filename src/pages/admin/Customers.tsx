@@ -39,6 +39,7 @@ import { fr } from 'date-fns/locale';
 import { enUS } from 'date-fns/locale';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useIsElementHidden } from '@/hooks/useUIOverrides';
+import { useRealtimeSubscription } from '@/hooks/useRealtimeSubscription';
 
 // Normalize Arabic text: treat all alef variants and hamza as the same
 const normalizeArabic = (text: string): string =>
@@ -102,6 +103,25 @@ const Customers: React.FC = () => {
   const isManager = role === 'admin' || role === 'branch_admin';
   const [activeTab, setActiveTab] = useState('list');
   const [requestsCount, setRequestsCount] = useState(0);
+
+  // Realtime subscription for instant badge updates
+  useRealtimeSubscription(
+    'customer-approval-requests-realtime',
+    [{ table: 'customer_approval_requests' }],
+    [['customer-approval-requests']],
+    true
+  );
+
+  // Re-fetch counts when realtime triggers
+  useEffect(() => {
+    const channel = supabase.channel('customers-approval-badge')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'customer_approval_requests' }, () => {
+        fetchRequestsCount();
+        fetchPendingRequestsPerCustomer();
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, []);
 
   // Pending approval requests per customer (full data)
   const [pendingRequestsMap, setPendingRequestsMap] = useState<Record<string, any[]>>({});
@@ -331,6 +351,9 @@ const Customers: React.FC = () => {
         trackVisit({ customerId: customerToDelete.id, operationType: 'delete_customer', notes: `طلب حذف زبون: ${customerToDelete.name}` });
         toast.info(t('customers.delete_request_sent'));
         setCustomerToDelete(null);
+        // Optimistic: update badge instantly
+        fetchRequestsCount();
+        fetchPendingRequestsPerCustomer();
       } catch (error: any) {
         console.error('Error creating delete request:', error);
         toast.error(error.message);
