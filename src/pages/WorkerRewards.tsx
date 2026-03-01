@@ -1,0 +1,235 @@
+import React from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { Trophy, Star, TrendingUp, TrendingDown, Award, Target, Flame, Crown } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { useWorkerPointsSummary, useAllWorkersPoints, useRewardSettings } from '@/hooks/useRewards';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+
+const LEVELS = [
+  { min: 0, max: 99, label: 'مبتدئ', icon: '🌱', color: 'text-muted-foreground', bg: 'bg-muted/30', progressColor: 'bg-gray-400' },
+  { min: 100, max: 299, label: 'نشيط', icon: '🔥', color: 'text-blue-600', bg: 'bg-blue-50', progressColor: 'bg-blue-500' },
+  { min: 300, max: 599, label: 'محترف', icon: '⭐', color: 'text-purple-600', bg: 'bg-purple-50', progressColor: 'bg-purple-500' },
+  { min: 600, max: Infinity, label: 'بطل مبيعات', icon: '🏆', color: 'text-yellow-600', bg: 'bg-yellow-50', progressColor: 'bg-yellow-500' },
+];
+
+const getLevel = (points: number) => {
+  return LEVELS.find(l => points >= l.min && points <= l.max) || LEVELS[0];
+};
+
+const getNextLevel = (points: number) => {
+  const idx = LEVELS.findIndex(l => points >= l.min && points <= l.max);
+  return idx < LEVELS.length - 1 ? LEVELS[idx + 1] : null;
+};
+
+const WorkerRewards: React.FC = () => {
+  const { workerId } = useAuth();
+  const { data: myPoints, isLoading } = useWorkerPointsSummary(workerId || undefined);
+  const { data: allPoints } = useAllWorkersPoints();
+  const { data: settings } = useRewardSettings();
+
+  // Get worker info
+  const { data: workerInfo } = useQuery({
+    queryKey: ['worker-info-rewards', workerId],
+    queryFn: async () => {
+      const { data } = await supabase.from('workers').select('full_name, salary, bonus_cap_percentage').eq('id', workerId!).single();
+      return data;
+    },
+    enabled: !!workerId,
+  });
+
+  // Get recent points log
+  const { data: recentLog } = useQuery({
+    queryKey: ['worker-points-log', workerId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('employee_points_log')
+        .select('*, task:reward_tasks(name), penalty:reward_penalties(name)')
+        .eq('worker_id', workerId!)
+        .order('created_at', { ascending: false })
+        .limit(20);
+      return data || [];
+    },
+    enabled: !!workerId,
+  });
+
+  if (isLoading) return <div className="text-center py-12 text-muted-foreground">جاري التحميل...</div>;
+
+  const total = myPoints?.total || 0;
+  const rewards = myPoints?.rewards || 0;
+  const penalties = myPoints?.penalties || 0;
+  const level = getLevel(total);
+  const nextLevel = getNextLevel(total);
+
+  // Calculate rank
+  const allWorkerIds = Object.keys(allPoints || {});
+  const sorted = allWorkerIds
+    .map(id => ({ id, total: allPoints![id].total }))
+    .sort((a, b) => b.total - a.total);
+  const rank = sorted.findIndex(w => w.id === workerId) + 1;
+
+  // Calculate expected bonus
+  const totalAllPoints = sorted.reduce((sum, w) => sum + Math.max(0, w.total), 0);
+  const pointValue = totalAllPoints > 0 && settings?.monthlyBudget ? settings.monthlyBudget / totalAllPoints : 0;
+  const rawBonus = Math.max(0, total) * pointValue;
+  const salary = Number(workerInfo?.salary) || 0;
+  const capPct = Number(workerInfo?.bonus_cap_percentage) || 20;
+  const salaryCap = salary > 0 ? salary * (capPct / 100) : Infinity;
+  const absoluteCap = settings?.absoluteCap && settings.absoluteCap > 0 ? settings.absoluteCap : Infinity;
+  const expectedBonus = Math.min(rawBonus, salaryCap, absoluteCap);
+
+  // Progress to next level
+  const levelProgress = nextLevel
+    ? ((total - level.min) / (nextLevel.min - level.min)) * 100
+    : 100;
+
+  return (
+    <div className="p-4 space-y-4 pb-20" dir="rtl">
+      {/* Header */}
+      <div className={`rounded-2xl p-5 ${level.bg} border`}>
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <p className="text-sm text-muted-foreground">مرحباً</p>
+            <h2 className="text-lg font-bold">{workerInfo?.full_name || 'الموظف'}</h2>
+          </div>
+          <div className="text-4xl">{level.icon}</div>
+        </div>
+        <div className="flex items-center gap-2 mb-2">
+          <Badge className={`${level.color} border-current`} variant="outline">{level.label}</Badge>
+          {rank > 0 && <Badge variant="secondary">المرتبة #{rank}</Badge>}
+        </div>
+        {nextLevel && (
+          <div className="mt-3">
+            <div className="flex justify-between text-xs text-muted-foreground mb-1">
+              <span>{level.label}</span>
+              <span>{nextLevel.label} ({nextLevel.min} نقطة)</span>
+            </div>
+            <Progress value={Math.min(100, Math.max(0, levelProgress))} className="h-2" />
+          </div>
+        )}
+      </div>
+
+      {/* Stats Grid */}
+      <div className="grid grid-cols-3 gap-3">
+        <Card>
+          <CardContent className="p-3 text-center">
+            <Star className="w-5 h-5 mx-auto mb-1 text-primary" />
+            <p className="text-xl font-bold">{total}</p>
+            <p className="text-[10px] text-muted-foreground">إجمالي النقاط</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-3 text-center">
+            <TrendingUp className="w-5 h-5 mx-auto mb-1 text-green-600" />
+            <p className="text-xl font-bold text-green-600">+{rewards}</p>
+            <p className="text-[10px] text-muted-foreground">مكافآت</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-3 text-center">
+            <TrendingDown className="w-5 h-5 mx-auto mb-1 text-red-500" />
+            <p className="text-xl font-bold text-red-500">-{penalties}</p>
+            <p className="text-[10px] text-muted-foreground">خصومات</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Expected Bonus */}
+      <Card className="border-primary/30 bg-primary/5">
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Award className="w-5 h-5 text-primary" />
+              <span className="font-medium text-sm">المكافأة المتوقعة</span>
+            </div>
+            <span className="text-xl font-bold text-primary">{expectedBonus.toFixed(0)} DA</span>
+          </div>
+          {pointValue > 0 && (
+            <p className="text-[10px] text-muted-foreground mt-1">قيمة النقطة: {pointValue.toFixed(2)} DA</p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Leaderboard Preview */}
+      {sorted.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Crown className="w-4 h-4 text-yellow-500" />
+              أفضل 5 موظفين
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {sorted.slice(0, 5).map((w, i) => (
+              <div key={w.id} className={`flex items-center justify-between p-2 rounded-lg text-sm ${w.id === workerId ? 'bg-primary/10 font-bold' : ''}`}>
+                <div className="flex items-center gap-2">
+                  <span className="w-5 text-center">{i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i+1}`}</span>
+                  <span>{w.id === workerId ? 'أنت' : `موظف ${i+1}`}</span>
+                </div>
+                <span>{w.total} نقطة</span>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Recent Activity */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Target className="w-4 h-4" />
+            آخر النشاطات
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {(!recentLog || recentLog.length === 0) ? (
+            <p className="text-center text-sm text-muted-foreground py-4">لا توجد نشاطات بعد</p>
+          ) : (
+            <div className="space-y-2">
+              {recentLog.map((log: any) => (
+                <div key={log.id} className="flex items-center justify-between p-2 rounded-lg border text-sm">
+                  <div>
+                    <p className="font-medium text-xs">
+                      {log.task?.name || log.penalty?.name || log.notes || 'نقاط'}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground">
+                      {new Date(log.point_date).toLocaleDateString('ar-DZ')}
+                    </p>
+                  </div>
+                  <Badge variant={log.point_type === 'reward' ? 'default' : 'destructive'} className="text-xs">
+                    {log.point_type === 'reward' ? '+' : '-'}{Math.abs(log.points)}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Badges / Levels Info */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Flame className="w-4 h-4" />
+            المستويات والشارات
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 gap-2">
+            {LEVELS.map(l => (
+              <div key={l.label} className={`p-3 rounded-lg border text-center ${total >= l.min ? l.bg : 'opacity-40'}`}>
+                <span className="text-2xl">{l.icon}</span>
+                <p className={`text-xs font-bold mt-1 ${total >= l.min ? l.color : ''}`}>{l.label}</p>
+                <p className="text-[10px] text-muted-foreground">{l.min}+ نقطة</p>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
+export default WorkerRewards;
