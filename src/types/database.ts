@@ -52,6 +52,7 @@ export interface Customer {
   default_delivery_worker_id?: string | null;
   created_at: string;
   created_by: string | null;
+  updated_at?: string;
 }
 
 export interface Sector {

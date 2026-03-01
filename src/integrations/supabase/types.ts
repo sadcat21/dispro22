@@ -978,6 +978,7 @@ export type Database = {
           store_name: string | null
           store_name_fr: string | null
           trust_notes: string | null
+          updated_at: string
           wilaya: string | null
           zone_id: string | null
         }
@@ -1008,6 +1009,7 @@ export type Database = {
           store_name?: string | null
           store_name_fr?: string | null
           trust_notes?: string | null
+          updated_at?: string
           wilaya?: string | null
           zone_id?: string | null
         }
@@ -1038,6 +1040,7 @@ export type Database = {
           store_name?: string | null
           store_name_fr?: string | null
           trust_notes?: string | null
+          updated_at?: string
           wilaya?: string | null
           zone_id?: string | null
         }

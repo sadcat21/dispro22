@@ -104,20 +104,23 @@ const Customers: React.FC = () => {
   const [activeTab, setActiveTab] = useState('list');
   const [requestsCount, setRequestsCount] = useState(0);
 
-  // Realtime subscription for instant badge updates
+  // Realtime subscription for instant badge updates + customer data updates
   useRealtimeSubscription(
     'customer-approval-requests-realtime',
-    [{ table: 'customer_approval_requests' }],
+    [{ table: 'customer_approval_requests' }, { table: 'customers' }],
     [['customer-approval-requests']],
     true
   );
 
-  // Re-fetch counts when realtime triggers
+  // Re-fetch counts and customer data when realtime triggers
   useEffect(() => {
-    const channel = supabase.channel('customers-approval-badge')
+    const channel = supabase.channel('customers-realtime-refresh')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'customer_approval_requests' }, () => {
         fetchRequestsCount();
         fetchPendingRequestsPerCustomer();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'customers' }, () => {
+        fetchData();
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
@@ -531,6 +534,12 @@ const Customers: React.FC = () => {
                   </div>
                   {customer.address && (
                     <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-1">{customer.address}</p>
+                  )}
+                  {(customer as any).updated_at && (
+                    <p className="text-[10px] text-muted-foreground mt-0.5 flex items-center gap-0.5">
+                      <FileEdit className="w-2.5 h-2.5" />
+                      آخر تحديث: {format(new Date((customer as any).updated_at), 'dd MMM yyyy HH:mm', { locale: language === 'ar' ? ar : language === 'fr' ? fr : enUS })}
+                    </p>
                   )}
                   {lastOrder && (
                     <div className="flex items-center gap-1.5 mt-1 flex-wrap">
