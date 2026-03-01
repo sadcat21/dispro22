@@ -270,11 +270,9 @@ const EditCustomerDialog: React.FC<EditCustomerDialogProps> = ({
     console.log('📍 handleLocationChange called:', { lat, lng, addressText });
     setLatitude(lat);
     setLongitude(lng);
-    if (addressText) {
-      const parts = addressText.split(',').map(p => p.trim()).filter(Boolean);
-      setAddress(parts.join(' - '));
-    }
-  }, []);
+    // Always fetch a proper Arabic address using reverseGeocode
+    fetchAddressFromCoords(lat, lng);
+  }, [fetchAddressFromCoords]);
 
   // Phone helpers
   const addPhone = () => setPhones(prev => [...prev, '']);
