@@ -14,7 +14,7 @@ import CustomerPickerDialog from '@/components/orders/CustomerPickerDialog';
 import { useTrackVisit } from '@/hooks/useVisitTracking';
 import { Customer } from '@/types/database';
 import { toast } from 'sonner';
-import { ShoppingCart, Gift, Loader2, ShoppingBag, Truck, Package, Banknote, Users, Wallet, ClipboardList, MapPin } from 'lucide-react';
+import { ShoppingCart, Gift, Loader2, ShoppingBag, Truck, Package, Banknote, Users, Wallet, ClipboardList, MapPin, Trophy } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
@@ -258,6 +258,8 @@ const WorkerHome: React.FC = () => {
           }
           // Today's customers - always show
           quickActions.push({ key: 'today-customers', icon: <MapPin className="w-6 h-6" />, label: 'عملاء اليوم', onClick: () => setShowTodayCustomers(true) });
+          // Rewards page
+          quickActions.push({ key: 'rewards', icon: <Trophy className="w-6 h-6" />, label: 'المكافآت', onClick: () => navigate('/my-rewards') });
 
           const colorSchemes: Record<string, { bg: string; iconBg: string; iconColor: string; text: string; border: string }> = {
             deliveries: { bg: 'bg-gradient-to-br from-blue-500 to-blue-600', iconBg: 'bg-white/20', iconColor: 'text-white', text: 'text-white', border: '' },
@@ -270,6 +272,7 @@ const WorkerHome: React.FC = () => {
             customers: { bg: 'bg-gradient-to-br from-cyan-500 to-sky-600', iconBg: 'bg-white/20', iconColor: 'text-white', text: 'text-white', border: '' },
             expenses: { bg: 'bg-gradient-to-br from-fuchsia-500 to-pink-600', iconBg: 'bg-white/20', iconColor: 'text-white', text: 'text-white', border: '' },
             'today-customers': { bg: 'bg-gradient-to-br from-sky-400 to-blue-500', iconBg: 'bg-white/20', iconColor: 'text-white', text: 'text-white', border: '' },
+            'rewards': { bg: 'bg-gradient-to-br from-yellow-400 to-amber-500', iconBg: 'bg-white/20', iconColor: 'text-white', text: 'text-white', border: '' },
           };
 
           const gridCols = quickActions.length === 1 ? 'grid-cols-1' : quickActions.length === 2 ? 'grid-cols-2' : 'grid-cols-3';
