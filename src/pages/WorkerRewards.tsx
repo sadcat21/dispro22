@@ -1,10 +1,15 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Trophy, Star, TrendingUp, TrendingDown, Award, Target, Flame, Crown, Shield, Sparkles } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Trophy, Star, TrendingUp, TrendingDown, Award, Target, Flame, Crown, Shield, Sparkles, MessageSquare } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useWorkerPointsSummary, useAllWorkersPoints } from '@/hooks/useRewards';
+import { useCreateDispute, useWorkerDisputes } from '@/hooks/useRewardDisputes';
 import { useRewardConfig } from '@/hooks/useRewardConfig';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -24,11 +29,15 @@ const getNextLevel = (points: number) => {
 };
 
 const WorkerRewards: React.FC = () => {
-  const { workerId } = useAuth();
+  const { workerId, activeBranch } = useAuth();
   const { data: myPoints, isLoading } = useWorkerPointsSummary(workerId || undefined);
   const { data: allPoints } = useAllWorkersPoints();
   const { data: config } = useRewardConfig();
+  const createDispute = useCreateDispute();
+  const { data: myDisputes } = useWorkerDisputes(workerId || undefined);
   const prevLevelRef = useRef<string | null>(null);
+  const [disputeLogId, setDisputeLogId] = useState<string | null>(null);
+  const [disputeReason, setDisputeReason] = useState('');
 
   const { data: workerInfo } = useQuery({
     queryKey: ['worker-info-rewards', workerId],
@@ -228,17 +237,28 @@ const WorkerRewards: React.FC = () => {
             <p className="text-center text-sm text-muted-foreground py-4">لا توجد نشاطات بعد</p>
           ) : (
             <div className="space-y-2">
-              {recentLog.map((log: any) => (
-                <div key={log.id} className="flex items-center justify-between p-2 rounded-lg border text-sm">
-                  <div>
-                    <p className="font-medium text-xs">{log.task?.name || log.penalty?.name || log.notes || 'نقاط'}</p>
-                    <p className="text-[10px] text-muted-foreground">{new Date(log.point_date).toLocaleDateString('ar-DZ')}</p>
+              {recentLog.map((log: any) => {
+                const alreadyDisputed = myDisputes?.some(d => d.points_log_id === log.id);
+                return (
+                  <div key={log.id} className="flex items-center justify-between p-2 rounded-lg border text-sm">
+                    <div className="flex-1">
+                      <p className="font-medium text-xs">{log.task?.name || log.penalty?.name || log.notes || 'نقاط'}</p>
+                      <p className="text-[10px] text-muted-foreground">{new Date(log.point_date).toLocaleDateString('ar-DZ')}</p>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      {log.point_type === 'penalty' && !alreadyDisputed && (
+                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setDisputeLogId(log.id)}>
+                          <MessageSquare className="w-3.5 h-3.5 text-muted-foreground" />
+                        </Button>
+                      )}
+                      {alreadyDisputed && <Badge variant="outline" className="text-[9px]">اعتراض</Badge>}
+                      <Badge variant={log.point_type === 'reward' ? 'default' : 'destructive'} className="text-xs">
+                        {log.point_type === 'reward' ? '+' : '-'}{Math.abs(log.points)}
+                      </Badge>
+                    </div>
                   </div>
-                  <Badge variant={log.point_type === 'reward' ? 'default' : 'destructive'} className="text-xs">
-                    {log.point_type === 'reward' ? '+' : '-'}{Math.abs(log.points)}
-                  </Badge>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </CardContent>
@@ -264,6 +284,34 @@ const WorkerRewards: React.FC = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Dispute Dialog */}
+      <Dialog open={!!disputeLogId} onOpenChange={() => setDisputeLogId(null)}>
+        <DialogContent className="max-w-sm" dir="rtl">
+          <DialogHeader><DialogTitle>اعتراض على الخصم</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>سبب الاعتراض</Label>
+              <Textarea value={disputeReason} onChange={e => setDisputeReason(e.target.value)} placeholder="اشرح سبب اعتراضك..." />
+            </div>
+            <Button
+              onClick={() => {
+                if (!disputeLogId || !disputeReason.trim() || !workerId) return;
+                createDispute.mutate({
+                  worker_id: workerId,
+                  points_log_id: disputeLogId,
+                  reason: disputeReason,
+                  branch_id: activeBranch?.id || null,
+                }, { onSuccess: () => { setDisputeLogId(null); setDisputeReason(''); } });
+              }}
+              disabled={createDispute.isPending || !disputeReason.trim()}
+              className="w-full"
+            >
+              إرسال الاعتراض
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
