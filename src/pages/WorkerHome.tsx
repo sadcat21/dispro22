@@ -57,6 +57,12 @@ const WorkerHome: React.FC = () => {
   const isExpensesPageHidden = useIsElementHidden('page', '/expenses');
   const isMyPromosPageHidden = useIsElementHidden('page', '/my-promos');
   const isDebtsPageHidden = useIsElementHidden('page', '/customer-debts');
+  const isRewardsHidden = useIsElementHidden('button', 'home_rewards');
+  const isRewardsPageHidden = useIsElementHidden('page', '/my-rewards');
+  const isDailyReceiptsHidden = useIsElementHidden('button', 'home_daily_receipts');
+  const isDailyReceiptsPageHidden = useIsElementHidden('page', '/daily-receipts');
+  const isAvailableOffersHidden = useIsElementHidden('button', 'home_available_offers');
+  const isAvailableOffersPageHidden = useIsElementHidden('page', '/available-offers');
 
   const { data: stockItems } = useQuery({
     queryKey: ['my-worker-stock', workerId],
@@ -259,7 +265,9 @@ const WorkerHome: React.FC = () => {
           // Today's customers - always show
           quickActions.push({ key: 'today-customers', icon: <MapPin className="w-6 h-6" />, label: 'عملاء اليوم', onClick: () => setShowTodayCustomers(true) });
           // Rewards page
-          quickActions.push({ key: 'rewards', icon: <Trophy className="w-6 h-6" />, label: 'المكافآت', onClick: () => navigate('/my-rewards') });
+          if (!isRewardsHidden && !isRewardsPageHidden) {
+            quickActions.push({ key: 'rewards', icon: <Trophy className="w-6 h-6" />, label: 'المكافآت', onClick: () => navigate('/my-rewards') });
+          }
 
           const colorSchemes: Record<string, { bg: string; iconBg: string; iconColor: string; text: string; border: string }> = {
             deliveries: { bg: 'bg-gradient-to-br from-blue-500 to-blue-600', iconBg: 'bg-white/20', iconColor: 'text-white', text: 'text-white', border: '' },

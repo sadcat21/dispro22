@@ -15,7 +15,7 @@ import { Progress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Check, X, Loader2, User, Clock, AlertCircle, Phone, MapPin, Building2, Store, CreditCard, Shield, UserCircle, Save, Languages, Plus, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
+import { Check, X, Loader2, User, Clock, AlertCircle, Phone, MapPin, Building2, Store, CreditCard, Shield, UserCircle, Save, Languages, Plus, Trash2, ChevronDown, ChevronUp, Eye } from 'lucide-react';
 import { toast } from 'sonner';
 import { useCreateDebt, useUpdateDebtPayment } from '@/hooks/useCustomerDebts';
 import { useTrackVisit } from '@/hooks/useVisitTracking';
@@ -194,6 +194,54 @@ const CustomerApprovalTab: React.FC = () => {
         setShowAdvanced(false);
     };
 
+    const handleDirectApprove = async (request: ApprovalRequest) => {
+        setProcessingId(request.id);
+        try {
+            if (request.operation_type === 'update' && request.customer_id) {
+                const { debtAmount, initial_debt: _id, new_debt_amount, ...updateData } = request.payload;
+                const { error: updateError } = await supabase
+                    .from('customers').update(updateData).eq('id', request.customer_id);
+                if (updateError) throw updateError;
+            } else if (request.operation_type === 'delete' && request.customer_id) {
+                const { error: deleteError } = await supabase
+                    .from('customers').delete().eq('id', request.customer_id);
+                if (deleteError) throw deleteError;
+            } else if (request.operation_type === 'insert') {
+                const { debtAmount, initial_debt, ...customerData } = request.payload;
+                const { data: newCustomer, error: insertError } = await supabase
+                    .from('customers').insert(customerData).select().single();
+                if (insertError) throw insertError;
+                const finalDebtAmount = debtAmount || initial_debt || 0;
+                if (finalDebtAmount > 0 && workerId && newCustomer) {
+                    await createDebt.mutateAsync({
+                        customer_id: newCustomer.id,
+                        worker_id: request.requested_by,
+                        branch_id: request.branch_id || undefined,
+                        total_amount: finalDebtAmount,
+                        paid_amount: 0,
+                        notes: 'دين أولي عند إنشاء العميل (موافقة مباشرة)',
+                    });
+                }
+            }
+
+            const { error: statusError } = await supabase
+                .from('customer_approval_requests')
+                .update({ status: 'approved', reviewed_by: workerId, reviewed_at: new Date().toISOString() })
+                .eq('id', request.id);
+            if (statusError) throw statusError;
+
+            toast.success('تمت الموافقة على الطلب');
+            fetchRequests();
+            queryClient.invalidateQueries({ queryKey: ['customers'] });
+            queryClient.invalidateQueries({ queryKey: ['worker-request-summaries'] });
+        } catch (error: any) {
+            console.error('Error approving request:', error);
+            toast.error('فشل في تنفيذ الموافقة: ' + error.message);
+        } finally {
+            setProcessingId(null);
+        }
+    };
+
     const handleApproveWithEdits = async (applyEdits: boolean) => {
         if (!reviewRequest) return;
         setProcessingId(reviewRequest.id);
@@ -351,8 +399,12 @@ const CustomerApprovalTab: React.FC = () => {
                                     </div>
                                 </div>
                                 <div className="flex flex-row md:flex-col gap-2 justify-end">
+                                    <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white gap-1" onClick={() => handleDirectApprove(request)} disabled={!!processingId}>
+                                        {processingId === request.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                                        موافقة
+                                    </Button>
                                     <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white gap-1" onClick={() => openReviewDialog(request)} disabled={!!processingId}>
-                                        <Check className="w-4 h-4" />
+                                        <Eye className="w-4 h-4" />
                                         معاينة
                                     </Button>
                                     <Button size="sm" variant="destructive" className="gap-1" onClick={() => handleReject(request.id)} disabled={!!processingId}>
