@@ -3,8 +3,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Clock, Check, X, Store, Phone, MapPin } from 'lucide-react';
+import { Loader2, Clock, Check, X, Store, Phone, MapPin, Trash2 } from 'lucide-react';
 import { useRealtimeSubscription } from '@/hooks/useRealtimeSubscription';
+import { differenceInHours } from 'date-fns';
 
 interface WorkerRequest {
   id: string;
@@ -31,6 +32,17 @@ const WorkerMyRequestsTab: React.FC = () => {
     if (workerId) fetchMyRequests();
   }, [workerId]);
 
+  // Re-fetch when realtime triggers
+  useEffect(() => {
+    if (!workerId) return;
+    const channel = supabase.channel('worker-my-requests-refresh')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'customer_approval_requests' }, () => {
+        fetchMyRequests();
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [workerId]);
+
   const fetchMyRequests = async () => {
     setIsLoading(true);
     try {
@@ -48,9 +60,18 @@ const WorkerMyRequestsTab: React.FC = () => {
     }
   };
 
-  const pendingCount = requests.filter(r => r.status === 'pending').length;
-  const approvedCount = requests.filter(r => r.status === 'approved').length;
-  const rejectedCount = requests.filter(r => r.status === 'rejected').length;
+  // Filter out approved/rejected requests older than 24 hours
+  const visibleRequests = requests.filter(r => {
+    if (r.status === 'pending') return true;
+    if (r.reviewed_at) {
+      return differenceInHours(new Date(), new Date(r.reviewed_at)) < 24;
+    }
+    return true;
+  });
+
+  const pendingCount = visibleRequests.filter(r => r.status === 'pending').length;
+  const approvedCount = visibleRequests.filter(r => r.status === 'approved').length;
+  const rejectedCount = visibleRequests.filter(r => r.status === 'rejected').length;
 
   if (isLoading) {
     return (
@@ -78,13 +99,13 @@ const WorkerMyRequestsTab: React.FC = () => {
         </Badge>
       </div>
 
-      {requests.length === 0 ? (
+      {visibleRequests.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground bg-secondary/20 rounded-lg border-2 border-dashed">
           <Clock className="w-10 h-10 mx-auto mb-2 opacity-50" />
           <p className="text-sm">لم تقدم أي طلبات تعديل بعد</p>
         </div>
       ) : (
-        requests.map((req) => (
+        visibleRequests.map((req) => (
           <Card key={req.id} className="overflow-hidden">
             <div className={`h-1 w-full ${
               req.status === 'pending' ? 'bg-amber-500' :
@@ -96,9 +117,10 @@ const WorkerMyRequestsTab: React.FC = () => {
                   <Badge variant={
                     req.operation_type === 'update' ? 'outline' :
                     req.operation_type === 'insert' ? 'secondary' : 'destructive'
-                  } className="text-[10px]">
-                    {req.operation_type === 'update' ? 'تعديل' :
-                     req.operation_type === 'insert' ? 'إضافة' : 'حذف'}
+                  } className={`text-[10px] gap-0.5 ${req.operation_type === 'delete' ? 'bg-destructive/10' : ''}`}>
+                    {req.operation_type === 'delete' && <Trash2 className="w-2.5 h-2.5" />}
+                    {req.operation_type === 'update' ? 'طلب تعديل' :
+                     req.operation_type === 'insert' ? 'طلب إضافة' : 'طلب حذف'}
                   </Badge>
                   <Badge className={`text-[10px] ${
                     req.status === 'pending' ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400' :
