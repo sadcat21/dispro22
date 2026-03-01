@@ -184,6 +184,7 @@ const DirectSaleDialog: React.FC<DirectSaleDialogProps> = ({ open, onOpenChange,
     setPriceSubType('gros');
     setInvoicePaymentMethod(null);
     setCustomerDropdownOpen(false);
+    // NOTE: Do NOT reset receiptData/showReceiptDialog here — they must persist after dialog closes
   }, []);
 
   const handleClose = useCallback((isOpen: boolean) => {
