@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { MessageCircle, X } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
+import { MessageCircle, X, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useChat } from '@/hooks/useChat';
@@ -11,6 +12,7 @@ const FloatingChat = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedConvId, setSelectedConvId] = useState<string | null>(null);
   const [showNewChat, setShowNewChat] = useState(false);
+  const queryClient = useQueryClient();
 
   const { conversations, sendMessage, createConversation, markAsRead, uploadMedia, totalUnread } = useChat();
 
@@ -24,7 +26,9 @@ const FloatingChat = () => {
   const handleNewChat = async (type: 'direct' | 'group', participantIds: string[], name?: string) => {
     const result = await createConversation.mutateAsync({ type, participantIds, name });
     if (result) {
+      await queryClient.invalidateQueries({ queryKey: ['conversations'] });
       setSelectedConvId(result.id);
+      setShowNewChat(false);
     }
   };
 
@@ -49,7 +53,11 @@ const FloatingChat = () => {
       {/* Chat panel */}
       {isOpen && (
         <div className="fixed bottom-36 left-4 z-50 w-[340px] h-[480px] bg-background border rounded-2xl shadow-2xl flex overflow-hidden">
-          {selectedConv ? (
+          {selectedConvId && !selectedConv ? (
+            <div className="h-full w-full flex items-center justify-center">
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+            </div>
+          ) : selectedConv ? (
             <ChatView
               conversation={selectedConv}
               onSend={(msg) => sendMessage.mutate({ conversationId: selectedConv.id, message: msg })}
