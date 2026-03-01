@@ -111,11 +111,20 @@ const WorkerTrackingMap: React.FC<WorkerTrackingMapProps> = ({ highlightWorkerId
 
     // Update or add worker markers
     locations.forEach((loc) => {
-      const distKm = calculateDistance(WAREHOUSE_LOCATION.lat, WAREHOUSE_LOCATION.lng, loc.latitude, loc.longitude);
-      const distText = distKm < 1 ? `${Math.round(distKm * 1000)} م` : `${distKm.toFixed(1)} كم`;
+      const hasLocation = loc.has_location !== false;
+      const distKm = hasLocation
+        ? calculateDistance(WAREHOUSE_LOCATION.lat, WAREHOUSE_LOCATION.lng, loc.latitude, loc.longitude)
+        : null;
+      const distText = hasLocation
+        ? (distKm! < 1 ? `${Math.round(distKm! * 1000)} م` : `${distKm!.toFixed(1)} كم`)
+        : 'غير متاح';
 
       const isHighlighted = highlightWorkerId === loc.worker_id;
-      const markerColor = isHighlighted ? '#dc2626' : (loc.is_tracking ? '#3b82f6' : '#9ca3af');
+      const markerColor = isHighlighted
+        ? '#dc2626'
+        : hasLocation
+          ? (loc.is_tracking ? '#3b82f6' : '#9ca3af')
+          : '#6b7280';
       const markerSize = isHighlighted ? 36 : 28;
 
       const icon = L.divIcon({
@@ -135,9 +144,9 @@ const WorkerTrackingMap: React.FC<WorkerTrackingMapProps> = ({ highlightWorkerId
       const popupContent = `
         <div class="text-center p-1" dir="${dir}">
           <p class="font-bold text-sm">${loc.worker_name}</p>
-          <p class="text-xs" style="color:#dc2626;">🏭 البُعد عن المخزن: ${distText}</p>
-          <p class="text-xs text-gray-500">${t('navigation.last_update')}: ${format(new Date(loc.updated_at), 'HH:mm:ss')}</p>
-          ${loc.speed ? `<p class="text-xs">${t('navigation.speed')}: ${Math.round(loc.speed * 3.6)} كم/س</p>` : ''}
+          ${hasLocation ? `<p class="text-xs" style="color:#dc2626;">🏭 البُعد عن المخزن: ${distText}</p>` : `<p class="text-xs text-gray-500">لا يوجد موقع محفوظ بعد</p>`}
+          ${hasLocation ? `<p class="text-xs text-gray-500">${t('navigation.last_update')}: ${format(new Date(loc.updated_at), 'HH:mm:ss')}</p>` : ''}
+          ${hasLocation && loc.speed ? `<p class="text-xs">${t('navigation.speed')}: ${Math.round(loc.speed * 3.6)} كم/س</p>` : ''}
         </div>
       `;
 
@@ -196,25 +205,29 @@ const WorkerTrackingMap: React.FC<WorkerTrackingMapProps> = ({ highlightWorkerId
       {locations && locations.length > 0 && (
         <div className="space-y-2" dir={dir}>
           {locations.map((loc) => {
-            const distKm = calculateDistance(WAREHOUSE_LOCATION.lat, WAREHOUSE_LOCATION.lng, loc.latitude, loc.longitude);
-            const distText = distKm < 1 ? `${Math.round(distKm * 1000)} م` : `${distKm.toFixed(1)} كم`;
-            
-            // Speed in km/h — use actual or default 40 km/h for stopped workers
-            const speedKmh = (loc.speed && loc.speed > 0) ? loc.speed * 3.6 : 0;
-            
-            // Idle detection: use idle_since from DB (worker stayed in 20m radius for 5+ min)
-            const idleSince = (loc as any).idle_since ? new Date((loc as any).idle_since) : null;
+            const hasLocation = loc.has_location !== false;
+            const distKm = hasLocation
+              ? calculateDistance(WAREHOUSE_LOCATION.lat, WAREHOUSE_LOCATION.lng, loc.latitude, loc.longitude)
+              : null;
+            const distText = hasLocation
+              ? (distKm! < 1 ? `${Math.round(distKm! * 1000)} م` : `${distKm!.toFixed(1)} كم`)
+              : 'غير متاح';
+
+            const speedKmh = hasLocation && (loc.speed && loc.speed > 0) ? loc.speed * 3.6 : 0;
+
+            const idleSince = hasLocation && (loc as any).idle_since ? new Date((loc as any).idle_since) : null;
             const isStopped = !!idleSince;
             const etaSpeedKmh = isStopped ? 40 : (speedKmh || 40);
-            const etaMinutes = Math.round((distKm / etaSpeedKmh) * 60);
-            const etaText = etaMinutes < 60 ? `${etaMinutes} د` : `${Math.floor(etaMinutes / 60)} س ${etaMinutes % 60} د`;
-            
-            // Idle duration: time since idle_since
+            const etaMinutes = hasLocation ? Math.round((distKm! / etaSpeedKmh) * 60) : 0;
+            const etaText = hasLocation
+              ? (etaMinutes < 60 ? `${etaMinutes} د` : `${Math.floor(etaMinutes / 60)} س ${etaMinutes % 60} د`)
+              : 'غير متاح';
+
             const now = new Date();
             const idleMs = idleSince ? now.getTime() - idleSince.getTime() : 0;
             const idleMinutes = Math.floor(idleMs / 60000);
-            const idleText = idleMinutes < 60 
-              ? `${idleMinutes} د` 
+            const idleText = idleMinutes < 60
+              ? `${idleMinutes} د`
               : `${Math.floor(idleMinutes / 60)} س ${idleMinutes % 60} د`;
 
             const isHighlighted = highlightWorkerId === loc.worker_id;
@@ -224,7 +237,7 @@ const WorkerTrackingMap: React.FC<WorkerTrackingMapProps> = ({ highlightWorkerId
                 {/* Row 1: Name + Distance */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <div className={`w-2.5 h-2.5 rounded-full ${!loc.is_tracking ? 'bg-gray-400' : isStopped ? 'bg-amber-500' : 'bg-green-500 animate-pulse'}`} />
+                    <div className={`w-2.5 h-2.5 rounded-full ${!hasLocation ? 'bg-muted-foreground' : !loc.is_tracking ? 'bg-muted-foreground' : isStopped ? 'bg-amber-500' : 'bg-green-500 animate-pulse'}`} />
                     <span className="font-medium">{loc.worker_name}</span>
                   </div>
                   <span className="flex items-center gap-1 text-xs font-semibold">
@@ -237,7 +250,7 @@ const WorkerTrackingMap: React.FC<WorkerTrackingMapProps> = ({ highlightWorkerId
                   <div className="flex items-center gap-2">
                     <span className="flex items-center gap-1">
                       <Navigation className="w-3 h-3" />
-                      {isStopped ? 'متوقف' : `${Math.round(speedKmh)} كم/س`}
+                      {!hasLocation ? 'لا يوجد موقع' : isStopped ? 'متوقف' : `${Math.round(speedKmh)} كم/س`}
                     </span>
                     <span className="flex items-center gap-1">
                       <Clock className="w-3 h-3" />
@@ -248,7 +261,7 @@ const WorkerTrackingMap: React.FC<WorkerTrackingMapProps> = ({ highlightWorkerId
                     {isStopped && idleMinutes > 0 && (
                       <span className="text-amber-600 font-medium">⏸ متوقف {idleText}</span>
                     )}
-                    <span>{format(new Date(loc.updated_at), 'HH:mm')}</span>
+                    {hasLocation ? <span>{format(new Date(loc.updated_at), 'HH:mm')}</span> : <span>—</span>}
                   </div>
                 </div>
               </div>
