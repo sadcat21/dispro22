@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { useWorkerLocations, WorkerLocationData } from '@/hooks/useWorkerLocation';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { Loader2, MapPin, Users, Warehouse } from 'lucide-react';
+import { Loader2, MapPin, Users, Warehouse, Clock, Navigation } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { calculateDistance } from '@/utils/geoUtils';
@@ -177,21 +177,55 @@ const WorkerTrackingMap: React.FC = () => {
         <div className="space-y-2" dir={dir}>
           {locations.map((loc) => {
             const distKm = calculateDistance(WAREHOUSE_LOCATION.lat, WAREHOUSE_LOCATION.lng, loc.latitude, loc.longitude);
+            const distText = distKm < 1 ? `${Math.round(distKm * 1000)} م` : `${distKm.toFixed(1)} كم`;
+            
+            // Speed in km/h — use actual or default 40 km/h for stopped workers
+            const speedKmh = (loc.speed && loc.speed > 0) ? loc.speed * 3.6 : 0;
+            const isStopped = speedKmh < 2;
+            const etaSpeedKmh = isStopped ? 40 : speedKmh;
+            const etaMinutes = Math.round((distKm / etaSpeedKmh) * 60);
+            const etaText = etaMinutes < 60 ? `${etaMinutes} د` : `${Math.floor(etaMinutes / 60)} س ${etaMinutes % 60} د`;
+            
+            // Idle duration: time since last update (if stopped)
+            const now = new Date();
+            const lastUpdate = new Date(loc.updated_at);
+            const idleMs = now.getTime() - lastUpdate.getTime();
+            const idleMinutes = Math.floor(idleMs / 60000);
+            const idleText = idleMinutes < 60 
+              ? `${idleMinutes} د` 
+              : `${Math.floor(idleMinutes / 60)} س ${idleMinutes % 60} د`;
+
             return (
-              <div key={loc.worker_id} className="flex items-center justify-between p-2 bg-muted/50 rounded-lg text-sm">
-                <div className="flex items-center gap-2">
-                  <div className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse" />
-                  <span className="font-medium">{loc.worker_name}</span>
-                </div>
-                <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                  <span className="flex items-center gap-1">
+              <div key={loc.worker_id} className="flex flex-col gap-1 p-2.5 bg-muted/50 rounded-lg text-sm">
+                {/* Row 1: Name + Distance */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className={`w-2.5 h-2.5 rounded-full ${isStopped ? 'bg-amber-500' : 'bg-green-500 animate-pulse'}`} />
+                    <span className="font-medium">{loc.worker_name}</span>
+                  </div>
+                  <span className="flex items-center gap-1 text-xs font-semibold">
                     <Warehouse className="w-3 h-3" />
-                    {distKm < 1 ? `${Math.round(distKm * 1000)} م` : `${distKm.toFixed(1)} كم`}
+                    {distText}
                   </span>
-                  {loc.speed && loc.speed > 0 && (
-                    <span>{Math.round(loc.speed * 3.6)} كم/س</span>
-                  )}
-                  <span>{format(new Date(loc.updated_at), 'HH:mm')}</span>
+                </div>
+                {/* Row 2: Details */}
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <div className="flex items-center gap-2">
+                    <span className="flex items-center gap-1">
+                      <Navigation className="w-3 h-3" />
+                      {isStopped ? 'متوقف' : `${Math.round(speedKmh)} كم/س`}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Clock className="w-3 h-3" />
+                      وصول ≈ {etaText}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {isStopped && idleMinutes > 0 && (
+                      <span className="text-amber-600 font-medium">⏸ متوقف {idleText}</span>
+                    )}
+                    <span>{format(lastUpdate, 'HH:mm')}</span>
+                  </div>
                 </div>
               </div>
             );
