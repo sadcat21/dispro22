@@ -694,9 +694,7 @@ const EditCustomerDialog: React.FC<EditCustomerDialogProps> = ({
                 </Button>
               </CollapsibleTrigger>
               <CollapsibleContent className="mt-2">
-                <div className="h-64 rounded-lg overflow-hidden border">
-                  <LazyLocationPicker onLocationChange={handleLocationChange} latitude={latitude} longitude={longitude} defaultWilaya={wilaya || undefined} />
-                </div>
+                <LazyLocationPicker onLocationChange={handleLocationChange} latitude={latitude} longitude={longitude} defaultWilaya={wilaya || undefined} />
                 {latitude && longitude && (
                   <p className="text-xs text-muted-foreground mt-1 text-center">
                     الإحداثيات: {latitude.toFixed(6)}, {longitude.toFixed(6)}
