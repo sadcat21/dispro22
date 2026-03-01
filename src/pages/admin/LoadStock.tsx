@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Plus, Loader2, Trash2, Truck, AlertTriangle, Package, CheckCircle, PackageX, User, ChevronDown, Gift, Save, History, X, CalendarIcon, Search, RefreshCw } from 'lucide-react';
+import { Plus, Loader2, Trash2, Truck, AlertTriangle, Package, CheckCircle, PackageX, User, ChevronDown, Gift, Save, History, X, CalendarIcon, Search, RefreshCw, UserCheck } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
@@ -24,10 +24,12 @@ import { useWorkerLoadSuggestions, useStockAlerts } from '@/hooks/useStockAlerts
 import { useLoadingSessions } from '@/hooks/useLoadingSessions';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { useCreateDiscrepancy } from '@/hooks/useStockDiscrepancies';
 import StockVerificationDialog from '@/components/stock/StockVerificationDialog';
 import ExchangeSessionDialog from '@/components/stock/ExchangeSessionDialog';
+import CustomerPickerDialog from '@/components/orders/CustomerPickerDialog';
+import { Customer, Sector } from '@/types/database';
 
 interface EmptyTruckItem {
   id: string;
@@ -120,6 +122,46 @@ const LoadStock: React.FC = () => {
   const [addProductGiftUnit, setAddProductGiftUnit] = useState('piece');
   const [addProductIsCustomLoad, setAddProductIsCustomLoad] = useState(false);
   const [addProductCustomLoadNote, setAddProductCustomLoadNote] = useState('');
+  const [addProductCustomerId, setAddProductCustomerId] = useState<string | null>(null);
+  const [addProductCustomerName, setAddProductCustomerName] = useState('');
+  const [showCustomerPicker, setShowCustomerPicker] = useState(false);
+
+  // Customers & sectors for customer picker
+  const { data: customersData = [] } = useQuery({
+    queryKey: ['customers-for-load', branchId],
+    queryFn: async () => {
+      let q = supabase.from('customers').select('*').eq('status', 'active');
+      if (branchId) q = q.eq('branch_id', branchId);
+      const { data } = await q.order('name');
+      return (data || []) as Customer[];
+    },
+  });
+  const { data: sectorsData = [] } = useQuery({
+    queryKey: ['sectors-for-load', branchId],
+    queryFn: async () => {
+      let q = supabase.from('sectors').select('*');
+      if (branchId) q = q.eq('branch_id', branchId);
+      const { data } = await q.order('name');
+      return (data || []) as Sector[];
+    },
+  });
+
+  // Product surplus from stock_discrepancies
+  const [productSurplus, setProductSurplus] = useState(0);
+  useEffect(() => {
+    if (!addProductId || !addProductIsCustomLoad || !branchId) { setProductSurplus(0); return; }
+    const fetchSurplus = async () => {
+      const { data } = await supabase
+        .from('stock_discrepancies')
+        .select('remaining_quantity')
+        .eq('product_id', addProductId)
+        .eq('discrepancy_type', 'surplus')
+        .eq('status', 'pending');
+      const total = (data || []).reduce((s: number, d: any) => s + (d.remaining_quantity || 0), 0);
+      setProductSurplus(total);
+    };
+    fetchSurplus();
+  }, [addProductId, addProductIsCustomLoad, branchId]);
 
   // Current session state
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
@@ -511,6 +553,8 @@ const LoadStock: React.FC = () => {
     setAddProductGiftUnit('piece');
     setAddProductIsCustomLoad(false);
     setAddProductCustomLoadNote('');
+    setAddProductCustomerId(null);
+    setAddProductCustomerName('');
     setShowProductPicker(true);
   };
 
@@ -615,7 +659,7 @@ const LoadStock: React.FC = () => {
         giftUnit: addProductGiftUnit,
         notes: product?.name || '',
         isCustomLoad: addProductIsCustomLoad,
-        customLoadNote: addProductIsCustomLoad ? addProductCustomLoadNote : undefined,
+        customLoadNote: addProductIsCustomLoad ? (addProductCustomerName || addProductCustomLoadNote) : undefined,
         previousQuantity: previousWorkerQty,
       });
 
@@ -1253,18 +1297,12 @@ const LoadStock: React.FC = () => {
                       <Gift className="w-3.5 h-3.5 text-destructive shrink-0" />
                       <span>عرض: <strong>{offer.giftQty} {offer.giftUnit === 'piece' ? 'قطعة' : 'صندوق'}</strong> لكل <strong>{offer.minQty}</strong></span>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Label className="text-sm shrink-0">هدايا:</Label>
-                      <Input
-                        type="number"
-                        min={0}
-                        value={addProductGiftQty}
-                        onFocus={e => e.target.select()}
-                        onChange={e => setAddProductGiftQty(parseInt(e.target.value) || 0)}
-                        className="text-center h-9"
-                      />
-                      <span className="text-xs text-muted-foreground shrink-0">{addProductGiftUnit === 'piece' ? 'قطعة' : 'صندوق'}</span>
-                    </div>
+                    {addProductGiftQty > 0 && (
+                      <div className="flex items-center justify-center gap-2 text-sm bg-primary/10 border border-primary/20 rounded-md p-2.5">
+                        <Gift className="w-4 h-4 text-primary shrink-0" />
+                        <span>هدايا: <strong className="text-primary text-base">{addProductGiftQty}</strong> {addProductGiftUnit === 'piece' ? 'قطعة' : 'صندوق'}</span>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -1272,15 +1310,43 @@ const LoadStock: React.FC = () => {
                 <div className="space-y-2 border-t pt-2">
                   <div className="flex items-center justify-between">
                     <Label className="text-xs">شحن مخصص (لعميل محدد)</Label>
-                    <Switch checked={addProductIsCustomLoad} onCheckedChange={setAddProductIsCustomLoad} />
+                    <Switch checked={addProductIsCustomLoad} onCheckedChange={(checked) => {
+                      setAddProductIsCustomLoad(checked);
+                      if (!checked) {
+                        setAddProductCustomerId(null);
+                        setAddProductCustomerName('');
+                      }
+                    }} />
                   </div>
                   {addProductIsCustomLoad && (
-                    <Input
-                      placeholder="ملاحظة (اسم العميل أو السبب)"
-                      value={addProductCustomLoadNote}
-                      onChange={e => setAddProductCustomLoadNote(e.target.value)}
-                      className="h-8 text-xs"
-                    />
+                    <div className="space-y-2">
+                      <Button
+                        variant="outline"
+                        className="w-full h-10 justify-between text-sm"
+                        onClick={() => setShowCustomerPicker(true)}
+                      >
+                        {addProductCustomerName ? (
+                          <span className="flex items-center gap-2">
+                            <UserCheck className="w-4 h-4 text-primary" />
+                            {addProductCustomerName}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground">اختر العميل</span>
+                        )}
+                      </Button>
+                      {productSurplus > 0 && (
+                        <div className="flex items-center justify-center gap-2 text-xs bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-md p-2">
+                          <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                          <span>فائض المنتج: <strong className="text-amber-700 dark:text-amber-400">{fmtQty(productSurplus)}</strong></span>
+                        </div>
+                      )}
+                      <Input
+                        placeholder="ملاحظة إضافية (اختياري)"
+                        value={addProductCustomLoadNote}
+                        onChange={e => setAddProductCustomLoadNote(e.target.value)}
+                        className="h-8 text-xs"
+                      />
+                    </div>
                   )}
                 </div>
               </div>
@@ -1298,6 +1364,20 @@ const LoadStock: React.FC = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Customer Picker for Custom Load */}
+      <CustomerPickerDialog
+        open={showCustomerPicker}
+        onOpenChange={setShowCustomerPicker}
+        customers={customersData}
+        sectors={sectorsData}
+        selectedCustomerId={addProductCustomerId || undefined}
+        onSelect={(customer) => {
+          setAddProductCustomerId(customer.id);
+          setAddProductCustomerName(customer.store_name || customer.name);
+          setShowCustomerPicker(false);
+        }}
+      />
 
       {/* Session History Dialog */}
       <Dialog open={showSessionHistory} onOpenChange={setShowSessionHistory}>
