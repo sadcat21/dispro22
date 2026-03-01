@@ -5,13 +5,15 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useNavigate } from 'react-router-dom';
 import { useSelectedWorker } from '@/contexts/SelectedWorkerContext';
-import { ArrowRight, Calculator, Truck, Banknote, Wallet, MapPin, ShoppingCart, Activity, Shield, HardHat, HandCoins, ArrowLeftRight, ClipboardList } from 'lucide-react';
+import { ArrowRight, Calculator, Truck, Banknote, Wallet, MapPin, ShoppingCart, Activity, Shield, HardHat, HandCoins, ArrowLeftRight, ClipboardList, Trophy, AlertTriangle, DollarSign } from 'lucide-react';
 import { useWorkerLiability } from '@/hooks/useWorkerLiability';
 import { Badge } from '@/components/ui/badge';
 import { Worker } from '@/types/database';
 import CoinExchangeDialog from '@/components/treasury/CoinExchangeDialog';
 import WorkerHandoverPreviewDialog from '@/components/accounting/WorkerHandoverPreviewDialog';
 import TodayCustomersDialog from '@/components/sectors/TodayCustomersDialog';
+import WorkerFinancialDialog from '@/components/rewards/WorkerFinancialDialog';
+import WorkerPointsDialog from '@/components/rewards/WorkerPointsDialog';
 
 const workerActions = [
   { key: 'accounting', icon: Calculator, path: '/accounting', labelKey: 'accounting.title', color: 'bg-amber-50 border-amber-200 text-amber-700' },
@@ -24,6 +26,9 @@ const workerActions = [
   { key: 'orders', icon: ShoppingCart, path: '/orders', labelKey: 'nav.orders', color: 'bg-blue-50 border-blue-200 text-blue-700' },
   { key: 'activity', icon: Activity, path: '/activity-logs', labelKey: 'nav.activity_logs', color: 'bg-violet-50 border-violet-200 text-violet-700' },
   { key: 'permissions', icon: Shield, path: '/permissions', labelKey: 'nav.permissions', color: 'bg-slate-50 border-slate-200 text-slate-700' },
+  { key: 'financial', icon: DollarSign, path: '', labelKey: 'البيانات المالية', color: 'bg-emerald-50 border-emerald-200 text-emerald-700', isDialog: true },
+  { key: 'points_log', icon: Trophy, path: '', labelKey: 'سجل النقاط', color: 'bg-purple-50 border-purple-200 text-purple-700', isDialog: true },
+  { key: 'rewards_page', icon: AlertTriangle, path: '/rewards', labelKey: 'المكافآت والعقوبات', color: 'bg-pink-50 border-pink-200 text-pink-700' },
   { key: 'handover_summary', icon: ClipboardList, path: '', labelKey: 'ملخص التسليم', color: 'bg-indigo-50 border-indigo-200 text-indigo-700', isDialog: true },
   { key: 'today_customers', icon: MapPin, path: '', labelKey: 'عملاء اليوم', color: 'bg-sky-50 border-sky-200 text-sky-700', isDialog: true },
 ];
@@ -38,6 +43,8 @@ const WorkerActions: React.FC = () => {
   const [coinExchangeOpen, setCoinExchangeOpen] = useState(false);
   const [handoverOpen, setHandoverOpen] = useState(false);
   const [todayCustomersOpen, setTodayCustomersOpen] = useState(false);
+  const [financialOpen, setFinancialOpen] = useState(false);
+  const [pointsLogOpen, setPointsLogOpen] = useState(false);
 
   const { data: workers = [] } = useQuery({
     queryKey: ['workers-for-actions', activeBranch?.id],
@@ -68,6 +75,10 @@ const WorkerActions: React.FC = () => {
         setHandoverOpen(true);
       } else if (action.key === 'today_customers') {
         setTodayCustomersOpen(true);
+      } else if (action.key === 'financial') {
+        setFinancialOpen(true);
+      } else if (action.key === 'points_log') {
+        setPointsLogOpen(true);
       }
       return;
     }
@@ -134,6 +145,18 @@ const WorkerActions: React.FC = () => {
         onOpenChange={setTodayCustomersOpen}
         targetWorkerId={selectedWorker?.id}
         targetWorkerName={selectedWorker?.full_name}
+      />
+      <WorkerFinancialDialog
+        open={financialOpen}
+        onOpenChange={setFinancialOpen}
+        workerId={selectedWorker?.id}
+        workerName={selectedWorker?.full_name}
+      />
+      <WorkerPointsDialog
+        open={pointsLogOpen}
+        onOpenChange={setPointsLogOpen}
+        workerId={selectedWorker?.id}
+        workerName={selectedWorker?.full_name}
       />
     </div>
   );
