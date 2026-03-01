@@ -328,6 +328,37 @@ const ModifyOrderDialog: React.FC<ModifyOrderDialogProps> = ({
           .eq('id', order.id);
       }
 
+      // Update worker_stock for delivered orders when quantities change
+      if (order.status === 'delivered' && order.assigned_worker_id) {
+        for (const item of items) {
+          const qtyDiff = item.new_quantity - item.original_quantity;
+          if (qtyDiff === 0) continue;
+
+          const { data: ws } = await supabase
+            .from('worker_stock')
+            .select('id, quantity')
+            .eq('worker_id', order.assigned_worker_id)
+            .eq('product_id', item.product_id)
+            .maybeSingle();
+
+          if (ws) {
+            // qtyDiff > 0 means increase (deduct from truck), qtyDiff < 0 means decrease (return to truck)
+            const newStockQty = Math.max(0, ws.quantity - qtyDiff);
+            await supabase.from('worker_stock')
+              .update({ quantity: newStockQty })
+              .eq('id', ws.id);
+          } else if (qtyDiff < 0) {
+            // Item was reduced but no stock record exists - create one with returned qty
+            await supabase.from('worker_stock').insert({
+              worker_id: order.assigned_worker_id,
+              product_id: item.product_id,
+              quantity: Math.abs(qtyDiff),
+              branch_id: order.branch_id,
+            });
+          }
+        }
+      }
+
       // Handle post-delivery payment difference
       const totalDiff = orderTotal - originalTotal;
       if (order.status === 'delivered' && totalDiff > 0 && paymentType) {

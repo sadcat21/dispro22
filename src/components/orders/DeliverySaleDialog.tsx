@@ -200,7 +200,7 @@ const DeliverySaleDialog: React.FC<DeliverySaleDialogProps> = ({ open, onOpenCha
     }
   }, [open, orderItems, initialized, order.notes]);
 
-  // Reset on close
+  // Reset on close — but preserve receipt data so ReceiptDialog can show after main dialog closes
   useEffect(() => {
     if (!open) {
       setSaleItems([]);
@@ -209,6 +209,7 @@ const DeliverySaleDialog: React.FC<DeliverySaleDialogProps> = ({ open, onOpenCha
       setNewProductId('');
       setPartialDeliveryAction('none');
       setUseCreditBalance(false);
+      // NOTE: Do NOT reset receiptDataState/showReceiptDialog here
     }
   }, [open]);
 
