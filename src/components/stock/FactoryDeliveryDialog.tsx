@@ -34,11 +34,32 @@ const FactoryDeliveryDialog: React.FC<Props> = ({ open, onOpenChange, branchId, 
 
   useEffect(() => {
     if (open && branchId) {
+      // Fetch pallet balance
       supabase.from('branch_pallets').select('quantity').eq('branch_id', branchId).maybeSingle()
         .then(({ data }) => {
           const qty = data?.quantity || 0;
           setCurrentPallets(qty);
           setPalletQuantity(qty);
+        });
+
+      // Auto-suggest damaged products not yet returned
+      supabase.from('warehouse_stock')
+        .select('product_id, damaged_quantity, factory_return_quantity')
+        .eq('branch_id', branchId)
+        .gt('damaged_quantity', 0)
+        .then(({ data }) => {
+          const suggestions: DeliveryItem[] = [];
+          for (const row of (data || [])) {
+            const remaining = Number(row.damaged_quantity || 0) - Number(row.factory_return_quantity || 0);
+            if (remaining > 0) {
+              suggestions.push({ product_id: row.product_id, product_quantity: Math.round(remaining * 100) / 100 });
+            }
+          }
+          if (suggestions.length > 0) {
+            setItems(suggestions);
+          } else {
+            setItems([{ product_id: '', product_quantity: 0 }]);
+          }
         });
     }
   }, [open, branchId]);
@@ -91,19 +112,22 @@ const FactoryDeliveryDialog: React.FC<Props> = ({ open, onOpenChange, branchId, 
         const { error: itemsError } = await supabase.from('factory_order_items').insert(orderItems);
         if (itemsError) throw itemsError;
 
-        // Update factory_return_quantity on warehouse_stock
+        // Update warehouse_stock: add to factory_return_quantity, deduct from damaged_quantity
         for (const item of validItems) {
           if (item.product_quantity > 0) {
             const { data: stock } = await supabase
               .from('warehouse_stock')
-              .select('id, factory_return_quantity')
+              .select('id, damaged_quantity, factory_return_quantity')
               .eq('branch_id', branchId)
               .eq('product_id', item.product_id)
               .maybeSingle();
 
             if (stock) {
+              const currentDamaged = Number(stock.damaged_quantity) || 0;
+              const currentReturn = Number(stock.factory_return_quantity) || 0;
               await supabase.from('warehouse_stock').update({
-                factory_return_quantity: (Number(stock.factory_return_quantity) || 0) + item.product_quantity,
+                damaged_quantity: Math.max(0, currentDamaged - item.product_quantity),
+                factory_return_quantity: currentReturn + item.product_quantity,
               }).eq('id', stock.id);
             }
           }
