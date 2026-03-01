@@ -35,7 +35,11 @@ const FactoryDeliveryDialog: React.FC<Props> = ({ open, onOpenChange, branchId, 
   useEffect(() => {
     if (open && branchId) {
       supabase.from('branch_pallets').select('quantity').eq('branch_id', branchId).maybeSingle()
-        .then(({ data }) => setCurrentPallets(data?.quantity || 0));
+        .then(({ data }) => {
+          const qty = data?.quantity || 0;
+          setCurrentPallets(qty);
+          setPalletQuantity(qty);
+        });
     }
   }, [open, branchId]);
 
