@@ -5585,6 +5585,10 @@ export type Database = {
       is_admin_of_branch: { Args: { p_branch_id: string }; Returns: boolean }
       is_approved_customer: { Args: never; Returns: boolean }
       is_branch_admin: { Args: never; Returns: boolean }
+      is_conversation_participant: {
+        Args: { p_conversation_id: string }
+        Returns: boolean
+      }
       is_worker: { Args: never; Returns: boolean }
       search_orders_by_prefix: {
         Args: { p_limit?: number; p_prefix: string }
