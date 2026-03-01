@@ -8,14 +8,19 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Plus, AlertTriangle, Info, Database, Zap } from 'lucide-react';
-import { useRewardPenalties, useCreateRewardPenalty } from '@/hooks/useRewards';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Plus, AlertTriangle, Info, Database, Zap, Pencil, Trash2 } from 'lucide-react';
+import { useRewardPenalties, useCreateRewardPenalty, RewardPenalty } from '@/hooks/useRewards';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+import { useQueryClient } from '@tanstack/react-query';
 import { PENALTY_TRIGGERS, TRIGGER_CATEGORIES } from '@/data/rewardTriggers';
 
 const RewardPenaltiesTab: React.FC = () => {
   const { data: penalties, isLoading } = useRewardPenalties();
   const createPenalty = useCreateRewardPenalty();
+  const queryClient = useQueryClient();
   const { user, activeBranch } = useAuth();
   const [showCreate, setShowCreate] = useState(false);
   const [name, setName] = useState('');
@@ -23,6 +28,10 @@ const RewardPenaltiesTab: React.FC = () => {
   const [trigger, setTrigger] = useState('');
   const [isAutomatic, setIsAutomatic] = useState(false);
   const [filterCategory, setFilterCategory] = useState('all');
+  const [editPenalty, setEditPenalty] = useState<RewardPenalty | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editPoints, setEditPoints] = useState('');
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const selectedTrigger = trigger ? PENALTY_TRIGGERS[trigger] : null;
   const isAutoPossible = selectedTrigger && selectedTrigger.dbTable !== '-';
@@ -51,6 +60,30 @@ const RewardPenaltiesTab: React.FC = () => {
     });
   };
 
+  const openEdit = (p: RewardPenalty) => {
+    setEditPenalty(p);
+    setEditName(p.name);
+    setEditPoints(String(p.penalty_points));
+  };
+
+  const handleEdit = async () => {
+    if (!editPenalty) return;
+    const { error } = await supabase.from('reward_penalties').update({ name: editName, penalty_points: Number(editPoints) } as any).eq('id', editPenalty.id);
+    if (error) { toast.error('حدث خطأ'); return; }
+    queryClient.invalidateQueries({ queryKey: ['reward-penalties'] });
+    toast.success('تم تحديث المخالفة');
+    setEditPenalty(null);
+  };
+
+  const handleDelete = async () => {
+    if (!deleteId) return;
+    const { error } = await supabase.from('reward_penalties').delete().eq('id', deleteId);
+    if (error) { toast.error('حدث خطأ أثناء الحذف'); return; }
+    queryClient.invalidateQueries({ queryKey: ['reward-penalties'] });
+    toast.success('تم حذف المخالفة');
+    setDeleteId(null);
+  };
+
   if (isLoading) return <div className="text-center py-8 text-muted-foreground">جاري التحميل...</div>;
 
   return (
@@ -72,13 +105,11 @@ const RewardPenaltiesTab: React.FC = () => {
             <Card key={p.id}>
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
-                  <div>
+                  <div className="flex-1">
                     <p className="font-medium text-sm">{p.name}</p>
                     <div className="flex flex-wrap gap-1.5 mt-1.5">
                       <Badge variant="destructive" className="text-[10px]">-{p.penalty_points} نقطة</Badge>
-                      <Badge variant="outline" className="text-[10px]">
-                        {tDef?.label || p.trigger_event}
-                      </Badge>
+                      <Badge variant="outline" className="text-[10px]">{tDef?.label || p.trigger_event}</Badge>
                       {p.is_automatic && (
                         <Badge variant="secondary" className="text-[10px] gap-0.5">
                           <Zap className="w-2.5 h-2.5" />تلقائي
@@ -89,6 +120,14 @@ const RewardPenaltiesTab: React.FC = () => {
                       <p className="text-[10px] text-muted-foreground mt-1">{tDef.description}</p>
                     )}
                   </div>
+                  <div className="flex gap-1">
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(p)}>
+                      <Pencil className="w-3.5 h-3.5" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => setDeleteId(p.id)}>
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -96,6 +135,7 @@ const RewardPenaltiesTab: React.FC = () => {
         })
       )}
 
+      {/* Create Dialog */}
       <Dialog open={showCreate} onOpenChange={setShowCreate}>
         <DialogContent className="max-w-md max-h-[90vh]" dir="rtl">
           <DialogHeader><DialogTitle>إنشاء مخالفة</DialogTitle></DialogHeader>
@@ -109,25 +149,12 @@ const RewardPenaltiesTab: React.FC = () => {
                 <Label>نقاط الخصم</Label>
                 <Input type="number" value={points} onChange={e => setPoints(e.target.value)} />
               </div>
-
               <div className="space-y-2">
-                <Label className="flex items-center gap-1">
-                  <Database className="w-3.5 h-3.5" />
-                  حدث التفعيل (Trigger)
-                </Label>
+                <Label className="flex items-center gap-1"><Database className="w-3.5 h-3.5" />حدث التفعيل (Trigger)</Label>
                 <div className="flex gap-1.5 flex-wrap mb-2">
-                  <Badge
-                    variant={filterCategory === 'all' ? 'default' : 'outline'}
-                    className="cursor-pointer text-[10px]"
-                    onClick={() => setFilterCategory('all')}
-                  >الكل</Badge>
+                  <Badge variant={filterCategory === 'all' ? 'default' : 'outline'} className="cursor-pointer text-[10px]" onClick={() => setFilterCategory('all')}>الكل</Badge>
                   {Object.entries(TRIGGER_CATEGORIES).map(([k, v]) => (
-                    <Badge
-                      key={k}
-                      variant={filterCategory === k ? 'default' : 'outline'}
-                      className="cursor-pointer text-[10px]"
-                      onClick={() => setFilterCategory(k)}
-                    >{v}</Badge>
+                    <Badge key={k} variant={filterCategory === k ? 'default' : 'outline'} className="cursor-pointer text-[10px]" onClick={() => setFilterCategory(k)}>{v}</Badge>
                   ))}
                 </div>
                 <Select value={trigger} onValueChange={setTrigger}>
@@ -146,8 +173,7 @@ const RewardPenaltiesTab: React.FC = () => {
                 {selectedTrigger && (
                   <div className="bg-muted/50 rounded-lg p-2.5 space-y-1.5">
                     <p className="text-xs text-muted-foreground flex items-start gap-1">
-                      <Info className="w-3 h-3 mt-0.5 shrink-0" />
-                      {selectedTrigger.description}
+                      <Info className="w-3 h-3 mt-0.5 shrink-0" />{selectedTrigger.description}
                     </p>
                     <div className="flex gap-1.5 flex-wrap">
                       {selectedTrigger.dbTable !== '-' ? (
@@ -157,34 +183,56 @@ const RewardPenaltiesTab: React.FC = () => {
                           <Badge className="text-[9px] bg-green-600">يدعم التفعيل التلقائي ✓</Badge>
                         </>
                       ) : (
-                        <Badge variant="secondary" className="text-[9px]">يدوي فقط - لا يوجد حدث مرتبط</Badge>
+                        <Badge variant="secondary" className="text-[9px]">يدوي فقط</Badge>
                       )}
                     </div>
                   </div>
                 )}
               </div>
-
               <div className="flex items-center justify-between">
                 <div>
                   <Label>تفعيل تلقائي</Label>
-                  {!isAutoPossible && trigger && (
-                    <p className="text-[10px] text-muted-foreground">غير متاح - هذا الحدث يدوي فقط</p>
-                  )}
+                  {!isAutoPossible && trigger && <p className="text-[10px] text-muted-foreground">غير متاح - حدث يدوي</p>}
                 </div>
-                <Switch
-                  checked={isAutomatic}
-                  onCheckedChange={setIsAutomatic}
-                  disabled={!isAutoPossible}
-                />
+                <Switch checked={isAutomatic} onCheckedChange={setIsAutomatic} disabled={!isAutoPossible} />
               </div>
-
-              <Button onClick={handleCreate} disabled={createPenalty.isPending || !name.trim() || !trigger} className="w-full">
-                إنشاء
-              </Button>
+              <Button onClick={handleCreate} disabled={createPenalty.isPending || !name.trim() || !trigger} className="w-full">إنشاء</Button>
             </div>
           </ScrollArea>
         </DialogContent>
       </Dialog>
+
+      {/* Edit Dialog */}
+      <Dialog open={!!editPenalty} onOpenChange={() => setEditPenalty(null)}>
+        <DialogContent className="max-w-sm" dir="rtl">
+          <DialogHeader><DialogTitle>تعديل المخالفة</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>اسم المخالفة</Label>
+              <Input value={editName} onChange={e => setEditName(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>نقاط الخصم</Label>
+              <Input type="number" value={editPoints} onChange={e => setEditPoints(e.target.value)} />
+            </div>
+            <Button onClick={handleEdit} className="w-full">حفظ التعديلات</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirm */}
+      <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
+        <AlertDialogContent dir="rtl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>حذف المخالفة</AlertDialogTitle>
+            <AlertDialogDescription>هل أنت متأكد من حذف هذه المخالفة؟</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-row-reverse gap-2">
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground">حذف</AlertDialogAction>
+            <AlertDialogCancel>إلغاء</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

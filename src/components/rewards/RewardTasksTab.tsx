@@ -3,8 +3,15 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { Plus, Target, TrendingUp, Clock, Banknote, Zap } from 'lucide-react';
-import { useRewardTasks, useUpdateRewardTask } from '@/hooks/useRewards';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Plus, Target, TrendingUp, Clock, Banknote, Zap, Pencil, Trash2 } from 'lucide-react';
+import { useRewardTasks, useUpdateRewardTask, RewardTask } from '@/hooks/useRewards';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+import { useQueryClient } from '@tanstack/react-query';
 import CreateRewardTaskDialog from './CreateRewardTaskDialog';
 import { TASK_DATA_SOURCES, TASK_CATEGORIES } from '@/data/rewardTriggers';
 
@@ -24,7 +31,39 @@ const frequencyLabels: Record<string, string> = {
 const RewardTasksTab: React.FC = () => {
   const { data: tasks, isLoading } = useRewardTasks();
   const updateTask = useUpdateRewardTask();
+  const queryClient = useQueryClient();
   const [showCreate, setShowCreate] = useState(false);
+  const [editTask, setEditTask] = useState<RewardTask | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editReward, setEditReward] = useState('');
+  const [editPenalty, setEditPenalty] = useState('');
+
+  const openEdit = (task: RewardTask) => {
+    setEditTask(task);
+    setEditName(task.name);
+    setEditReward(String(task.reward_points));
+    setEditPenalty(String(task.penalty_points));
+  };
+
+  const handleEdit = () => {
+    if (!editTask) return;
+    updateTask.mutate({
+      id: editTask.id,
+      name: editName,
+      reward_points: Number(editReward),
+      penalty_points: Number(editPenalty),
+    }, { onSuccess: () => setEditTask(null) });
+  };
+
+  const handleDelete = async () => {
+    if (!deleteId) return;
+    const { error } = await supabase.from('reward_tasks').delete().eq('id', deleteId);
+    if (error) { toast.error('حدث خطأ أثناء الحذف'); return; }
+    queryClient.invalidateQueries({ queryKey: ['reward-tasks'] });
+    toast.success('تم حذف المهمة');
+    setDeleteId(null);
+  };
 
   if (isLoading) return <div className="text-center py-8 text-muted-foreground">جاري التحميل...</div>;
 
@@ -61,20 +100,26 @@ const RewardTasksTab: React.FC = () => {
                       </Badge>
                       <Badge variant="secondary" className="text-[10px]">{frequencyLabels[task.frequency] || task.frequency}</Badge>
                     </div>
-                    {src && (
-                      <p className="text-[10px] text-muted-foreground mt-1">{src.description}</p>
-                    )}
+                    {src && <p className="text-[10px] text-muted-foreground mt-1">{src.description}</p>}
                     <div className="flex gap-3 mt-2 text-xs">
                       <span className="text-green-600">+{task.reward_points} نقطة</span>
-                      {task.penalty_points > 0 && (
-                        <span className="text-red-600">-{task.penalty_points} نقطة</span>
-                      )}
+                      {task.penalty_points > 0 && <span className="text-red-600">-{task.penalty_points} نقطة</span>}
                     </div>
                   </div>
-                  <Switch
-                    checked={task.is_active}
-                    onCheckedChange={(checked) => updateTask.mutate({ id: task.id, is_active: checked })}
-                  />
+                  <div className="flex flex-col items-end gap-2">
+                    <Switch
+                      checked={task.is_active}
+                      onCheckedChange={(checked) => updateTask.mutate({ id: task.id, is_active: checked })}
+                    />
+                    <div className="flex gap-1">
+                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(task)}>
+                        <Pencil className="w-3.5 h-3.5" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => setDeleteId(task.id)}>
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -83,6 +128,44 @@ const RewardTasksTab: React.FC = () => {
       )}
 
       <CreateRewardTaskDialog open={showCreate} onOpenChange={setShowCreate} />
+
+      {/* Edit Dialog */}
+      <Dialog open={!!editTask} onOpenChange={() => setEditTask(null)}>
+        <DialogContent className="max-w-sm" dir="rtl">
+          <DialogHeader><DialogTitle>تعديل المهمة</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>اسم المهمة</Label>
+              <Input value={editName} onChange={e => setEditName(e.target.value)} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>نقاط المكافأة</Label>
+                <Input type="number" value={editReward} onChange={e => setEditReward(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>نقاط الخصم</Label>
+                <Input type="number" value={editPenalty} onChange={e => setEditPenalty(e.target.value)} />
+              </div>
+            </div>
+            <Button onClick={handleEdit} disabled={updateTask.isPending} className="w-full">حفظ التعديلات</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirm */}
+      <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
+        <AlertDialogContent dir="rtl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>حذف المهمة</AlertDialogTitle>
+            <AlertDialogDescription>هل أنت متأكد من حذف هذه المهمة؟ لا يمكن التراجع عن هذا الإجراء.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-row-reverse gap-2">
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground">حذف</AlertDialogAction>
+            <AlertDialogCancel>إلغاء</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
