@@ -205,12 +205,23 @@ export const useChat = () => {
   // Mark conversation as read
   const markAsRead = useCallback(async (conversationId: string) => {
     if (!user) return;
-    await supabase
-      .from('conversation_participants')
-      .update({ last_read_at: new Date().toISOString() })
-      .eq('conversation_id', conversationId)
-      .eq('worker_id', user.id);
-    queryClient.invalidateQueries({ queryKey: ['conversations'] });
+
+    try {
+      const { error } = await supabase
+        .from('conversation_participants')
+        .update({ last_read_at: new Date().toISOString() })
+        .eq('conversation_id', conversationId)
+        .eq('worker_id', user.id);
+
+      if (error) {
+        console.error('markAsRead error:', error);
+        return;
+      }
+
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+    } catch (error) {
+      console.error('markAsRead unexpected error:', error);
+    }
   }, [user, queryClient]);
 
   // Upload media
