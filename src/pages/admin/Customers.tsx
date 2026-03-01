@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
-import { UserPlus, User, Loader2, Trash2, Phone, MapPin, Search, Pencil, Building2, ChevronDown, ChevronUp, Navigation, Shield, Tag, UserCircle, Store, CreditCard, Warehouse, Eye, PlusCircle, Banknote, Truck, AlertTriangle, ShoppingBag, Calendar, Package, MapPinPlus } from 'lucide-react';
+import { UserPlus, User, Loader2, Trash2, Phone, MapPin, Search, Pencil, Building2, ChevronDown, ChevronUp, Navigation, Shield, Tag, UserCircle, Store, CreditCard, Warehouse, Eye, PlusCircle, Banknote, Truck, AlertTriangle, ShoppingBag, Calendar, Package, MapPinPlus, FileEdit } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
 import { ALGERIAN_WILAYAS, DEFAULT_WILAYA } from '@/data/algerianWilayas';
@@ -29,6 +29,7 @@ import { useCustomerTypes, getCustomerTypeLabel, getCustomerTypeColor } from '@/
 import { useTrackVisit } from '@/hooks/useVisitTracking';
 import CustomerProfileDialog from '@/components/customers/CustomerProfileDialog';
 import CustomerApprovalTab from '@/components/customers/CustomerApprovalTab';
+import CustomerChangeReviewDialog from '@/components/customers/CustomerChangeReviewDialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useNavigate } from 'react-router-dom';
 import { format, differenceInDays } from 'date-fns';
@@ -96,8 +97,11 @@ const Customers: React.FC = () => {
   const [activeTab, setActiveTab] = useState('list');
   const [requestsCount, setRequestsCount] = useState(0);
 
-  // Pending approval requests per customer
-  const [pendingRequestsMap, setPendingRequestsMap] = useState<Record<string, number>>({});
+  // Pending approval requests per customer (full data)
+  const [pendingRequestsMap, setPendingRequestsMap] = useState<Record<string, any[]>>({});
+
+  // Review dialog state
+  const [reviewCustomer, setReviewCustomer] = useState<Customer | null>(null);
 
   // Last orders cache
   const [lastOrders, setLastOrders] = useState<Record<string, any>>({});
@@ -131,13 +135,14 @@ const Customers: React.FC = () => {
     try {
       const { data, error } = await supabase
         .from('customer_approval_requests' as any)
-        .select('customer_id')
+        .select('id, customer_id, operation_type, payload, requested_by, created_at, workers!customer_approval_requests_requested_by_fkey(full_name)')
         .eq('status', 'pending');
       if (!error && data) {
-        const map: Record<string, number> = {};
+        const map: Record<string, any[]> = {};
         (data as any[]).forEach((r: any) => {
           if (r.customer_id) {
-            map[r.customer_id] = (map[r.customer_id] || 0) + 1;
+            if (!map[r.customer_id]) map[r.customer_id] = [];
+            map[r.customer_id].push({ ...r, requester_name: r.workers?.full_name });
           }
         });
         setPendingRequestsMap(map);
@@ -430,8 +435,16 @@ const Customers: React.FC = () => {
                         ? customerTypes.find(t => t.ar === customer.customer_type)
                         : null;
                       const shortLabel = typeEntry?.short || typeEntry?.ar || '';
-                      const pendingCount = pendingRequestsMap[customer.id] || 0;
-                      const pendingBadge = pendingCount > 0 ? <Badge className="bg-red-600 text-white text-[10px] px-1.5 py-0 ml-1 hover:bg-red-700">طلب تعديل ({pendingCount})</Badge> : null;
+                      const pendingReqs = pendingRequestsMap[customer.id] || [];
+                      const pendingCount = pendingReqs.length;
+                      const pendingBadge = pendingCount > 0 ? (
+                        <Badge 
+                          className="bg-destructive text-destructive-foreground text-[10px] px-1.5 py-0 ml-1 cursor-pointer hover:bg-destructive/90"
+                          onClick={(e) => { e.stopPropagation(); if (isManager) setReviewCustomer(customer); }}
+                        >
+                          طلب تعديل ({pendingCount})
+                        </Badge>
+                      ) : null;
                       if (!shortLabel) return <>{storeName}{pendingBadge}</>;
                       return <><Badge variant="destructive" className="text-[10px] px-1.5 py-0 font-mono uppercase ml-1">{shortLabel}</Badge>{storeName}{pendingBadge}</>;
                     })()}
@@ -564,6 +577,12 @@ const Customers: React.FC = () => {
                   onClick={() => setCustomerForPrices(customer)} title={t('customers.special_prices')}>
                   <Tag className="w-3.5 h-3.5" />
                 </Button>
+                {isManager && (pendingRequestsMap[customer.id]?.length || 0) > 0 && (
+                  <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
+                    onClick={() => setReviewCustomer(customer)} title="مراجعة طلبات التعديل">
+                    <FileEdit className="w-3.5 h-3.5" />
+                  </Button>
+                )}
                 <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-primary hover:bg-primary/10"
                   onClick={() => openEditDialog(customer)}>
                   <Pencil className="w-3.5 h-3.5" />
@@ -901,6 +920,20 @@ const Customers: React.FC = () => {
         open={showSectorsDialog}
         onOpenChange={setShowSectorsDialog}
       />
+      {reviewCustomer && (
+        <CustomerChangeReviewDialog
+          open={!!reviewCustomer}
+          onOpenChange={(open) => { if (!open) setReviewCustomer(null); }}
+          customer={reviewCustomer}
+          requests={pendingRequestsMap[reviewCustomer.id] || []}
+          onProcessed={() => {
+            setReviewCustomer(null);
+            fetchPendingRequestsPerCustomer();
+            fetchRequestsCount();
+            fetchData();
+          }}
+        />
+      )}
     </div>
   );
 };
