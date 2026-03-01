@@ -1,9 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Calculator, Settings, Package, Layers, ArrowRight } from 'lucide-react';
+import { Calculator, Settings, Package, Layers, ArrowRight, Delete } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQuery } from '@tanstack/react-query';
@@ -25,6 +24,10 @@ const parseLayerBoxes = (value: string): { layers: number; boxes: number } | nul
   return { layers: parseInt(layerStr) || 0, boxes: parseInt(boxStr) || 0 };
 };
 
+type ActiveField = 'desired' | 'available';
+
+const NUMPAD_KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '.', '0', 'del'];
+
 const PalletCalculatorDialog: React.FC<Props> = ({ open, onOpenChange }) => {
   const { activeBranch } = useAuth();
   const branchId = activeBranch?.id || null;
@@ -32,6 +35,7 @@ const PalletCalculatorDialog: React.FC<Props> = ({ open, onOpenChange }) => {
   const [selectedSettingId, setSelectedSettingId] = useState<string>('');
   const [desiredBoxes, setDesiredBoxes] = useState<string>('');
   const [availableInput, setAvailableInput] = useState<string>('');
+  const [activeField, setActiveField] = useState<ActiveField>('desired');
 
   const { data: palletSettings = [], refetch: refetchSettings } = useQuery({
     queryKey: ['pallet-settings-calculator', branchId],
@@ -51,6 +55,21 @@ const PalletCalculatorDialog: React.FC<Props> = ({ open, onOpenChange }) => {
   }, [selectedSettingId, palletSettings]);
 
   const boxesPerLayer = currentSetting?.boxes_per_layer || 0;
+
+  const handleNumpad = useCallback((key: string) => {
+    const setter = activeField === 'desired' ? setDesiredBoxes : setAvailableInput;
+    if (key === 'del') {
+      setter(prev => prev.slice(0, -1));
+    } else if (key === '.') {
+      setter(prev => {
+        if (activeField === 'desired') return prev; // no dot for desired (integer)
+        if (prev.includes('.')) return prev;
+        return prev + '.';
+      });
+    } else {
+      setter(prev => prev + key);
+    }
+  }, [activeField]);
 
   const desiredResult = useMemo(() => {
     const total = parseInt(desiredBoxes) || 0;
@@ -115,6 +134,7 @@ const PalletCalculatorDialog: React.FC<Props> = ({ open, onOpenChange }) => {
                       setSelectedSettingId(item.id);
                       setDesiredBoxes('');
                       setAvailableInput('');
+                      setActiveField('desired');
                     }}
                     className="rounded-xl p-4 text-center transition-all border-2 border-transparent bg-muted hover:bg-accent hover:border-primary/30 active:scale-95"
                   >
@@ -131,7 +151,7 @@ const PalletCalculatorDialog: React.FC<Props> = ({ open, onOpenChange }) => {
         </DialogContent>
       </Dialog>
 
-      {/* Calculator sub-dialog */}
+      {/* Calculator sub-dialog with custom numpad */}
       <Dialog
         open={showCalcDialog}
         onOpenChange={(v) => {
@@ -142,13 +162,13 @@ const PalletCalculatorDialog: React.FC<Props> = ({ open, onOpenChange }) => {
           }
         }}
       >
-        <DialogContent className="max-w-sm" dir="rtl">
-          <DialogHeader>
+        <DialogContent className="max-w-sm p-3" dir="rtl">
+          <DialogHeader className="pb-1">
             <DialogTitle className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5">
                 <Calculator className="w-4 h-4 text-primary" />
                 <span className="truncate text-sm">{currentSetting?.name}</span>
-                <span className="inline-flex items-center gap-1 text-[10px] bg-muted rounded-full px-2 py-0.5 font-normal text-muted-foreground">
+                <span className="inline-flex items-center gap-0.5 text-[10px] bg-muted rounded-full px-1.5 py-0.5 font-normal text-muted-foreground">
                   <Layers className="w-2.5 h-2.5" />
                   {boxesPerLayer} ص/ط
                 </span>
@@ -169,50 +189,53 @@ const PalletCalculatorDialog: React.FC<Props> = ({ open, onOpenChange }) => {
             </DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <Label className="text-[11px] font-medium mb-1 block">الصناديق المطلوبة</Label>
-                <Input
-                  type="number"
-                  min={0}
-                  value={desiredBoxes}
-                  onChange={e => setDesiredBoxes(e.target.value)}
-                  placeholder="50"
-                  className="text-center text-base font-bold h-10"
-                  autoFocus
-                />
-              </div>
+          <div className="space-y-2">
+            {/* Row 1: Desired boxes + result */}
+            <div className="grid grid-cols-2 gap-1.5">
+              <button
+                type="button"
+                onClick={() => setActiveField('desired')}
+                className={`rounded-lg p-2 text-center border-2 transition-colors ${
+                  activeField === 'desired' ? 'border-primary bg-primary/5' : 'border-transparent bg-muted'
+                }`}
+              >
+                <p className="text-[10px] text-muted-foreground mb-0.5">الصناديق المطلوبة</p>
+                <p className={`text-xl font-black min-h-[1.75rem] ${desiredBoxes ? 'text-foreground' : 'text-muted-foreground/30'}`}>
+                  {desiredBoxes || '0'}
+                </p>
+              </button>
               <div className={`rounded-lg p-2 text-center flex flex-col justify-center ${desiredResult ? 'bg-primary/10 border border-primary/20' : 'bg-muted'}`}>
                 <p className="text-[10px] text-muted-foreground">يجب أن تأخذ</p>
-                <p className={`text-2xl font-black ${desiredResult ? 'text-primary' : 'text-muted-foreground/30'}`}>
+                <p className={`text-xl font-black ${desiredResult ? 'text-primary' : 'text-muted-foreground/30'}`}>
                   {desiredResult ? desiredResult.formatted : '—'}
                 </p>
                 {desiredResult && (
                   <p className="text-[10px] text-muted-foreground">
-                    {desiredResult.layers} طبقة · {desiredResult.boxes} صندوق
+                    {desiredResult.layers} ط · {desiredResult.boxes} ص
                   </p>
                 )}
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <Label className="text-[11px] font-medium mb-1 block">المتوفر (ط.ص)</Label>
-                <Input
-                  type="text"
-                  inputMode="decimal"
-                  value={availableInput}
-                  onChange={e => setAvailableInput(e.target.value)}
-                  placeholder="7.12"
-                  className="text-center text-base font-bold h-10"
-                />
+            {/* Row 2: Available + remainder */}
+            <div className="grid grid-cols-2 gap-1.5">
+              <button
+                type="button"
+                onClick={() => setActiveField('available')}
+                className={`rounded-lg p-2 text-center border-2 transition-colors ${
+                  activeField === 'available' ? 'border-primary bg-primary/5' : 'border-transparent bg-muted'
+                }`}
+              >
+                <p className="text-[10px] text-muted-foreground mb-0.5">المتوفر (ط.ص)</p>
+                <p className={`text-xl font-black min-h-[1.75rem] ${availableInput ? 'text-foreground' : 'text-muted-foreground/30'}`}>
+                  {availableInput || '0.00'}
+                </p>
                 {availableInput && parseLayerBoxes(availableInput) && (
-                  <p className="text-[10px] text-muted-foreground text-center mt-0.5">
-                    = {(parseLayerBoxes(availableInput)!.layers * boxesPerLayer) + parseLayerBoxes(availableInput)!.boxes} صندوق
+                  <p className="text-[10px] text-muted-foreground">
+                    = {(parseLayerBoxes(availableInput)!.layers * boxesPerLayer) + parseLayerBoxes(availableInput)!.boxes} ص
                   </p>
                 )}
-              </div>
+              </button>
               <div className={`rounded-lg p-2 text-center flex flex-col justify-center border ${
                 remainderResult
                   ? remainderResult.deficit
@@ -223,7 +246,7 @@ const PalletCalculatorDialog: React.FC<Props> = ({ open, onOpenChange }) => {
                 <p className="text-[10px] text-muted-foreground">
                   {remainderResult?.deficit ? 'غير كافٍ!' : 'يجب أن تترك'}
                 </p>
-                <p className={`text-2xl font-black ${
+                <p className={`text-xl font-black ${
                   remainderResult
                     ? remainderResult.deficit ? 'text-destructive' : 'text-primary'
                     : 'text-muted-foreground/30'
@@ -232,10 +255,33 @@ const PalletCalculatorDialog: React.FC<Props> = ({ open, onOpenChange }) => {
                 </p>
                 {remainderResult && !remainderResult.deficit && (
                   <p className="text-[10px] text-muted-foreground">
-                    {remainderResult.layers} طبقة · {remainderResult.boxes} صندوق
+                    {remainderResult.layers} ط · {remainderResult.boxes} ص
                   </p>
                 )}
               </div>
+            </div>
+
+            {/* Custom numpad */}
+            <div className="grid grid-cols-3 gap-1.5 pt-1">
+              {NUMPAD_KEYS.map(key => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => handleNumpad(key)}
+                  className={`h-11 rounded-lg font-bold text-lg transition-all active:scale-95 ${
+                    key === 'del'
+                      ? 'bg-destructive/10 text-destructive hover:bg-destructive/20 flex items-center justify-center'
+                      : key === '.'
+                        ? activeField === 'desired'
+                          ? 'bg-muted text-muted-foreground/30 cursor-not-allowed'
+                          : 'bg-muted text-foreground hover:bg-accent'
+                        : 'bg-muted text-foreground hover:bg-accent'
+                  }`}
+                  disabled={key === '.' && activeField === 'desired'}
+                >
+                  {key === 'del' ? <Delete className="w-5 h-5" /> : key}
+                </button>
+              ))}
             </div>
           </div>
         </DialogContent>
