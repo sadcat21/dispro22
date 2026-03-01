@@ -37,6 +37,11 @@ const WorkerTrackingMap: React.FC = () => {
 
     mapRef.current = map;
 
+    // Ensure tiles render after container is visible
+    setTimeout(() => {
+      map.invalidateSize();
+    }, 300);
+
     return () => {
       map.remove();
       mapRef.current = null;
@@ -47,6 +52,11 @@ const WorkerTrackingMap: React.FC = () => {
   // Update markers when locations change
   useEffect(() => {
     if (!mapRef.current || !locations) return;
+
+    // Force invalidate size to ensure tiles render correctly
+    setTimeout(() => {
+      mapRef.current?.invalidateSize();
+    }, 100);
 
     const currentIds = new Set(locations.map(l => l.worker_id));
 
