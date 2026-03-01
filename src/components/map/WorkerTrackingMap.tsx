@@ -1,11 +1,15 @@
 import React, { useEffect, useRef } from 'react';
 import { useWorkerLocations, WorkerLocationData } from '@/hooks/useWorkerLocation';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { Loader2, MapPin, Users } from 'lucide-react';
+import { Loader2, MapPin, Users, Warehouse } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
+import { calculateDistance } from '@/utils/geoUtils';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
+
+// Warehouse location
+const WAREHOUSE_LOCATION = { lat: 35.90775, lng: 0.10253 };
 
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -73,8 +77,27 @@ const WorkerTrackingMap: React.FC = () => {
       }
     });
 
-    // Update or add markers
+    // Add warehouse marker
+    if (!markersRef.current.has('__warehouse__')) {
+      const warehouseIcon = L.divIcon({
+        html: `<div style="background:#dc2626;width:32px;height:32px;border-radius:6px;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="1"><path d="M3 21V8l9-5 9 5v13H3z"/><path d="M9 21V13h6v8" fill="rgba(220,38,38,0.5)"/></svg>
+        </div>`,
+        className: '',
+        iconSize: [32, 32],
+        iconAnchor: [16, 32],
+      });
+      const whMarker = L.marker([WAREHOUSE_LOCATION.lat, WAREHOUSE_LOCATION.lng], { icon: warehouseIcon })
+        .addTo(mapRef.current!)
+        .bindPopup(`<div class="text-center p-1" dir="${dir}"><p class="font-bold text-sm">🏭 المخزن</p></div>`);
+      markersRef.current.set('__warehouse__', whMarker);
+    }
+
+    // Update or add worker markers
     locations.forEach((loc) => {
+      const distKm = calculateDistance(WAREHOUSE_LOCATION.lat, WAREHOUSE_LOCATION.lng, loc.latitude, loc.longitude);
+      const distText = distKm < 1 ? `${Math.round(distKm * 1000)} م` : `${distKm.toFixed(1)} كم`;
+
       const icon = L.divIcon({
         html: `<div style="position:relative;">
           <div style="background:#3b82f6;width:28px;height:28px;border-radius:50%;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;">
@@ -92,6 +115,7 @@ const WorkerTrackingMap: React.FC = () => {
       const popupContent = `
         <div class="text-center p-1" dir="${dir}">
           <p class="font-bold text-sm">${loc.worker_name}</p>
+          <p class="text-xs" style="color:#dc2626;">🏭 البُعد عن المخزن: ${distText}</p>
           <p class="text-xs text-gray-500">${t('navigation.last_update')}: ${format(new Date(loc.updated_at), 'HH:mm:ss')}</p>
           ${loc.speed ? `<p class="text-xs">${t('navigation.speed')}: ${Math.round(loc.speed * 3.6)} كم/س</p>` : ''}
         </div>
@@ -110,9 +134,13 @@ const WorkerTrackingMap: React.FC = () => {
       }
     });
 
-    // Fit bounds if there are locations
+    // Fit bounds including warehouse
     if (locations.length > 0) {
-      const bounds = L.latLngBounds(locations.map(l => [l.latitude, l.longitude] as [number, number]));
+      const allPoints: [number, number][] = [
+        [WAREHOUSE_LOCATION.lat, WAREHOUSE_LOCATION.lng],
+        ...locations.map(l => [l.latitude, l.longitude] as [number, number]),
+      ];
+      const bounds = L.latLngBounds(allPoints);
       mapRef.current.fitBounds(bounds, { padding: [50, 50], maxZoom: 14 });
     }
   }, [locations, t, dir]);
@@ -147,20 +175,27 @@ const WorkerTrackingMap: React.FC = () => {
       {/* Worker List */}
       {locations && locations.length > 0 && (
         <div className="space-y-2" dir={dir}>
-          {locations.map((loc) => (
-            <div key={loc.worker_id} className="flex items-center justify-between p-2 bg-muted/50 rounded-lg text-sm">
-              <div className="flex items-center gap-2">
-                <div className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse" />
-                <span className="font-medium">{loc.worker_name}</span>
+          {locations.map((loc) => {
+            const distKm = calculateDistance(WAREHOUSE_LOCATION.lat, WAREHOUSE_LOCATION.lng, loc.latitude, loc.longitude);
+            return (
+              <div key={loc.worker_id} className="flex items-center justify-between p-2 bg-muted/50 rounded-lg text-sm">
+                <div className="flex items-center gap-2">
+                  <div className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse" />
+                  <span className="font-medium">{loc.worker_name}</span>
+                </div>
+                <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                  <span className="flex items-center gap-1">
+                    <Warehouse className="w-3 h-3" />
+                    {distKm < 1 ? `${Math.round(distKm * 1000)} م` : `${distKm.toFixed(1)} كم`}
+                  </span>
+                  {loc.speed && loc.speed > 0 && (
+                    <span>{Math.round(loc.speed * 3.6)} كم/س</span>
+                  )}
+                  <span>{format(new Date(loc.updated_at), 'HH:mm')}</span>
+                </div>
               </div>
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                {loc.speed && loc.speed > 0 && (
-                  <span>{Math.round(loc.speed * 3.6)} كم/س</span>
-                )}
-                <span>{format(new Date(loc.updated_at), 'HH:mm')}</span>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
