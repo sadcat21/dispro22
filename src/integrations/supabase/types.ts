@@ -1404,6 +1404,87 @@ export type Database = {
           },
         ]
       }
+      employee_points_log: {
+        Row: {
+          branch_id: string | null
+          created_at: string
+          id: string
+          notes: string | null
+          penalty_id: string | null
+          point_date: string
+          point_type: string
+          points: number
+          source_entity: string | null
+          source_entity_id: string | null
+          task_id: string | null
+          worker_id: string
+        }
+        Insert: {
+          branch_id?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          penalty_id?: string | null
+          point_date?: string
+          point_type?: string
+          points?: number
+          source_entity?: string | null
+          source_entity_id?: string | null
+          task_id?: string | null
+          worker_id: string
+        }
+        Update: {
+          branch_id?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          penalty_id?: string | null
+          point_date?: string
+          point_type?: string
+          points?: number
+          source_entity?: string | null
+          source_entity_id?: string | null
+          task_id?: string | null
+          worker_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_points_log_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_points_log_penalty_id_fkey"
+            columns: ["penalty_id"]
+            isOneToOne: false
+            referencedRelation: "reward_penalties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_points_log_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "reward_tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_points_log_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "workers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_points_log_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "workers_safe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       expense_categories: {
         Row: {
           created_at: string | null
@@ -2116,6 +2197,76 @@ export type Database = {
           },
           {
             foreignKeyName: "manual_invoice_requests_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "workers_safe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      monthly_bonus_summary: {
+        Row: {
+          bonus_amount: number | null
+          branch_id: string | null
+          capped_amount: number | null
+          created_at: string
+          id: string
+          month: string
+          penalty_points: number
+          point_value: number | null
+          reward_points: number
+          status: string
+          total_points: number
+          updated_at: string
+          worker_id: string
+        }
+        Insert: {
+          bonus_amount?: number | null
+          branch_id?: string | null
+          capped_amount?: number | null
+          created_at?: string
+          id?: string
+          month: string
+          penalty_points?: number
+          point_value?: number | null
+          reward_points?: number
+          status?: string
+          total_points?: number
+          updated_at?: string
+          worker_id: string
+        }
+        Update: {
+          bonus_amount?: number | null
+          branch_id?: string | null
+          capped_amount?: number | null
+          created_at?: string
+          id?: string
+          month?: string
+          penalty_points?: number
+          point_value?: number | null
+          reward_points?: number
+          status?: string
+          total_points?: number
+          updated_at?: string
+          worker_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "monthly_bonus_summary_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "monthly_bonus_summary_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "workers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "monthly_bonus_summary_worker_id_fkey"
             columns: ["worker_id"]
             isOneToOne: false
             referencedRelation: "workers_safe"
@@ -3273,6 +3424,143 @@ export type Database = {
           {
             foreignKeyName: "receipts_worker_id_fkey"
             columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "workers_safe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reward_penalties: {
+        Row: {
+          branch_id: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          is_automatic: boolean
+          name: string
+          name_fr: string | null
+          penalty_points: number
+          trigger_event: string | null
+        }
+        Insert: {
+          branch_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          is_automatic?: boolean
+          name: string
+          name_fr?: string | null
+          penalty_points?: number
+          trigger_event?: string | null
+        }
+        Update: {
+          branch_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          is_automatic?: boolean
+          name?: string
+          name_fr?: string | null
+          penalty_points?: number
+          trigger_event?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reward_penalties_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reward_penalties_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "workers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reward_penalties_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "workers_safe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reward_tasks: {
+        Row: {
+          branch_id: string | null
+          category: string
+          condition_logic: Json
+          created_at: string
+          created_by: string | null
+          data_source: string
+          frequency: string
+          id: string
+          is_active: boolean
+          is_cumulative: boolean
+          name: string
+          name_fr: string | null
+          penalty_points: number
+          reward_points: number
+          updated_at: string
+        }
+        Insert: {
+          branch_id?: string | null
+          category?: string
+          condition_logic?: Json
+          created_at?: string
+          created_by?: string | null
+          data_source?: string
+          frequency?: string
+          id?: string
+          is_active?: boolean
+          is_cumulative?: boolean
+          name: string
+          name_fr?: string | null
+          penalty_points?: number
+          reward_points?: number
+          updated_at?: string
+        }
+        Update: {
+          branch_id?: string | null
+          category?: string
+          condition_logic?: Json
+          created_at?: string
+          created_by?: string | null
+          data_source?: string
+          frequency?: string
+          id?: string
+          is_active?: boolean
+          is_cumulative?: boolean
+          name?: string
+          name_fr?: string | null
+          penalty_points?: number
+          reward_points?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reward_tasks_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reward_tasks_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "workers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reward_tasks_created_by_fkey"
+            columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "workers_safe"
             referencedColumns: ["id"]
@@ -4784,35 +5072,44 @@ export type Database = {
       }
       workers: {
         Row: {
+          bonus_cap_percentage: number | null
           branch_id: string | null
           created_at: string
+          department: string | null
           full_name: string
           id: string
           is_active: boolean
           password_hash: string
           role: Database["public"]["Enums"]["app_role"]
+          salary: number | null
           updated_at: string
           username: string
         }
         Insert: {
+          bonus_cap_percentage?: number | null
           branch_id?: string | null
           created_at?: string
+          department?: string | null
           full_name: string
           id?: string
           is_active?: boolean
           password_hash: string
           role?: Database["public"]["Enums"]["app_role"]
+          salary?: number | null
           updated_at?: string
           username: string
         }
         Update: {
+          bonus_cap_percentage?: number | null
           branch_id?: string | null
           created_at?: string
+          department?: string | null
           full_name?: string
           id?: string
           is_active?: boolean
           password_hash?: string
           role?: Database["public"]["Enums"]["app_role"]
+          salary?: number | null
           updated_at?: string
           username?: string
         }
