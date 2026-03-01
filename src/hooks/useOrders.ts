@@ -218,10 +218,16 @@ export const useAssignOrder = () => {
 
 export const useUpdateOrderStatus = () => {
   const queryClient = useQueryClient();
-  const { workerId } = useAuth();
 
   return useMutation({
     mutationFn: async ({ orderId, status }: { orderId: string; status: OrderStatus }) => {
+      // This hook only updates the order status.
+      // Stock deduction for 'delivered' is handled exclusively by DeliverySaleDialog
+      // to prevent duplicate deductions and ensure proper payment/debt tracking.
+      if (status === 'delivered') {
+        throw new Error('يجب استخدام نافذة التوصيل لتأكيد التسليم');
+      }
+
       const { data, error } = await supabase
         .from('orders')
         .update({ status })
@@ -230,51 +236,12 @@ export const useUpdateOrderStatus = () => {
         .single();
 
       if (error) throw error;
-
-      if (status === 'delivered' && data.assigned_worker_id) {
-        const { data: orderItems } = await supabase
-          .from('order_items')
-          .select('product_id, quantity')
-          .eq('order_id', orderId);
-
-        if (orderItems) {
-          for (const item of orderItems) {
-            const { data: ws } = await supabase
-              .from('worker_stock')
-              .select('id, quantity')
-              .eq('worker_id', data.assigned_worker_id)
-              .eq('product_id', item.product_id)
-              .maybeSingle();
-
-            if (ws && ws.quantity >= item.quantity) {
-              await supabase
-                .from('worker_stock')
-                .update({ quantity: ws.quantity - item.quantity })
-                .eq('id', ws.id);
-            }
-
-            await supabase.from('stock_movements').insert({
-              product_id: item.product_id,
-              branch_id: data.branch_id,
-              quantity: item.quantity,
-              movement_type: 'delivery',
-              status: 'approved',
-              created_by: workerId!,
-              worker_id: data.assigned_worker_id,
-              order_id: orderId,
-              notes: 'خصم تلقائي عند التوصيل',
-            });
-          }
-        }
-      }
-
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['orders'] });
       queryClient.invalidateQueries({ queryKey: ['my-orders'] });
       queryClient.invalidateQueries({ queryKey: ['assigned-orders'] });
-      queryClient.invalidateQueries({ queryKey: ['my-worker-stock'] });
     },
   });
 };
