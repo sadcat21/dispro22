@@ -120,15 +120,15 @@ const WorkerActions: React.FC = () => {
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-4 gap-2">
           {workerActions.map((action) => (
             <div
               key={action.key}
-              className={`flex flex-col items-center justify-center p-4 gap-2 rounded-xl border cursor-pointer active:scale-95 transition-all hover:shadow-md ${action.color}`}
+              className={`flex flex-col items-center justify-center p-2.5 gap-1.5 rounded-lg border cursor-pointer active:scale-95 transition-all hover:shadow-md ${action.color}`}
               onClick={() => handleAction(action)}
             >
-              <action.icon className="w-7 h-7" />
-              <span className="text-xs font-medium text-center leading-tight">{t(action.labelKey)}</span>
+              <action.icon className="w-5 h-5" />
+              <span className="text-[10px] font-medium text-center leading-tight">{t(action.labelKey)}</span>
             </div>
           ))}
         </div>
