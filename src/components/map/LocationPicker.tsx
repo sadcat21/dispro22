@@ -111,6 +111,16 @@ const LocationPicker: React.FC<LocationPickerProps> = ({
     }
   }, [initialSearchQuery, defaultWilaya, mapReady, position]);
 
+  // Invalidate map size when it becomes visible (e.g. inside Collapsible)
+  useEffect(() => {
+    if (!mapRef.current || !mapReady) return;
+    // Small delay to let CSS transitions finish
+    const timer = setTimeout(() => {
+      mapRef.current?.invalidateSize();
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [mapReady]);
+
   // Update marker when position changes
   useEffect(() => {
     if (!mapRef.current || !mapReady) return;
