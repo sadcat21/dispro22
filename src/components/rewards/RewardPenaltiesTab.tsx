@@ -16,6 +16,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { PENALTY_TRIGGERS, TRIGGER_CATEGORIES } from '@/data/rewardTriggers';
+import EditRewardPenaltyDialog from './EditRewardPenaltyDialog';
 
 const ROLE_LABELS: Record<string, string> = {
   worker: 'عامل توصيل/مبيعات',
@@ -44,8 +45,6 @@ const RewardPenaltiesTab: React.FC = () => {
   const [filterCategory, setFilterCategory] = useState('all');
   const [filterRole, setFilterRole] = useState('all');
   const [editPenalty, setEditPenalty] = useState<RewardPenalty | null>(null);
-  const [editName, setEditName] = useState('');
-  const [editPoints, setEditPoints] = useState('');
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const selectedTrigger = trigger ? PENALTY_TRIGGERS[trigger] : null;
@@ -87,17 +86,6 @@ const RewardPenaltiesTab: React.FC = () => {
 
   const openEdit = (p: RewardPenalty) => {
     setEditPenalty(p);
-    setEditName(p.name);
-    setEditPoints(String(p.penalty_points));
-  };
-
-  const handleEdit = async () => {
-    if (!editPenalty) return;
-    const { error } = await supabase.from('reward_penalties').update({ name: editName, penalty_points: Number(editPoints) } as any).eq('id', editPenalty.id);
-    if (error) { toast.error('حدث خطأ'); return; }
-    queryClient.invalidateQueries({ queryKey: ['reward-penalties'] });
-    toast.success('تم تحديث المخالفة');
-    setEditPenalty(null);
   };
 
   const handleDelete = async () => {
@@ -252,22 +240,7 @@ const RewardPenaltiesTab: React.FC = () => {
       </Dialog>
 
       {/* Edit Dialog */}
-      <Dialog open={!!editPenalty} onOpenChange={() => setEditPenalty(null)}>
-        <DialogContent className="max-w-sm" dir="rtl">
-          <DialogHeader><DialogTitle>تعديل المخالفة</DialogTitle></DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>اسم المخالفة</Label>
-              <Input value={editName} onChange={e => setEditName(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>نقاط الخصم</Label>
-              <Input type="number" value={editPoints} onChange={e => setEditPoints(e.target.value)} />
-            </div>
-            <Button onClick={handleEdit} className="w-full">حفظ التعديلات</Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <EditRewardPenaltyDialog penalty={editPenalty} onOpenChange={() => setEditPenalty(null)} />
 
       {/* Delete Confirm */}
       <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>

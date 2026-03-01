@@ -3,9 +3,6 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Plus, Target, TrendingUp, Clock, Banknote, Zap, Pencil, Trash2, Users } from 'lucide-react';
 import { useRewardTasks, useUpdateRewardTask, RewardTask } from '@/hooks/useRewards';
@@ -13,6 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import CreateRewardTaskDialog from './CreateRewardTaskDialog';
+import EditRewardTaskDialog from './EditRewardTaskDialog';
 import { TASK_DATA_SOURCES, TASK_CATEGORIES } from '@/data/rewardTriggers';
 
 const ROLE_LABELS: Record<string, string> = {
@@ -49,9 +47,6 @@ const RewardTasksTab: React.FC = () => {
   const [showCreate, setShowCreate] = useState(false);
   const [editTask, setEditTask] = useState<RewardTask | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [editName, setEditName] = useState('');
-  const [editReward, setEditReward] = useState('');
-  const [editPenalty, setEditPenalty] = useState('');
   const [filterRole, setFilterRole] = useState('all');
 
   const filteredTasks = useMemo(() => {
@@ -66,19 +61,6 @@ const RewardTasksTab: React.FC = () => {
 
   const openEdit = (task: RewardTask) => {
     setEditTask(task);
-    setEditName(task.name);
-    setEditReward(String(task.reward_points));
-    setEditPenalty(String(task.penalty_points));
-  };
-
-  const handleEdit = () => {
-    if (!editTask) return;
-    updateTask.mutate({
-      id: editTask.id,
-      name: editName,
-      reward_points: Number(editReward),
-      penalty_points: Number(editPenalty),
-    }, { onSuccess: () => setEditTask(null) });
   };
 
   const handleDelete = async () => {
@@ -176,30 +158,7 @@ const RewardTasksTab: React.FC = () => {
       )}
 
       <CreateRewardTaskDialog open={showCreate} onOpenChange={setShowCreate} />
-
-      {/* Edit Dialog */}
-      <Dialog open={!!editTask} onOpenChange={() => setEditTask(null)}>
-        <DialogContent className="max-w-sm" dir="rtl">
-          <DialogHeader><DialogTitle>تعديل المهمة</DialogTitle></DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>اسم المهمة</Label>
-              <Input value={editName} onChange={e => setEditName(e.target.value)} />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label>نقاط المكافأة</Label>
-                <Input type="number" value={editReward} onChange={e => setEditReward(e.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <Label>نقاط الخصم</Label>
-                <Input type="number" value={editPenalty} onChange={e => setEditPenalty(e.target.value)} />
-              </div>
-            </div>
-            <Button onClick={handleEdit} disabled={updateTask.isPending} className="w-full">حفظ التعديلات</Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <EditRewardTaskDialog task={editTask} onOpenChange={() => setEditTask(null)} />
 
       {/* Delete Confirm */}
       <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
