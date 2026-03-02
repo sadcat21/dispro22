@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useNavigate } from 'react-router-dom';
 import { useSelectedWorker } from '@/contexts/SelectedWorkerContext';
-import { ArrowRight, Calculator, Truck, Banknote, Wallet, MapPin, ShoppingCart, Activity, Shield, HardHat, HandCoins, ArrowLeftRight, ClipboardList, Trophy, AlertTriangle, DollarSign } from 'lucide-react';
+import { ArrowRight, Calculator, Truck, Banknote, Wallet, MapPin, ShoppingCart, Activity, Shield, HardHat, HandCoins, ArrowLeftRight, ClipboardList, Trophy, AlertTriangle, DollarSign, Package, PackageOpen, ClipboardCheck } from 'lucide-react';
 import { useWorkerLiability } from '@/hooks/useWorkerLiability';
 import { Badge } from '@/components/ui/badge';
 import { Worker } from '@/types/database';
@@ -14,10 +16,14 @@ import WorkerHandoverPreviewDialog from '@/components/accounting/WorkerHandoverP
 import TodayCustomersDialog from '@/components/sectors/TodayCustomersDialog';
 import WorkerFinancialDialog from '@/components/rewards/WorkerFinancialDialog';
 import WorkerPointsDialog from '@/components/rewards/WorkerPointsDialog';
+import StockVerificationDialog from '@/components/stock/StockVerificationDialog';
 
 const workerActions = [
   { key: 'accounting', icon: Calculator, path: '/accounting', labelKey: 'accounting.title', color: 'bg-amber-50 border-amber-200 text-amber-700' },
   { key: 'load_stock', icon: Truck, path: '/load-stock', labelKey: 'stock.load_to_worker', color: 'bg-green-50 border-green-200 text-green-700' },
+  { key: 'truck_stock', icon: Package, path: '', labelKey: 'رصيد الشاحنة', color: 'bg-lime-50 border-lime-200 text-lime-700', isDialog: true },
+  { key: 'unload_truck', icon: PackageOpen, path: '/load-stock', labelKey: 'تفريغ الشاحنة', color: 'bg-red-50 border-red-200 text-red-700' },
+  { key: 'stock_review', icon: ClipboardCheck, path: '', labelKey: 'جلسة مراجعة', color: 'bg-fuchsia-50 border-fuchsia-200 text-fuchsia-700', isDialog: true },
   { key: 'worker_debts', icon: Banknote, path: '/worker-debts', labelKey: 'nav.worker_debts', color: 'bg-rose-50 border-rose-200 text-rose-700' },
   { key: 'liability', icon: HandCoins, path: '/worker-liability', labelKey: 'liability.title', color: 'bg-orange-50 border-orange-200 text-orange-700' },
   { key: 'coin_exchange', icon: ArrowLeftRight, path: '', labelKey: 'coin_exchange.title', color: 'bg-cyan-50 border-cyan-200 text-cyan-700', isDialog: true },
@@ -45,6 +51,8 @@ const WorkerActions: React.FC = () => {
   const [todayCustomersOpen, setTodayCustomersOpen] = useState(false);
   const [financialOpen, setFinancialOpen] = useState(false);
   const [pointsLogOpen, setPointsLogOpen] = useState(false);
+  const [truckStockOpen, setTruckStockOpen] = useState(false);
+  const [stockReviewOpen, setStockReviewOpen] = useState(false);
 
   const { data: workers = [] } = useQuery({
     queryKey: ['workers-for-actions', activeBranch?.id],
@@ -54,6 +62,19 @@ const WorkerActions: React.FC = () => {
       const { data } = await query;
       return (data || []) as Worker[];
     },
+  });
+
+  const { data: truckStock = [] } = useQuery({
+    queryKey: ['worker-truck-stock', selectedWorker?.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('worker_stock')
+        .select('*, product:products(name)')
+        .eq('worker_id', selectedWorker!.id)
+        .gte('quantity', 0);
+      return data || [];
+    },
+    enabled: !!selectedWorker?.id && truckStockOpen,
   });
 
   const handleSelectWorker = (worker: Worker) => {
@@ -79,6 +100,10 @@ const WorkerActions: React.FC = () => {
         setFinancialOpen(true);
       } else if (action.key === 'points_log') {
         setPointsLogOpen(true);
+      } else if (action.key === 'truck_stock') {
+        setTruckStockOpen(true);
+      } else if (action.key === 'stock_review') {
+        setStockReviewOpen(true);
       }
       return;
     }
@@ -165,6 +190,48 @@ const WorkerActions: React.FC = () => {
         workerId={selectedWorker?.id}
         workerName={selectedWorker?.full_name}
       />
+
+      {/* Truck Stock Dialog */}
+      {selectedWorker && (
+        <Dialog open={truckStockOpen} onOpenChange={setTruckStockOpen}>
+          <DialogContent className="max-w-md" dir="rtl">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Package className="w-5 h-5 text-primary" />
+                رصيد شاحنة {selectedWorker.full_name}
+              </DialogTitle>
+            </DialogHeader>
+            <ScrollArea className="max-h-[60vh]">
+              {truckStock.length === 0 ? (
+                <div className="py-8 text-center text-muted-foreground">
+                  <Package className="w-10 h-10 mx-auto mb-2 opacity-40" />
+                  <p>لا يوجد رصيد في الشاحنة</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {truckStock
+                    .sort((a: any, b: any) => (b.quantity || 0) - (a.quantity || 0))
+                    .map((item: any) => (
+                      <div key={item.id} className={`flex items-center justify-between p-3 rounded-lg border ${item.quantity === 0 ? 'bg-destructive/10 border-destructive/30' : 'bg-card'}`}>
+                        <span className="font-medium text-sm">{item.product?.name}</span>
+                        <Badge variant={item.quantity > 0 ? 'default' : 'destructive'}>{item.quantity}</Badge>
+                      </div>
+                    ))}
+                </div>
+              )}
+            </ScrollArea>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Stock Review Dialog */}
+      {selectedWorker && (
+        <StockVerificationDialog
+          open={stockReviewOpen}
+          onOpenChange={setStockReviewOpen}
+          workerId={selectedWorker.id}
+        />
+      )}
     </div>
   );
 };
