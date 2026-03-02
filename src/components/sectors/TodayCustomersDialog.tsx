@@ -1,13 +1,23 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { MapPin, Truck, ShoppingCart, Landmark, User, Phone } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { MapPin, Truck, ShoppingCart, Landmark, User, Phone, Eye, PackageX } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDueDebts } from '@/hooks/useDebtCollections';
+import { useLocationCheck } from '@/hooks/useLocationCheck';
+import { useTrackVisit } from '@/hooks/useVisitTracking';
+import { OrderWithDetails, Customer } from '@/types/database';
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
+import DeliverySaleDialog from '@/components/orders/DeliverySaleDialog';
+import CreateOrderDialog from '@/components/orders/CreateOrderDialog';
+import VisitNoPaymentDialog from '@/components/debts/VisitNoPaymentDialog';
+import CollectDebtDialog from '@/components/debts/CollectDebtDialog';
 
 const DAY_NAMES: Record<string, string> = {
   saturday: 'السبت', sunday: 'الأحد', monday: 'الإثنين',
@@ -28,6 +38,7 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
   open, onOpenChange, targetWorkerId, targetWorkerName,
 }) => {
   const { workerId: authWorkerId, activeBranch } = useAuth();
+  const navigate = useNavigate();
   const effectiveWorkerId = targetWorkerId || authWorkerId;
   const todayName = JS_DAY_TO_NAME[new Date().getDay()] || '';
   const todayStart = useMemo(() => {
@@ -35,6 +46,17 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
     d.setHours(0, 0, 0, 0);
     return d.toISOString();
   }, []);
+
+  // Sub-dialog states
+  const [showDeliveryDialog, setShowDeliveryDialog] = useState(false);
+  const [pendingDeliveryOrder, setPendingDeliveryOrder] = useState<OrderWithDetails | null>(null);
+  const [showCreateOrder, setShowCreateOrder] = useState(false);
+  const [selectedCustomerForOrder, setSelectedCustomerForOrder] = useState<string | null>(null);
+  const [showVisitNoPayment, setShowVisitNoPayment] = useState(false);
+  const [selectedDebt, setSelectedDebt] = useState<any>(null);
+  const [showCollectDebt, setShowCollectDebt] = useState(false);
+
+  const { trackVisit } = useTrackVisit();
 
   // Sectors assigned to this worker
   const { data: sectors = [] } = useQuery({
@@ -51,7 +73,7 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
   const { data: customers = [] } = useQuery({
     queryKey: ['today-cust-customers', activeBranch?.id],
     queryFn: async () => {
-      let query = supabase.from('customers').select('id, name, phone, sector_id, store_name').not('sector_id', 'is', null);
+      let query = supabase.from('customers').select('id, name, phone, sector_id, store_name, latitude, longitude').not('sector_id', 'is', null);
       if (activeBranch) query = query.eq('branch_id', activeBranch.id);
       const { data } = await query;
       return data || [];
@@ -59,16 +81,16 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
     enabled: !!effectiveWorkerId && open,
   });
 
-  // Orders assigned to this worker (pending delivery)
+  // Orders assigned to this worker (pending delivery) - fetch full details
   const { data: assignedOrders = [] } = useQuery({
-    queryKey: ['today-cust-assigned-orders', effectiveWorkerId],
+    queryKey: ['today-cust-assigned-orders-full', effectiveWorkerId],
     queryFn: async () => {
       const { data } = await supabase
         .from('orders')
-        .select('customer_id, status')
+        .select('*, customer:customers(*), items:order_items(*, product:products(*))')
         .eq('assigned_worker_id', effectiveWorkerId!)
         .in('status', ['pending', 'assigned', 'in_progress']);
-      return data || [];
+      return (data || []) as OrderWithDetails[];
     },
     enabled: !!effectiveWorkerId && open,
   });
@@ -134,108 +156,235 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
     return dueDebts;
   }, [dueDebts, targetWorkerId]);
 
+  // Handlers
+  const handleDeliveryCustomerClick = (customerId: string) => {
+    const order = assignedOrders.find(o => o.customer_id === customerId && ['pending', 'assigned', 'in_progress'].includes(o.status));
+    if (order) {
+      setPendingDeliveryOrder(order);
+      setShowDeliveryDialog(true);
+    } else {
+      toast.info('لا توجد طلبية نشطة لهذا العميل');
+    }
+  };
+
+  const handleSalesCustomerClick = (customerId: string) => {
+    setSelectedCustomerForOrder(customerId);
+    setShowCreateOrder(true);
+  };
+
+  const handleDebtClick = (debt: any) => {
+    setSelectedDebt(debt);
+    setShowCollectDebt(true);
+  };
+
+  const handleVisitNoPayment = (debt: any) => {
+    setSelectedDebt(debt);
+    setShowVisitNoPayment(true);
+  };
+
   const title = targetWorkerName
     ? `عملاء اليوم — ${targetWorkerName}`
     : `عملاء اليوم — ${DAY_NAMES[todayName] || todayName}`;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[95vw] sm:max-w-md p-0 gap-0 max-h-[85vh] flex flex-col" dir="rtl">
-        <DialogHeader className="p-3 border-b shrink-0">
-          <DialogTitle className="flex items-center gap-2 text-sm">
-            <MapPin className="w-4 h-4 text-blue-500 shrink-0" />
-            <span className="truncate">{title}</span>
-          </DialogTitle>
-        </DialogHeader>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-[95vw] sm:max-w-md p-0 gap-0 max-h-[85vh] flex flex-col" dir="rtl">
+          <DialogHeader className="p-3 border-b shrink-0">
+            <DialogTitle className="flex items-center gap-2 text-sm">
+              <MapPin className="w-4 h-4 text-blue-500 shrink-0" />
+              <span className="truncate">{title}</span>
+            </DialogTitle>
+          </DialogHeader>
 
-        <Tabs defaultValue="delivery" className="flex flex-col flex-1 min-h-0">
-          <TabsList className="w-full rounded-none border-b shrink-0">
-            <TabsTrigger value="delivery" className="flex-1 gap-1 text-xs">
-              <Truck className="w-3.5 h-3.5" />
-              توصيل
-              {deliveryCustomers.length > 0 && <Badge variant="secondary" className="text-[10px] px-1">{deliveryCustomers.length}</Badge>}
-            </TabsTrigger>
-            <TabsTrigger value="sales" className="flex-1 gap-1 text-xs">
-              <ShoppingCart className="w-3.5 h-3.5" />
-              طلبات
-              {salesCustomers.length > 0 && <Badge variant="secondary" className="text-[10px] px-1">{salesCustomers.length}</Badge>}
-            </TabsTrigger>
-            <TabsTrigger value="debts" className="flex-1 gap-1 text-xs">
-              <Landmark className="w-3.5 h-3.5" />
-              ديون
-              {debtCustomers.length > 0 && <Badge variant="destructive" className="text-[10px] px-1">{debtCustomers.length}</Badge>}
-            </TabsTrigger>
-          </TabsList>
+          <Tabs defaultValue="delivery" className="flex flex-col flex-1 min-h-0">
+            <TabsList className="w-full rounded-none border-b shrink-0">
+              <TabsTrigger value="delivery" className="flex-1 gap-1 text-xs">
+                <Truck className="w-3.5 h-3.5" />
+                توصيل
+                {deliveryCustomers.length > 0 && <Badge variant="secondary" className="text-[10px] px-1">{deliveryCustomers.length}</Badge>}
+              </TabsTrigger>
+              <TabsTrigger value="sales" className="flex-1 gap-1 text-xs">
+                <ShoppingCart className="w-3.5 h-3.5" />
+                طلبات
+                {salesCustomers.length > 0 && <Badge variant="secondary" className="text-[10px] px-1">{salesCustomers.length}</Badge>}
+              </TabsTrigger>
+              <TabsTrigger value="debts" className="flex-1 gap-1 text-xs">
+                <Landmark className="w-3.5 h-3.5" />
+                ديون
+                {debtCustomers.length > 0 && <Badge variant="destructive" className="text-[10px] px-1">{debtCustomers.length}</Badge>}
+              </TabsTrigger>
+            </TabsList>
 
-          <TabsContent value="delivery" className="m-0 flex-1 min-h-0">
-            <ScrollArea className="h-full max-h-[60vh]">
-              {deliveryCustomers.length === 0 ? (
-                <div className="p-6 text-center text-muted-foreground text-sm">لا توجد توصيلات لليوم</div>
-              ) : (
-                <div className="divide-y">
-                  {deliveryCustomers.map(c => (
-                    <div key={c.id} className="flex items-center gap-2.5 p-3">
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${deliveredSet.has(c.id) ? 'bg-green-100 text-green-600' : 'bg-orange-100 text-orange-600'}`}>
-                        <User className="w-4 h-4" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{c.store_name || c.name}</p>
-                        {c.phone && <p className="text-[11px] text-muted-foreground flex items-center gap-1"><Phone className="w-3 h-3" />{c.phone}</p>}
-                      </div>
-                      {deliveredSet.has(c.id) && <Badge variant="outline" className="text-[10px] text-green-600 border-green-200">تم ✓</Badge>}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </ScrollArea>
-          </TabsContent>
+            {/* Delivery Tab */}
+            <TabsContent value="delivery" className="m-0 flex-1 min-h-0">
+              <ScrollArea className="h-full max-h-[60vh]">
+                {deliveryCustomers.length === 0 ? (
+                  <div className="p-6 text-center text-muted-foreground text-sm">لا توجد توصيلات لليوم</div>
+                ) : (
+                  <div className="divide-y">
+                    {deliveryCustomers.map(c => {
+                      const isDelivered = deliveredSet.has(c.id);
+                      const hasActiveOrder = assignedOrders.some(o => o.customer_id === c.id);
+                      return (
+                        <div
+                          key={c.id}
+                          className={`flex items-center gap-2.5 p-3 ${!isDelivered && hasActiveOrder ? 'cursor-pointer hover:bg-muted/50 active:bg-muted transition-colors' : ''}`}
+                          onClick={() => !isDelivered && hasActiveOrder && handleDeliveryCustomerClick(c.id)}
+                        >
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${isDelivered ? 'bg-green-100 text-green-600' : 'bg-orange-100 text-orange-600'}`}>
+                            <User className="w-4 h-4" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">{c.store_name || c.name}</p>
+                            {c.phone && <p className="text-[11px] text-muted-foreground flex items-center gap-1"><Phone className="w-3 h-3" />{c.phone}</p>}
+                          </div>
+                          {isDelivered ? (
+                            <Badge variant="outline" className="text-[10px] text-green-600 border-green-200">تم ✓</Badge>
+                          ) : hasActiveOrder ? (
+                            <Truck className="w-4 h-4 text-orange-500 shrink-0" />
+                          ) : null}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </ScrollArea>
+            </TabsContent>
 
-          <TabsContent value="sales" className="m-0 flex-1 min-h-0">
-            <ScrollArea className="h-full max-h-[60vh]">
-              {salesCustomers.length === 0 ? (
-                <div className="p-6 text-center text-muted-foreground text-sm">لا يوجد عملاء مبيعات لليوم</div>
-              ) : (
-                <div className="divide-y">
-                  {salesCustomers.map(c => (
-                    <div key={c.id} className="flex items-center gap-2.5 p-3">
-                      <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
-                        <User className="w-4 h-4" />
+            {/* Sales Tab */}
+            <TabsContent value="sales" className="m-0 flex-1 min-h-0">
+              <ScrollArea className="h-full max-h-[60vh]">
+                {salesCustomers.length === 0 ? (
+                  <div className="p-6 text-center text-muted-foreground text-sm">لا يوجد عملاء مبيعات لليوم</div>
+                ) : (
+                  <div className="divide-y">
+                    {salesCustomers.map(c => (
+                      <div
+                        key={c.id}
+                        className="flex items-center gap-2.5 p-3 cursor-pointer hover:bg-muted/50 active:bg-muted transition-colors"
+                        onClick={() => handleSalesCustomerClick(c.id)}
+                      >
+                        <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
+                          <User className="w-4 h-4" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{c.store_name || c.name}</p>
+                          {c.phone && <p className="text-[11px] text-muted-foreground flex items-center gap-1"><Phone className="w-3 h-3" />{c.phone}</p>}
+                        </div>
+                        <ShoppingCart className="w-4 h-4 text-blue-500 shrink-0" />
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{c.store_name || c.name}</p>
-                        {c.phone && <p className="text-[11px] text-muted-foreground flex items-center gap-1"><Phone className="w-3 h-3" />{c.phone}</p>}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </ScrollArea>
-          </TabsContent>
+                    ))}
+                  </div>
+                )}
+              </ScrollArea>
+            </TabsContent>
 
-          <TabsContent value="debts" className="m-0 flex-1 min-h-0">
-            <ScrollArea className="h-full max-h-[60vh]">
-              {debtCustomers.length === 0 ? (
-                <div className="p-6 text-center text-muted-foreground text-sm">لا توجد ديون مستحقة لليوم</div>
-              ) : (
-                <div className="divide-y">
-                  {debtCustomers.map(d => (
-                    <div key={d.id} className="flex items-center gap-2.5 p-3">
-                      <div className="w-8 h-8 rounded-full bg-red-100 text-red-600 flex items-center justify-center shrink-0">
-                        <Landmark className="w-4 h-4" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{(d.customer as any)?.store_name || (d.customer as any)?.name || '—'}</p>
-                        <p className="text-[11px] text-destructive font-bold">{Number(d.remaining_amount).toLocaleString()} DA</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </ScrollArea>
-          </TabsContent>
-        </Tabs>
-      </DialogContent>
-    </Dialog>
+            {/* Debts Tab */}
+            <TabsContent value="debts" className="m-0 flex-1 min-h-0">
+              <ScrollArea className="h-full max-h-[60vh]">
+                {debtCustomers.length === 0 ? (
+                  <div className="p-6 text-center text-muted-foreground text-sm">لا توجد ديون مستحقة لليوم</div>
+                ) : (
+                  <div className="divide-y">
+                    {debtCustomers.map(d => {
+                      const customer = d.customer as any;
+                      return (
+                        <div key={d.id} className="flex items-center gap-2.5 p-3">
+                          <div
+                            className="w-8 h-8 rounded-full bg-red-100 text-red-600 flex items-center justify-center shrink-0 cursor-pointer hover:bg-red-200 transition-colors"
+                            onClick={() => handleDebtClick(d)}
+                          >
+                            <Landmark className="w-4 h-4" />
+                          </div>
+                          <div className="flex-1 min-w-0 cursor-pointer" onClick={() => handleDebtClick(d)}>
+                            <p className="text-sm font-medium truncate">{customer?.store_name || customer?.name || '—'}</p>
+                            <p className="text-[11px] text-destructive font-bold">{Number(d.remaining_amount).toLocaleString()} DA</p>
+                          </div>
+                          <div className="flex items-center gap-1 shrink-0">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 w-7 p-0 text-muted-foreground hover:text-orange-600"
+                              title="زيارة بدون تحصيل"
+                              onClick={(e) => { e.stopPropagation(); handleVisitNoPayment(d); }}
+                            >
+                              <Eye className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 w-7 p-0 text-muted-foreground hover:text-green-600"
+                              title="تحصيل"
+                              onClick={(e) => { e.stopPropagation(); handleDebtClick(d); }}
+                            >
+                              <Landmark className="w-3.5 h-3.5" />
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </ScrollArea>
+            </TabsContent>
+          </Tabs>
+        </DialogContent>
+      </Dialog>
+
+      {/* Sub-dialogs */}
+      {pendingDeliveryOrder && (
+        <DeliverySaleDialog
+          open={showDeliveryDialog}
+          onOpenChange={(open) => {
+            setShowDeliveryDialog(open);
+            if (!open) setPendingDeliveryOrder(null);
+          }}
+          order={pendingDeliveryOrder}
+        />
+      )}
+
+      <CreateOrderDialog
+        open={showCreateOrder}
+        onOpenChange={setShowCreateOrder}
+        initialCustomerId={selectedCustomerForOrder || undefined}
+      />
+
+      {selectedDebt && (
+        <VisitNoPaymentDialog
+          open={showVisitNoPayment}
+          onOpenChange={(open) => {
+            setShowVisitNoPayment(open);
+            if (!open) setSelectedDebt(null);
+          }}
+          debtId={selectedDebt.id}
+          customerName={(selectedDebt.customer as any)?.store_name || (selectedDebt.customer as any)?.name || ''}
+          collectionType={selectedDebt.collection_type}
+          collectionDays={selectedDebt.collection_days}
+          customerLatitude={(selectedDebt.customer as any)?.latitude}
+          customerLongitude={(selectedDebt.customer as any)?.longitude}
+        />
+      )}
+
+      {selectedDebt && (
+        <CollectDebtDialog
+          open={showCollectDebt}
+          onOpenChange={(open) => {
+            setShowCollectDebt(open);
+            if (!open) setSelectedDebt(null);
+          }}
+          debtId={selectedDebt.id}
+          customerName={(selectedDebt.customer as any)?.store_name || (selectedDebt.customer as any)?.name || ''}
+          totalDebtAmount={Number(selectedDebt.total_amount)}
+          paidAmountBefore={Number(selectedDebt.paid_amount)}
+          remainingAmount={Number(selectedDebt.remaining_amount)}
+          customerId={selectedDebt.customer_id}
+          defaultAmount={selectedDebt.collection_amount ? Number(selectedDebt.collection_amount) : undefined}
+          collectionType={selectedDebt.collection_type}
+          collectionDays={selectedDebt.collection_days}
+        />
+      )}
+    </>
   );
 };
 
