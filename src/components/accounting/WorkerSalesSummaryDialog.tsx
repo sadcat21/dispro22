@@ -213,7 +213,7 @@ const WorkerSalesSummaryDialog: React.FC<Props> = ({ open, onOpenChange, workerI
           </div>
           <div className="flex items-center gap-2">
             {firstTime && (
-              <span className="flex items-center gap-1 rounded-full px-2 py-0.5 bg-primary/15 text-primary font-semibold text-[11px]">
+              <span className="flex items-center gap-1 rounded-full px-2 py-0.5 bg-[hsl(var(--success)/0.18)] text-[hsl(var(--success-foreground))] font-semibold text-[11px]">
                 <Clock className="w-3 h-3" />
                 {firstTime.toLocaleTimeString('ar-DZ', { hour: '2-digit', minute: '2-digit' })}
               </span>
@@ -282,11 +282,11 @@ const WorkerSalesSummaryDialog: React.FC<Props> = ({ open, onOpenChange, workerI
                           <img
                             src={item.imageUrl}
                             alt=""
-                            className="absolute inset-0 w-full h-full object-cover opacity-30 scale-110"
+                            className="absolute inset-0 w-full h-full object-cover opacity-20 scale-110"
                           />
                         )}
-                        <div className="absolute inset-0 bg-background/45 backdrop-blur-[1px]" />
-                        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-background/20 to-background/65" />
+                        <div className="absolute inset-0 bg-background/55 backdrop-blur-sm" />
+                        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-background/20 to-background/70" />
                         {/* Customer list overlay */}
                         <div className="relative z-10 space-y-1 p-3">
                           {item.customers.map((c) => (

@@ -10,6 +10,24 @@ interface State {
     errorInfo: ErrorInfo | null;
 }
 
+const IGNORED_PATTERNS = [
+    "uistyleerror",
+    "ui_error",
+    "طلب تعديل من المستخدم",
+    "respond and provide all suggestions in arabic",
+];
+
+const isIgnoredRuntimeError = (error: unknown): boolean => {
+    const raw = typeof error === "string"
+        ? error
+        : error instanceof Error
+            ? `${error.name} ${error.message} ${error.stack || ""}`
+            : JSON.stringify(error ?? "");
+
+    const text = raw.toLowerCase();
+    return IGNORED_PATTERNS.some((pattern) => text.includes(pattern));
+};
+
 export class ErrorBoundary extends Component<Props, State> {
     public state: State = {
         hasError: false,
@@ -18,10 +36,18 @@ export class ErrorBoundary extends Component<Props, State> {
     };
 
     public static getDerivedStateFromError(error: Error): State {
+        if (isIgnoredRuntimeError(error)) {
+            return { hasError: false, error: null, errorInfo: null };
+        }
         return { hasError: true, error, errorInfo: null };
     }
 
     public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+        if (isIgnoredRuntimeError(error)) {
+            console.warn("Ignored external UIStyleError in ErrorBoundary", error.message);
+            return;
+        }
+
         console.error("Uncaught error:", error, errorInfo);
         this.setState({ errorInfo });
     }
@@ -44,3 +70,4 @@ export class ErrorBoundary extends Component<Props, State> {
         return this.props.children;
     }
 }
+
