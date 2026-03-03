@@ -2882,6 +2882,7 @@ export type Database = {
       }
       product_offer_tiers: {
         Row: {
+          conditions: Json | null
           created_at: string
           discount_amount: number | null
           discount_percentage: number | null
@@ -2901,6 +2902,7 @@ export type Database = {
           worker_reward_type: string | null
         }
         Insert: {
+          conditions?: Json | null
           created_at?: string
           discount_amount?: number | null
           discount_percentage?: number | null
@@ -2920,6 +2922,7 @@ export type Database = {
           worker_reward_type?: string | null
         }
         Update: {
+          conditions?: Json | null
           created_at?: string
           discount_amount?: number | null
           discount_percentage?: number | null

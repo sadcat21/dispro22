@@ -7,6 +7,12 @@ export interface DiscountPrices {
   invoice?: number | null;
 }
 
+export interface TierConditions {
+  invoice_types?: string[];    // ['facture_1', 'facture_2']
+  pricing_types?: string[];    // ['retail', 'gros', 'super_gros']
+  payment_methods?: string[];  // ['cash', 'check', 'versement', 'virement']
+}
+
 export interface ProductOfferTier {
   id?: string;
   offer_id?: string;
@@ -24,6 +30,7 @@ export interface ProductOfferTier {
   worker_reward_amount: number;
   tier_order: number;
   is_stackable: boolean;
+  conditions?: TierConditions | null;
   created_at?: string;
 }
 
