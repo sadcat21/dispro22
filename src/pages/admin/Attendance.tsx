@@ -5,13 +5,15 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { CalendarDays, Clock, MapPin, ChevronRight, ChevronLeft, LogIn, LogOut, Users, ListChecks, Timer } from 'lucide-react';
+import { CalendarDays, Clock, MapPin, ChevronRight, ChevronLeft, LogIn, LogOut, Users, ListChecks, Timer, Settings2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ar } from 'date-fns/locale';
+import AttendanceSettingsDialog from '@/components/attendance/AttendanceSettingsDialog';
 
 const Attendance: React.FC = () => {
   const { activeBranch } = useAuth();
   const [selectedDate, setSelectedDate] = useState(() => format(new Date(), 'yyyy-MM-dd'));
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const { data: logs = [], isLoading } = useAllAttendance(selectedDate, activeBranch?.id);
 
   const workerGroups = useMemo(() => {
@@ -42,20 +44,25 @@ const Attendance: React.FC = () => {
     const diff = new Date(clockOut.recorded_at).getTime() - new Date(clockIn.recorded_at).getTime();
     const hours = Math.floor(diff / 3600000);
     const minutes = Math.floor((diff % 3600000) / 60000);
-    return { hours, minutes, totalMs: diff };
+    return { hours, minutes };
   };
 
   return (
     <div className="p-4 space-y-5" dir="rtl">
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/25">
-          <CalendarDays className="w-5 h-5 text-white" />
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/25">
+            <CalendarDays className="w-5 h-5 text-white" />
+          </div>
+          <div>
+            <h1 className="text-lg font-bold text-foreground">سجل المداومة</h1>
+            <p className="text-xs text-muted-foreground">متابعة حضور وانصراف العمال</p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-lg font-bold text-foreground">سجل المداومة</h1>
-          <p className="text-xs text-muted-foreground">متابعة حضور وانصراف العمال</p>
-        </div>
+        <Button variant="ghost" size="icon" className="rounded-xl" onClick={() => setSettingsOpen(true)}>
+          <Settings2 className="w-5 h-5 text-muted-foreground" />
+        </Button>
       </div>
 
       {/* Date Navigation */}
@@ -86,7 +93,7 @@ const Attendance: React.FC = () => {
         <Card className="border-0 shadow-md bg-gradient-to-br from-blue-500 to-blue-600 text-white overflow-hidden relative">
           <div className="absolute -top-4 -left-4 w-16 h-16 bg-white/10 rounded-full" />
           <CardContent className="p-4 flex items-center gap-3">
-            <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
+            <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
               <Users className="w-5 h-5" />
             </div>
             <div>
@@ -98,7 +105,7 @@ const Attendance: React.FC = () => {
         <Card className="border-0 shadow-md bg-gradient-to-br from-violet-500 to-purple-600 text-white overflow-hidden relative">
           <div className="absolute -top-4 -left-4 w-16 h-16 bg-white/10 rounded-full" />
           <CardContent className="p-4 flex items-center gap-3">
-            <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
+            <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
               <ListChecks className="w-5 h-5" />
             </div>
             <div>
@@ -125,17 +132,17 @@ const Attendance: React.FC = () => {
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {workerGroups.map((group) => {
             const clockIn = group.logs.find((l: any) => l.action_type === 'clock_in');
             const clockOut = group.logs.filter((l: any) => l.action_type === 'clock_out').pop();
             const duration = clockIn && clockOut ? getDuration(clockIn, clockOut) : null;
 
             return (
-              <Card key={group.worker?.id || group.logs[0].worker_id} className="border-0 shadow-md overflow-hidden">
+              <div key={group.worker?.id || group.logs[0].worker_id} className="space-y-2">
                 {/* Worker Header */}
-                <div className="bg-gradient-to-l from-primary/5 to-primary/10 px-4 py-3 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
+                <div className="flex items-center justify-between px-1">
+                  <div className="flex items-center gap-2.5">
                     <div className="w-9 h-9 rounded-xl bg-primary/15 flex items-center justify-center">
                       <span className="text-sm font-bold text-primary">
                         {(group.worker?.full_name || '?')[0]}
@@ -160,54 +167,71 @@ const Attendance: React.FC = () => {
                   </Badge>
                 </div>
 
-                <CardContent className="p-3 space-y-2">
-                  {group.logs.map((log: any) => (
-                    <div
-                      key={log.id}
-                      className={`flex items-center gap-3 p-2.5 rounded-xl text-sm transition-colors ${
-                        log.action_type === 'clock_in'
-                          ? 'bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200/60 dark:border-emerald-500/20'
-                          : 'bg-red-50 dark:bg-red-500/10 border border-red-200/60 dark:border-red-500/20'
-                      }`}
-                    >
-                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                        log.action_type === 'clock_in'
-                          ? 'bg-emerald-500/15'
-                          : 'bg-red-500/15'
-                      }`}>
-                        {log.action_type === 'clock_in' ? (
-                          <LogIn className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                        ) : (
-                          <LogOut className="w-4 h-4 text-red-600 dark:text-red-400" />
-                        )}
-                      </div>
-
-                      <div className="flex-1 min-w-0">
-                        <span className="font-semibold text-xs">
-                          {log.action_type === 'clock_in' ? 'بداية العمل' : 'نهاية العمل'}
-                        </span>
-                      </div>
-
-                      <div className="flex items-center gap-2 shrink-0">
-                        <div className="flex items-center gap-1 bg-background/80 rounded-lg px-2 py-1">
-                          <Clock className="w-3 h-3 text-muted-foreground" />
-                          <span className="text-[11px] font-medium text-foreground">{formatTime(log.recorded_at)}</span>
+                {/* Clock-in / Clock-out cards side by side */}
+                <div className="grid grid-cols-2 gap-2">
+                  {/* Clock In Card */}
+                  <Card className={`border-0 shadow-sm overflow-hidden ${clockIn ? 'bg-emerald-50 dark:bg-emerald-500/10' : 'bg-muted/30'}`}>
+                    <CardContent className="p-3 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">بداية العمل</span>
+                        <div className="w-7 h-7 rounded-lg bg-emerald-500/15 flex items-center justify-center">
+                          <LogIn className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                         </div>
-                        {log.distance_meters != null && (
-                          <div className="flex items-center gap-1 bg-background/80 rounded-lg px-2 py-1">
-                            <MapPin className="w-3 h-3 text-muted-foreground" />
-                            <span className="text-[11px] font-medium text-foreground">{Math.round(log.distance_meters)}م</span>
-                          </div>
-                        )}
                       </div>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
+                      {clockIn ? (
+                        <>
+                          <div className="flex items-center gap-1">
+                            <Clock className="w-3 h-3 text-muted-foreground" />
+                            <span className="text-sm font-bold text-foreground">{formatTime(clockIn.recorded_at)}</span>
+                          </div>
+                          {clockIn.distance_meters != null && (
+                            <div className="flex items-center gap-1">
+                              <MapPin className="w-3 h-3 text-muted-foreground" />
+                              <span className="text-[11px] text-muted-foreground">{Math.round(clockIn.distance_meters)} م</span>
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <p className="text-xs text-muted-foreground">لم يسجل بعد</p>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  {/* Clock Out Card */}
+                  <Card className={`border-0 shadow-sm overflow-hidden ${clockOut ? 'bg-red-50 dark:bg-red-500/10' : 'bg-muted/30'}`}>
+                    <CardContent className="p-3 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-semibold text-red-700 dark:text-red-400">نهاية العمل</span>
+                        <div className="w-7 h-7 rounded-lg bg-red-500/15 flex items-center justify-center">
+                          <LogOut className="w-3.5 h-3.5 text-red-600 dark:text-red-400" />
+                        </div>
+                      </div>
+                      {clockOut ? (
+                        <>
+                          <div className="flex items-center gap-1">
+                            <Clock className="w-3 h-3 text-muted-foreground" />
+                            <span className="text-sm font-bold text-foreground">{formatTime(clockOut.recorded_at)}</span>
+                          </div>
+                          {clockOut.distance_meters != null && (
+                            <div className="flex items-center gap-1">
+                              <MapPin className="w-3 h-3 text-muted-foreground" />
+                              <span className="text-[11px] text-muted-foreground">{Math.round(clockOut.distance_meters)} م</span>
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <p className="text-xs text-muted-foreground">لم يسجل بعد</p>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
             );
           })}
         </div>
       )}
+
+      <AttendanceSettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
     </div>
   );
 };
