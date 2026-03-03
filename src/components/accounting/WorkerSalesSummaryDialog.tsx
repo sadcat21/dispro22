@@ -4,7 +4,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { ShoppingBag, Package, ChevronDown, ChevronUp, User } from 'lucide-react';
+import { ShoppingBag, Package, ChevronDown, ChevronUp, User, Clock, Calendar } from 'lucide-react';
 import { useRealtimeSubscription } from '@/hooks/useRealtimeSubscription';
 
 interface Props {
@@ -149,9 +149,16 @@ const WorkerSalesSummaryDialog: React.FC<Props> = ({ open, onOpenChange, workerI
         p.customers.sort((a, b) => b.quantity - a.quantity);
       }
 
+      // Get first and last order times
+      const times = orders.map(o => new Date(o.updated_at).getTime());
+      const firstOrderTime = times.length ? new Date(Math.min(...times)).toISOString() : null;
+      const lastOrderTime = times.length ? new Date(Math.max(...times)).toISOString() : null;
+
       return {
         items: Object.values(agg).sort((a, b) => b.quantity - a.quantity),
         orderCount: orders.length,
+        firstOrderTime,
+        lastOrderTime,
       };
     },
     enabled: open && !!workerId,
@@ -162,6 +169,10 @@ const WorkerSalesSummaryDialog: React.FC<Props> = ({ open, onOpenChange, workerI
   const totalAmount = useMemo(() => {
     return (salesData?.items || []).reduce((s, i) => s + i.totalAmount, 0);
   }, [salesData]);
+
+  const firstTime = salesData?.firstOrderTime ? new Date(salesData.firstOrderTime) : null;
+  const lastTime = salesData?.lastOrderTime ? new Date(salesData.lastOrderTime) : null;
+  const todayDate = new Date().toLocaleDateString('ar-DZ', { year: 'numeric', month: 'long', day: 'numeric' });
 
   const totalQty = useMemo(() => {
     return (salesData?.items || []).reduce((s, i) => s + i.quantity, 0);
@@ -197,6 +208,28 @@ const WorkerSalesSummaryDialog: React.FC<Props> = ({ open, onOpenChange, workerI
               منذ آخر محاسبة
             </Badge>
           )}
+        </div>
+
+        {/* Date and time info */}
+        <div className="flex items-center justify-between text-xs px-1">
+          <div className="flex items-center gap-1 text-muted-foreground">
+            <Calendar className="w-3.5 h-3.5" />
+            <span>{todayDate}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            {firstTime && (
+              <span className="flex items-center gap-1 text-green-600 font-medium">
+                <Clock className="w-3 h-3" />
+                {firstTime.toLocaleTimeString('ar-DZ', { hour: '2-digit', minute: '2-digit' })}
+              </span>
+            )}
+            {lastTime && (
+              <span className="flex items-center gap-1 text-destructive font-medium">
+                <Clock className="w-3 h-3" />
+                {lastTime.toLocaleTimeString('ar-DZ', { hour: '2-digit', minute: '2-digit' })}
+              </span>
+            )}
+          </div>
         </div>
 
         <ScrollArea className="flex-1">
