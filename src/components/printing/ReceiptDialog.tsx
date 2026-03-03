@@ -57,6 +57,7 @@ const ReceiptDialog: React.FC<ReceiptDialogProps> = ({ open, onOpenChange, recei
   const [showPreview, setShowPreview] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [useClassicLayout, setUseClassicLayout] = useState(false);
 
   // Advanced distribution toggles
   const [showStockBeforeAfter, setShowStockBeforeAfter] = useState(false);
@@ -106,6 +107,7 @@ const ReceiptDialog: React.FC<ReceiptDialogProps> = ({ open, onOpenChange, recei
     nextCollectionDate: receiptData.nextCollectionDate,
     nextCollectionTime: receiptData.nextCollectionTime,
     advancedOptions,
+    classicLayout: useClassicLayout,
   };
 
   const previewHtml = formatReceiptForPreview(receiptDataForFormatter);
@@ -172,8 +174,14 @@ const ReceiptDialog: React.FC<ReceiptDialogProps> = ({ open, onOpenChange, recei
           </DialogTitle>
         </DialogHeader>
 
-        {/* Printer Status */}
+        {/* Classic Layout Toggle + Printer Status */}
         <div className="px-4 pt-3 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <Switch checked={useClassicLayout} onCheckedChange={setUseClassicLayout} />
+            <Label className="text-xs">طباعة كلاسيكية</Label>
+          </div>
+        </div>
+        <div className="px-4 pt-2 flex items-center justify-between gap-2">
           <Badge variant="outline" className={`gap-1.5 ${st.color}`}>
             <StIcon className={`w-3 h-3 ${status === 'connecting' || status === 'printing' ? 'animate-spin' : ''}`} />
             {st.label}

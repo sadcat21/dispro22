@@ -197,6 +197,8 @@ export interface ReceiptData {
   nextCollectionTime?: string | null;
   // Advanced distribution features (optional toggles)
   advancedOptions?: AdvancedReceiptOptions;
+  // Classic single-line layout toggle
+  classicLayout?: boolean;
 }
 
 export interface AdvancedReceiptOptions {
@@ -302,58 +304,96 @@ export function formatReceiptForPrint(data: ReceiptData): Uint8Array {
     }
   } else {
     // ═══════ ITEMS TABLE ═══════
-    // Multi-line item format for 48mm (32 chars)
-    // Line 1: Product name (full width)
-    // Line 2: QTE x PxU = Total
     add(ALIGN_LEFT);
     addText(separator());
 
     let totalBoxes = 0;
     let totalProducts = 0;
 
-    for (const item of data.items) {
-      const { paidQuantity, giftBoxes, giftPieces } = resolveGiftDisplay(item);
-      const unitLabel = getUnitLabel(item);
-      const unitPrice = getUnitPrice(item);
-      const totalStr = formatAmount(item.totalPrice);
-      const qtyStr = formatQty(item.quantity);
+    if (data.classicLayout) {
+      // Classic single-line format: NAME QTY | PRICE | TOTAL
+      for (const item of data.items) {
+        const { paidQuantity, giftBoxes, giftPieces } = resolveGiftDisplay(item);
+        const unitLabel = getUnitLabel(item);
+        const unitPrice = getUnitPrice(item);
+        const totalStr = formatAmount(item.totalPrice);
+        const qtyStr = formatQty(item.quantity);
+        const nameStr = sanitizeForPrint(item.productName);
 
-      // Line 1: Product name (can use full width)
-      const nameStr = sanitizeForPrint(item.productName);
-      if (nameStr.length > LINE_WIDTH) {
-        addText(nameStr.substring(0, LINE_WIDTH));
-        addText(' ' + nameStr.substring(LINE_WIDTH).substring(0, LINE_WIDTH - 1));
-      } else {
-        addText(nameStr);
+        // Gift suffix
+        let giftSuffix = '';
+        if (giftBoxes > 0 || giftPieces > 0) {
+          if (giftBoxes > 0) giftSuffix += `+${formatQty(giftBoxes)}${unitLabel.toLowerCase()}`;
+          if (giftPieces > 0) giftSuffix += `+${formatQty(giftPieces)}pcs`;
+        }
+
+        // Promo prefix
+        const promoTag = item.isPromo ? 'PRM-' : '';
+
+        // Single line: 🎁 PRM-2BTS 100+2bts | 950{5kg} DA | 475,000 DA
+        const qtyPart = `${promoTag}${qtyStr}${unitLabel}${giftSuffix}`;
+        const pricePart = `${unitPrice} DA`;
+        const totalPart = `${totalStr} DA`;
+        
+        // Name on its own line if needed
+        const shortName = nameStr.length > LINE_WIDTH - 6 ? nameStr.substring(0, LINE_WIDTH - 6) : nameStr;
+        addText(centerText(`-----( ${shortName} )-----`));
+        
+        const infoLine = `${item.isPromo ? '🎁 ' : ''}${qtyPart} | ${pricePart} | ${totalPart}`;
+        if (infoLine.length <= LINE_WIDTH) {
+          addText(infoLine);
+        } else {
+          addText(`${item.isPromo ? '🎁 ' : ''}${qtyPart} | ${pricePart}`);
+          addText(padLeft(`${totalPart}`, LINE_WIDTH));
+        }
+
+        addText(separator('-'));
+        totalBoxes += item.quantity;
+        totalProducts++;
       }
+    } else {
+      // New multi-line format for 48mm
+      for (const item of data.items) {
+        const { paidQuantity, giftBoxes, giftPieces } = resolveGiftDisplay(item);
+        const unitLabel = getUnitLabel(item);
+        const unitPrice = getUnitPrice(item);
+        const totalStr = formatAmount(item.totalPrice);
+        const qtyStr = formatQty(item.quantity);
 
-      // Line 2: qty x price = total
-      const detailLine = ` ${qtyStr}${unitLabel} x ${unitPrice}`;
-      const totalPart = `${totalStr} DA`;
-      const spaceBetween = LINE_WIDTH - detailLine.length - totalPart.length;
-      if (spaceBetween > 0) {
-        addText(detailLine + ' '.repeat(spaceBetween) + totalPart);
-      } else {
-        addText(detailLine);
-        addText(padLeft(totalPart, LINE_WIDTH));
+        const nameStr = sanitizeForPrint(item.productName);
+        if (nameStr.length > LINE_WIDTH) {
+          addText(nameStr.substring(0, LINE_WIDTH));
+          addText(' ' + nameStr.substring(LINE_WIDTH).substring(0, LINE_WIDTH - 1));
+        } else {
+          addText(nameStr);
+        }
+
+        const detailLine = ` ${qtyStr}${unitLabel} x ${unitPrice}`;
+        const totalPart = `${totalStr} DA`;
+        const spaceBetween = LINE_WIDTH - detailLine.length - totalPart.length;
+        if (spaceBetween > 0) {
+          addText(detailLine + ' '.repeat(spaceBetween) + totalPart);
+        } else {
+          addText(detailLine);
+          addText(padLeft(totalPart, LINE_WIDTH));
+        }
+
+        if (giftBoxes > 0 || giftPieces > 0) {
+          let giftStr = ' +CADEAU:';
+          if (giftBoxes > 0) giftStr += ` ${formatQty(giftBoxes)}BTS`;
+          if (giftPieces > 0) giftStr += `${giftBoxes > 0 ? '+' : ' '}${formatQty(giftPieces)}PCS`;
+          addText(giftStr);
+        }
+
+        if (item.offerNote) {
+          const note = sanitizeForPrint(item.offerNote);
+          addText(` ${note.substring(0, LINE_WIDTH - 1)}`);
+        }
+
+        addText(separator('-'));
+        totalBoxes += item.quantity;
+        totalProducts++;
       }
-
-      // Gift line
-      if (giftBoxes > 0 || giftPieces > 0) {
-        let giftStr = ' +CADEAU:';
-        if (giftBoxes > 0) giftStr += ` ${formatQty(giftBoxes)}BTS`;
-        if (giftPieces > 0) giftStr += `${giftBoxes > 0 ? '+' : ' '}${formatQty(giftPieces)}PCS`;
-        addText(giftStr);
-      }
-
-      if (item.offerNote) {
-        const note = sanitizeForPrint(item.offerNote);
-        addText(` ${note.substring(0, LINE_WIDTH - 1)}`);
-      }
-
-      addText(separator('-'));
-      totalBoxes += item.quantity;
-      totalProducts++;
     }
 
     addText(`Art:${totalProducts} Colis:${formatQty(totalBoxes)}`);
@@ -466,39 +506,68 @@ export function formatReceiptForPreview(data: ReceiptData): string {
   const receiptNum = String(data.receiptNumber).padStart(6, '0');
   const invoiceType = getInvoiceType(data);
 
-  // ── Items - multi-line format for narrow 48mm ──
+  // ── Items ──
   let itemsHtml = '';
   let totalBoxes = 0;
   let totalProducts = 0;
 
-  for (const item of data.items) {
-    const { paidQuantity, giftBoxes, giftPieces } = resolveGiftDisplay(item);
-    const unitLabel = getUnitLabel(item);
-    const unitPrice = getUnitPrice(item);
+  if (data.classicLayout) {
+    // Classic single-line format matching the old style
+    for (const item of data.items) {
+      const { paidQuantity, giftBoxes, giftPieces } = resolveGiftDisplay(item);
+      const unitLabel = getUnitLabel(item);
+      const unitPrice = getUnitPrice(item);
+      const qtyStr = formatQty(item.quantity);
 
-    let giftHtml = '';
-    if (giftBoxes > 0 || giftPieces > 0) {
-      let giftText = '';
-      if (giftBoxes > 0) giftText += `${formatQty(giftBoxes)} BTS`;
-      if (giftPieces > 0) giftText += `${giftBoxes > 0 ? '+' : ''}${formatQty(giftPieces)} PCS`;
-      giftHtml = `<div style="color:#16a34a;font-size:8px;">🎁 +CADEAU: ${giftText}</div>`;
+      let giftSuffix = '';
+      if (giftBoxes > 0) giftSuffix += `+${formatQty(giftBoxes)}${unitLabel.toLowerCase()}`;
+      if (giftPieces > 0) giftSuffix += `+${formatQty(giftPieces)}pcs`;
+
+      const promoTag = item.isPromo ? '🎁 PRM-' : '';
+      const qtyPart = `${promoTag}${qtyStr}${unitLabel}${giftSuffix}`;
+      const shortName = item.productName.length > 20 ? item.productName.substring(0, 20) : item.productName;
+
+      itemsHtml += `
+        <div style="border-bottom:1px dotted #ccc;padding:3px 0;">
+          <div style="text-align:center;font-size:9px;color:#666;">-----( ${shortName} )-----</div>
+          <div style="text-align:center;font-size:10px;">
+            ${qtyPart} | ${unitPrice} DA | <strong>${Math.round(item.totalPrice).toLocaleString()} DA</strong>
+          </div>
+        </div>`;
+
+      totalBoxes += item.quantity;
+      totalProducts++;
     }
+  } else {
+    // New multi-line format
+    for (const item of data.items) {
+      const { paidQuantity, giftBoxes, giftPieces } = resolveGiftDisplay(item);
+      const unitLabel = getUnitLabel(item);
+      const unitPrice = getUnitPrice(item);
 
-    const noteHtml = item.offerNote ? `<div style="font-size:7px;color:#d97706;">${item.offerNote}</div>` : '';
+      let giftHtml = '';
+      if (giftBoxes > 0 || giftPieces > 0) {
+        let giftText = '';
+        if (giftBoxes > 0) giftText += `${formatQty(giftBoxes)} BTS`;
+        if (giftPieces > 0) giftText += `${giftBoxes > 0 ? '+' : ''}${formatQty(giftPieces)} PCS`;
+        giftHtml = `<div style="color:#16a34a;font-size:8px;">🎁 +CADEAU: ${giftText}</div>`;
+      }
 
-    // Multi-line: Line 1 = product name, Line 2 = qty x price = total
-    itemsHtml += `
-      <div style="border-bottom:1px dotted #ccc;padding:2px 0;">
-        <div style="font-size:10px;font-weight:500;word-wrap:break-word;">${item.productName}</div>
-        <div style="display:flex;justify-content:space-between;font-size:9px;color:#444;">
-          <span>${formatQty(item.quantity)}${unitLabel} x ${unitPrice}</span>
-          <span style="font-weight:bold;">${Math.round(item.totalPrice).toLocaleString()} DA</span>
-        </div>
-        ${giftHtml}${noteHtml}
-      </div>`;
+      const noteHtml = item.offerNote ? `<div style="font-size:7px;color:#d97706;">${item.offerNote}</div>` : '';
 
-    totalBoxes += item.quantity;
-    totalProducts++;
+      itemsHtml += `
+        <div style="border-bottom:1px dotted #ccc;padding:2px 0;">
+          <div style="font-size:10px;font-weight:500;word-wrap:break-word;">${item.productName}</div>
+          <div style="display:flex;justify-content:space-between;font-size:9px;color:#444;">
+            <span>${formatQty(item.quantity)}${unitLabel} x ${unitPrice}</span>
+            <span style="font-weight:bold;">${Math.round(item.totalPrice).toLocaleString()} DA</span>
+          </div>
+          ${giftHtml}${noteHtml}
+        </div>`;
+
+      totalBoxes += item.quantity;
+      totalProducts++;
+    }
   }
 
   // ── Advanced distribution section ──
