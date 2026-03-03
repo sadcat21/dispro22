@@ -581,7 +581,7 @@ const StockReceipts: React.FC = () => {
       <SimpleProductPickerDialog
         open={productPickerIndex !== null}
         onOpenChange={(open) => { if (!open) setProductPickerIndex(null); }}
-        products={products.map(p => ({ id: p.id, name: p.name }))}
+        products={products.map(p => ({ id: p.id, name: p.name, image_url: p.image_url }))}
         selectedProductId={productPickerIndex !== null ? items[productPickerIndex]?.product_id || '' : ''}
         onSelect={(productId) => {
           if (productPickerIndex !== null) {

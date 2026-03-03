@@ -275,7 +275,7 @@ const FactoryDeliveryDialog: React.FC<Props> = ({ open, onOpenChange, branchId, 
       <SimpleProductPickerDialog
         open={pickerIndex !== null}
         onOpenChange={(open) => { if (!open) setPickerIndex(null); }}
-        products={products.map(p => ({ id: p.id, name: p.name }))}
+        products={products.map(p => ({ id: p.id, name: p.name, image_url: p.image_url }))}
         selectedProductId={pickerIndex !== null ? items[pickerIndex]?.product_id || '' : ''}
         onSelect={(productId) => {
           if (pickerIndex !== null) {
