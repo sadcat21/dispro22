@@ -69,8 +69,8 @@ export const useAttendance = () => {
           return { latitude: parseFloat(lat.value), longitude: parseFloat(lng.value), maxDistance: dist ? parseFloat(dist.value) : 50 };
         }
       }
-
-      return null;
+      // Fallback: use hardcoded warehouse coordinates (same as WorkerTrackingMap)
+      return { latitude: 35.90775, longitude: 0.10253, maxDistance: 50 };
     },
     enabled: !!activeBranch?.id || true,
   });

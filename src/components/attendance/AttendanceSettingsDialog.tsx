@@ -58,8 +58,8 @@ const AttendanceSettingsDialog: React.FC<Props> = ({ open, onOpenChange }) => {
 
   useEffect(() => {
     if (settings) {
-      setWarehouseLat(settings['warehouse_latitude'] || '');
-      setWarehouseLng(settings['warehouse_longitude'] || '');
+      setWarehouseLat(settings['warehouse_latitude'] || '35.90775');
+      setWarehouseLng(settings['warehouse_longitude'] || '0.10253');
       setMaxDistance(settings['attendance_max_distance'] || '50');
       setWorkStartTime(settings['work_start_time'] || '08:00');
     }
