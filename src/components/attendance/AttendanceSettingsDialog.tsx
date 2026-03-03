@@ -7,7 +7,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { Settings2, MapPin, Ruler, Clock } from 'lucide-react';
+import { Settings2, MapPin, Ruler, Clock, Map } from 'lucide-react';
+import LazyLocationPicker from '@/components/map/LazyLocationPicker';
 
 interface Props {
   open: boolean;
@@ -22,6 +23,7 @@ const AttendanceSettingsDialog: React.FC<Props> = ({ open, onOpenChange }) => {
   const [warehouseLat, setWarehouseLat] = useState('');
   const [warehouseLng, setWarehouseLng] = useState('');
   const [workStartTime, setWorkStartTime] = useState('08:00');
+  const [showMap, setShowMap] = useState(false);
 
   const branchId = activeBranch?.id || null;
 
@@ -118,7 +120,7 @@ const AttendanceSettingsDialog: React.FC<Props> = ({ open, onOpenChange }) => {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md" dir="rtl">
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto" dir="rtl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Settings2 className="w-5 h-5 text-primary" />
@@ -160,7 +162,7 @@ const AttendanceSettingsDialog: React.FC<Props> = ({ open, onOpenChange }) => {
           <div className="space-y-2">
             <Label className="flex items-center gap-2 text-sm font-medium">
               <MapPin className="w-4 h-4 text-muted-foreground" />
-              إحداثيات المخزن
+              موقع المخزن
             </Label>
             <div className="grid grid-cols-2 gap-2">
               <Input
@@ -178,10 +180,29 @@ const AttendanceSettingsDialog: React.FC<Props> = ({ open, onOpenChange }) => {
                 placeholder="خط الطول"
               />
             </div>
-            <Button type="button" variant="outline" size="sm" className="w-full" onClick={useCurrentLocation}>
-              <MapPin className="w-3.5 h-3.5 ml-1" />
-              استخدام موقعي الحالي
-            </Button>
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" size="sm" className="flex-1" onClick={useCurrentLocation}>
+                <MapPin className="w-3.5 h-3.5 ml-1" />
+                موقعي الحالي
+              </Button>
+              <Button type="button" variant="outline" size="sm" className="flex-1" onClick={() => setShowMap(!showMap)}>
+                <Map className="w-3.5 h-3.5 ml-1" />
+                {showMap ? 'إخفاء الخريطة' : 'اختيار من الخريطة'}
+              </Button>
+            </div>
+
+            {showMap && (
+              <div className="rounded-xl overflow-hidden border">
+                <LazyLocationPicker
+                  latitude={warehouseLat ? parseFloat(warehouseLat) : null}
+                  longitude={warehouseLng ? parseFloat(warehouseLng) : null}
+                  onLocationChange={(lat, lng) => {
+                    setWarehouseLat(lat.toFixed(6));
+                    setWarehouseLng(lng.toFixed(6));
+                  }}
+                />
+              </div>
+            )}
           </div>
 
           <Button
