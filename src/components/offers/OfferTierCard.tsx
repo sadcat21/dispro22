@@ -241,10 +241,10 @@ const OfferTierCard: React.FC<OfferTierCardProps> = ({
                   />
                   <span className="text-sm text-muted-foreground">DA</span>
                 </div>
-                {currentPercentage > 0 && (
+                {currentPercentage > 0 && originalPrice > 0 && (
                   <div className="flex items-center justify-between text-xs bg-green-50 dark:bg-green-950/30 rounded p-1.5">
-                    <span className="text-green-700 dark:text-green-400">نسبة التخفيض:</span>
-                    <span className="font-medium text-green-700 dark:text-green-400">-{Math.round(currentPercentage * 100) / 100}%</span>
+                    <span className="text-green-700 dark:text-green-400">قيمة التخفيض:</span>
+                    <span className="font-medium text-green-700 dark:text-green-400">-{Math.round(originalPrice * currentPercentage / 100)} DA</span>
                   </div>
                 )}
               </div>
