@@ -11,6 +11,7 @@ export interface TierConditions {
   invoice_types?: string[];    // ['facture_1', 'facture_2']
   pricing_types?: string[];    // ['retail', 'gros', 'super_gros']
   payment_methods?: string[];  // ['cash', 'check', 'versement', 'virement']
+  allow_debt?: boolean;        // whether debt payment is allowed for this tier
 }
 
 export interface ProductOfferTier {

@@ -52,7 +52,7 @@ const OfferTierCard: React.FC<OfferTierCardProps> = ({
     return ((conditions[field] || []) as string[]).includes(value);
   };
 
-  const hasAnyCondition = !!(conditions.invoice_types?.length || conditions.pricing_types?.length || conditions.payment_methods?.length);
+  const hasAnyCondition = !!(conditions.invoice_types?.length || conditions.pricing_types?.length || conditions.payment_methods?.length || conditions.allow_debt === false);
   const getUnitLabel = (unit: string) => {
     return unit === 'box' ? t('offers.unit_box') : t('offers.unit_piece');
   };
@@ -324,17 +324,17 @@ const OfferTierCard: React.FC<OfferTierCardProps> = ({
             };
 
             const handleApplyAll = () => {
-              // Find first filled sale price and apply its discount ratio to all
+              // Find first filled sale price and apply the same discount amount to all
               const firstFilledKey = priceTypes.find(pt => discountPrices[pt.key] != null && prices[pt.key as keyof typeof prices] > 0);
               if (firstFilledKey) {
                 const origPrice = prices[firstFilledKey.key as keyof typeof prices];
                 const salePrice = discountPrices[firstFilledKey.key]!;
-                const ratio = salePrice / origPrice;
+                const discountAmount = origPrice - salePrice;
                 const newPrices: Record<string, number> = {};
                 priceTypes.forEach(pt => {
                   const orig = prices[pt.key as keyof typeof prices];
                   if (orig > 0) {
-                    newPrices[pt.key] = Math.round(orig * ratio);
+                    newPrices[pt.key] = Math.max(0, orig - discountAmount);
                   }
                 });
                 onUpdate(tierIndex, { discount_prices: newPrices });
@@ -512,6 +512,20 @@ const OfferTierCard: React.FC<OfferTierCardProps> = ({
                     </label>
                   ))}
                 </div>
+              </div>
+
+              {/* Allow Debt */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <Label className="text-[10px] text-muted-foreground">السماح بالدين في هذا العرض</Label>
+                  <Switch
+                    checked={conditions.allow_debt !== false}
+                    onCheckedChange={(checked) => onUpdate(tierIndex, { conditions: { ...conditions, allow_debt: checked ? undefined : false } })}
+                  />
+                </div>
+                {conditions.allow_debt === false && (
+                  <p className="text-[9px] text-destructive">⛔ لن يُطبَّق هذا العرض على الطلبات بالدين</p>
+                )}
               </div>
 
               <p className="text-[9px] text-muted-foreground">
