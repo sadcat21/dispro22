@@ -325,15 +325,15 @@ export function formatReceiptForPrint(data: ReceiptData): Uint8Array {
         // Gift suffix
         let giftSuffix = '';
         if (giftBoxes > 0 || giftPieces > 0) {
-          if (giftBoxes > 0) giftSuffix += `+${formatQty(giftBoxes)}${unitLabel.toLowerCase()}`;
-          if (giftPieces > 0) giftSuffix += `+${formatQty(giftPieces)}pcs`;
+          if (giftBoxes > 0) giftSuffix += `+${formatQty(giftBoxes)} ${unitLabel.toLowerCase()}`;
+          if (giftPieces > 0) giftSuffix += `+${formatQty(giftPieces)} pcs`;
         }
 
         // Promo prefix
         const promoTag = item.isPromo ? 'PRM-' : '';
 
         // Single line: 🎁 PRM-2BTS 100+2bts | 950{5kg} DA | 475,000 DA
-        const qtyPart = `${promoTag}${qtyStr}${unitLabel}${giftSuffix}`;
+        const qtyPart = `${promoTag}${qtyStr} ${unitLabel}${giftSuffix}`;
         const pricePart = `${unitPrice} DA`;
         const totalPart = `${totalStr} DA`;
         
@@ -370,7 +370,7 @@ export function formatReceiptForPrint(data: ReceiptData): Uint8Array {
           addText(nameStr);
         }
 
-        const detailLine = ` ${qtyStr}${unitLabel} x ${unitPrice}`;
+        const detailLine = ` ${qtyStr} ${unitLabel} x ${unitPrice}`;
         const totalPart = `${totalStr} DA`;
         const spaceBetween = LINE_WIDTH - detailLine.length - totalPart.length;
         if (spaceBetween > 0) {
@@ -382,7 +382,7 @@ export function formatReceiptForPrint(data: ReceiptData): Uint8Array {
 
         if (giftBoxes > 0 || giftPieces > 0) {
           let giftStr = ' +CADEAU:';
-          if (giftBoxes > 0) giftStr += ` ${formatQty(giftBoxes)}BOX`;
+          if (giftBoxes > 0) giftStr += ` ${formatQty(giftBoxes)} BOX`;
           if (giftPieces > 0) giftStr += `${giftBoxes > 0 ? '+' : ' '}${formatQty(giftPieces)}PCS`;
           addText(giftStr);
         }
@@ -522,18 +522,18 @@ export function formatReceiptForPreview(data: ReceiptData): string {
       const qtyStr = formatQty(item.quantity);
 
       let giftSuffix = '';
-      if (giftBoxes > 0) giftSuffix += `+${formatQty(giftBoxes)}${unitLabel.toLowerCase()}`;
-      if (giftPieces > 0) giftSuffix += `+${formatQty(giftPieces)}pcs`;
+          if (giftBoxes > 0) giftSuffix += `+${formatQty(giftBoxes)} ${unitLabel.toLowerCase()}`;
+          if (giftPieces > 0) giftSuffix += `+${formatQty(giftPieces)} pcs`;
 
       const promoTag = item.isPromo ? '🎁 PRM-' : '';
-      const qtyPart = `${promoTag}${qtyStr}${unitLabel}${giftSuffix}`;
+      const qtyPart = `${promoTag}${qtyStr} ${unitLabel}${giftSuffix}`;
       const shortName = item.productName.length > 20 ? item.productName.substring(0, 20) : item.productName;
 
       itemsHtml += `
         <div style="border-bottom:1px dotted #ccc;padding:3px 0;">
-          <div style="text-align:center;font-size:9px;color:#666;">-----( ${shortName} )-----</div>
+          <div style="text-align:center;font-size:9px;color:#666;">-----( <strong>${shortName}</strong> )-----</div>
           <div style="text-align:center;font-size:10px;">
-            ${qtyPart} | ${unitPrice} DA | <strong>${Math.round(item.totalPrice).toLocaleString()} DA</strong>
+            <strong>${qtyPart}</strong> | ${unitPrice} DA | <strong>${Math.round(item.totalPrice).toLocaleString()} DA</strong>
           </div>
         </div>`;
 
@@ -559,9 +559,9 @@ export function formatReceiptForPreview(data: ReceiptData): string {
 
       itemsHtml += `
         <div style="border-bottom:1px dotted #ccc;padding:2px 0;">
-          <div style="font-size:10px;font-weight:500;word-wrap:break-word;">${item.productName}</div>
+          <div style="font-size:10px;font-weight:bold;word-wrap:break-word;">${item.productName}</div>
           <div style="display:flex;justify-content:space-between;font-size:9px;color:#444;">
-            <span>${formatQty(item.quantity)}${unitLabel} x ${unitPrice}</span>
+            <span><strong>${formatQty(item.quantity)} ${unitLabel}</strong> x ${unitPrice}</span>
             <span style="font-weight:bold;">${Math.round(item.totalPrice).toLocaleString()} DA</span>
           </div>
           ${giftHtml}${noteHtml}
