@@ -4,7 +4,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { ShoppingBag, Package, User, Clock, Calendar } from 'lucide-react';
+import { ShoppingBag, Package, User, Clock, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useRealtimeSubscription } from '@/hooks/useRealtimeSubscription';
 
 interface Props {
@@ -32,6 +32,112 @@ interface ProductAgg {
   imageUrl: string | null;
   customers: CustomerBreakdown[];
 }
+
+/** Carousel view for expanded product with customer overlay */
+const ExpandedCarousel: React.FC<{
+  items: ProductAgg[];
+  expandedProduct: string;
+  onNavigate: (id: string) => void;
+  onClose: () => void;
+}> = ({ items, expandedProduct, onNavigate, onClose }) => {
+  const currentIdx = items.findIndex(i => i.productId === expandedProduct);
+  const item = items[currentIdx];
+  if (!item) return null;
+
+  const goPrev = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (currentIdx > 0) onNavigate(items[currentIdx - 1].productId);
+  };
+  const goNext = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (currentIdx < items.length - 1) onNavigate(items[currentIdx + 1].productId);
+  };
+
+  return (
+    <div className="flex flex-col gap-2 pb-2">
+      {/* Navigation header */}
+      <div className="flex items-center justify-between px-1">
+        <button
+          onClick={goPrev}
+          disabled={currentIdx === 0}
+          className="p-1 rounded-full bg-muted hover:bg-primary/10 disabled:opacity-30 transition-colors"
+        >
+          <ChevronRight className="w-5 h-5" />
+        </button>
+        <span className="text-xs text-muted-foreground">
+          {currentIdx + 1} / {items.length}
+        </span>
+        <button
+          onClick={goNext}
+          disabled={currentIdx === items.length - 1}
+          className="p-1 rounded-full bg-muted hover:bg-primary/10 disabled:opacity-30 transition-colors"
+        >
+          <ChevronLeft className="w-5 h-5" />
+        </button>
+      </div>
+
+      {/* Large product card */}
+      <div
+        className="flex flex-col rounded-2xl overflow-hidden shadow-lg border-2 border-primary ring-2 ring-primary/30 cursor-pointer"
+        onClick={onClose}
+      >
+        {/* Product name */}
+        <div className="px-3 py-2 border-b text-center bg-primary border-primary">
+          <span className="font-bold text-sm block truncate text-primary-foreground">
+            {item.name}
+          </span>
+        </div>
+
+        {/* Large image with customer overlay */}
+        <div className="relative w-full aspect-[3/4] overflow-hidden bg-muted">
+          {item.imageUrl ? (
+            <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
+          ) : (
+            <div className="w-full h-full bg-muted flex items-center justify-center">
+              <Package className="w-16 h-16 text-primary/30" />
+            </div>
+          )}
+
+          {item.customers.length > 0 && (
+            <>
+              <div className="absolute inset-0 bg-background/40 backdrop-blur-[2px]" />
+              <div className="absolute inset-0 z-10 p-3 overflow-y-auto space-y-1.5">
+                {item.customers.map((c) => (
+                  <div
+                    key={c.customerId}
+                    className="flex items-center justify-between py-2 px-3 rounded-lg bg-card/80 border border-border/60 text-sm"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <User className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                      <span className="truncate font-medium">{c.customerName}</span>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="font-bold text-primary text-base">{c.quantity}</span>
+                      {c.giftQuantity > 0 && (
+                        <span className="text-xs text-muted-foreground">(+{c.giftQuantity})</span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="px-3 py-2 bg-card flex items-center justify-between">
+          <span className="font-bold text-base text-primary">{item.quantity}</span>
+          <span className="text-xs text-muted-foreground">{item.totalAmount.toLocaleString('ar-DZ')} د.ج</span>
+        </div>
+        {item.giftQuantity > 0 && (
+          <div className="px-3 pb-1.5 bg-card text-center">
+            <span className="text-xs text-muted-foreground">هدايا: {item.giftQuantity}</span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
 
 const WorkerSalesSummaryDialog: React.FC<Props> = ({ open, onOpenChange, workerId, workerName }) => {
   const [expandedProduct, setExpandedProduct] = useState<string | null>(null);
@@ -173,9 +279,6 @@ const WorkerSalesSummaryDialog: React.FC<Props> = ({ open, onOpenChange, workerI
   const lastTime = salesData?.lastOrderTime ? new Date(salesData.lastOrderTime) : null;
   const todayDate = new Date().toLocaleDateString('ar-DZ', { year: 'numeric', month: 'long', day: 'numeric' });
 
-  const toggleProduct = (productId: string) => {
-    setExpandedProduct(prev => prev === productId ? null : productId);
-  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -237,71 +340,46 @@ const WorkerSalesSummaryDialog: React.FC<Props> = ({ open, onOpenChange, workerI
               <ShoppingBag className="w-10 h-10 mx-auto mb-2 opacity-40" />
               <p>لا توجد مبيعات في هذه الفترة</p>
             </div>
+          ) : expandedProduct ? (
+            <ExpandedCarousel
+              items={salesData.items}
+              expandedProduct={expandedProduct}
+              onNavigate={setExpandedProduct}
+              onClose={() => setExpandedProduct(null)}
+            />
           ) : (
             <div className="grid grid-cols-3 gap-2 pb-2">
-              {salesData.items.map((item) => {
-                const isExpanded = expandedProduct === item.productId;
-                return (
-                  <div key={item.productId} className={isExpanded ? 'col-span-3' : ''}>
-                    <div
-                      className={`flex flex-col rounded-2xl overflow-hidden shadow-lg border-2 cursor-pointer active:scale-[0.97] transition-all ${isExpanded ? 'border-primary ring-2 ring-primary/30' : 'border-border hover:border-primary/50'}`}
-                      onClick={() => toggleProduct(item.productId)}
-                    >
-                      {/* Product name header */}
-                      <div className={`px-2 py-1.5 border-b text-center ${isExpanded ? 'bg-primary border-primary' : 'bg-muted border-border'}`}>
-                        <span className={`font-bold text-xs leading-tight block truncate ${isExpanded ? 'text-primary-foreground' : 'text-foreground'}`}>
-                          {item.name}
-                        </span>
-                      </div>
-                      {/* Product image + expanded overlay */}
-                      <div className="relative w-full aspect-square overflow-hidden bg-muted">
-                        {item.imageUrl ? (
-                          <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" loading="lazy" />
-                        ) : (
-                          <div className="w-full h-full bg-muted flex items-center justify-center">
-                            <Package className="w-10 h-10 text-primary/30" />
-                          </div>
-                        )}
-
-                        {isExpanded && item.customers.length > 0 && (
-                          <>
-                            <div className="absolute inset-0 bg-background/50 backdrop-blur-sm" />
-                            <div className="absolute inset-0 z-10 p-2 overflow-y-auto space-y-1">
-                              {item.customers.map((c) => (
-                                <div
-                                  key={c.customerId}
-                                  className="flex items-center justify-between py-1.5 px-2 rounded-md bg-card/80 border border-border/60 text-xs"
-                                >
-                                  <div className="flex items-center gap-1.5 min-w-0">
-                                    <User className="w-3 h-3 text-muted-foreground shrink-0" />
-                                    <span className="truncate font-medium">{c.customerName}</span>
-                                  </div>
-                                  <div className="flex items-center gap-2 shrink-0">
-                                    <span className="font-bold text-primary">{c.quantity}</span>
-                                    {c.giftQuantity > 0 && (
-                                      <span className="text-[10px] text-muted-foreground">(+{c.giftQuantity})</span>
-                                    )}
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </>
-                        )}
-                      </div>
-                      {/* Quantity + amount footer */}
-                      <div className="px-2 py-1.5 bg-card flex items-center justify-between">
-                        <span className="font-bold text-sm text-primary">{item.quantity}</span>
-                        <span className="text-[10px] text-muted-foreground">{item.totalAmount.toLocaleString('ar-DZ')} د.ج</span>
-                      </div>
-                      {item.giftQuantity > 0 && (
-                        <div className="px-2 pb-1 bg-card text-center">
-                          <span className="text-[10px] text-muted-foreground">هدايا: {item.giftQuantity}</span>
-                        </div>
-                      )}
-                    </div>
+              {salesData.items.map((item) => (
+                <div
+                  key={item.productId}
+                  className="flex flex-col rounded-2xl overflow-hidden shadow-lg border-2 border-border hover:border-primary/50 cursor-pointer active:scale-[0.97] transition-all"
+                  onClick={() => setExpandedProduct(item.productId)}
+                >
+                  <div className="px-2 py-1.5 border-b text-center bg-muted border-border">
+                    <span className="font-bold text-xs leading-tight block truncate text-foreground">
+                      {item.name}
+                    </span>
                   </div>
-                );
-              })}
+                  <div className="w-full aspect-square bg-muted overflow-hidden">
+                    {item.imageUrl ? (
+                      <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" loading="lazy" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <Package className="w-10 h-10 text-primary/30" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="px-2 py-1.5 bg-card flex items-center justify-between">
+                    <span className="font-bold text-sm text-primary">{item.quantity}</span>
+                    <span className="text-[10px] text-muted-foreground">{item.totalAmount.toLocaleString('ar-DZ')} د.ج</span>
+                  </div>
+                  {item.giftQuantity > 0 && (
+                    <div className="px-2 pb-1 bg-card text-center">
+                      <span className="text-[10px] text-muted-foreground">هدايا: {item.giftQuantity}</span>
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
           )}
         </ScrollArea>
