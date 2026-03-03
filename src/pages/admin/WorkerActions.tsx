@@ -7,7 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useNavigate } from 'react-router-dom';
 import { useSelectedWorker } from '@/contexts/SelectedWorkerContext';
-import { ArrowRight, Calculator, Truck, Banknote, Wallet, MapPin, ShoppingCart, Activity, Shield, HardHat, HandCoins, ArrowLeftRight, ClipboardList, Trophy, AlertTriangle, DollarSign, Package, PackageOpen, ClipboardCheck, TrendingUp, TrendingDown, Gift } from 'lucide-react';
+import { ArrowRight, Calculator, Truck, Banknote, Wallet, MapPin, ShoppingCart, Activity, Shield, HardHat, HandCoins, ArrowLeftRight, ClipboardList, Trophy, AlertTriangle, DollarSign, Package, PackageOpen, ClipboardCheck, TrendingUp, TrendingDown, Gift, CalendarDays } from 'lucide-react';
 import { useWorkerLiability } from '@/hooks/useWorkerLiability';
 import { Badge } from '@/components/ui/badge';
 import { Worker } from '@/types/database';
@@ -17,6 +17,7 @@ import TodayCustomersDialog from '@/components/sectors/TodayCustomersDialog';
 import WorkerFinancialDialog from '@/components/rewards/WorkerFinancialDialog';
 import WorkerPointsDialog from '@/components/rewards/WorkerPointsDialog';
 import StockVerificationDialog from '@/components/stock/StockVerificationDialog';
+import WorkerAttendanceLogDialog from '@/components/attendance/WorkerAttendanceLogDialog';
 
 const workerActions = [
   { key: 'accounting', icon: Calculator, path: '/accounting', labelKey: 'accounting.title', color: 'bg-amber-50 border-amber-200 text-amber-700' },
@@ -37,6 +38,7 @@ const workerActions = [
   { key: 'rewards_page', icon: AlertTriangle, path: '/rewards', labelKey: 'المكافآت والعقوبات', color: 'bg-pink-50 border-pink-200 text-pink-700' },
   { key: 'handover_summary', icon: ClipboardList, path: '', labelKey: 'ملخص التسليم', color: 'bg-indigo-50 border-indigo-200 text-indigo-700', isDialog: true },
   { key: 'today_customers', icon: MapPin, path: '', labelKey: 'عملاء اليوم', color: 'bg-sky-50 border-sky-200 text-sky-700', isDialog: true },
+  { key: 'attendance_log', icon: CalendarDays, path: '', labelKey: 'سجل المداومة', color: 'bg-teal-50 border-teal-200 text-teal-700', isDialog: true },
 ];
 
 const WorkerActions: React.FC = () => {
@@ -53,6 +55,7 @@ const WorkerActions: React.FC = () => {
   const [pointsLogOpen, setPointsLogOpen] = useState(false);
   const [truckStockOpen, setTruckStockOpen] = useState(false);
   const [stockReviewOpen, setStockReviewOpen] = useState(false);
+  const [attendanceLogOpen, setAttendanceLogOpen] = useState(false);
 
   const { data: workers = [] } = useQuery({
     queryKey: ['workers-for-actions', activeBranch?.id],
@@ -208,6 +211,8 @@ const WorkerActions: React.FC = () => {
         setTruckStockOpen(true);
       } else if (action.key === 'stock_review') {
         setStockReviewOpen(true);
+      } else if (action.key === 'attendance_log') {
+        setAttendanceLogOpen(true);
       }
       return;
     }
@@ -369,6 +374,12 @@ const WorkerActions: React.FC = () => {
           workerId={selectedWorker.id}
         />
       )}
+      <WorkerAttendanceLogDialog
+        open={attendanceLogOpen}
+        onOpenChange={setAttendanceLogOpen}
+        workerId={selectedWorker?.id}
+        workerName={selectedWorker?.full_name}
+      />
     </div>
   );
 };
