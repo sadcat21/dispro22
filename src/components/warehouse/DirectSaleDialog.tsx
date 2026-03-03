@@ -60,6 +60,9 @@ interface OrderItemWithPrice {
   giftPieces?: number;
   giftOfferId?: string;
   offerNote?: string; // note for managers when offer was overridden
+  pricingUnit?: string;
+  weightPerBox?: number | null;
+  piecesPerBox?: number;
 }
 
 const DirectSaleDialog: React.FC<DirectSaleDialogProps> = ({ open, onOpenChange, stockItems, initialCustomerId, stockSource = 'worker' }) => {
@@ -512,9 +515,9 @@ const DirectSaleDialog: React.FC<DirectSaleDialogProps> = ({ open, onOpenChange,
           total_price: item.totalPrice,
           gift_quantity: item.giftPieces || item.giftQuantity || 0,
           gift_offer_id: item.giftOfferId || null,
-          pricing_unit: prod?.pricing_unit || 'box',
-          weight_per_box: prod?.weight_per_box || null,
-          pieces_per_box: prod?.pieces_per_box || null,
+          pricing_unit: item.pricingUnit || prod?.pricing_unit || 'box',
+          weight_per_box: item.weightPerBox ?? prod?.weight_per_box ?? null,
+          pieces_per_box: item.piecesPerBox ?? prod?.pieces_per_box ?? null,
         };
       });
 
@@ -631,9 +634,9 @@ const DirectSaleDialog: React.FC<DirectSaleDialogProps> = ({ open, onOpenChange,
           giftQuantity: item.giftQuantity,
           giftPieces: item.giftPieces,
           offerNote: item.offerNote,
-          pricingUnit: prod?.pricing_unit || 'box',
-          weightPerBox: prod?.weight_per_box,
-          piecesPerBox: prod?.pieces_per_box,
+          pricingUnit: item.pricingUnit || prod?.pricing_unit || 'box',
+          weightPerBox: item.weightPerBox ?? prod?.weight_per_box ?? null,
+          piecesPerBox: item.piecesPerBox ?? prod?.pieces_per_box ?? null,
         };
       });
       const combinedNotes = [notes, offerNotes].filter(Boolean).join(' | ');

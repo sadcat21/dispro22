@@ -190,9 +190,9 @@ const DeliverySaleDialog: React.FC<DeliverySaleDialogProps> = ({ open, onOpenCha
           originalQuantity: item.quantity,
           giftQuantity: giftQty,
           giftOfferId: (item as any).gift_offer_id || null,
-          piecesPerBox: ppb,
-          pricingUnit: item.product?.pricing_unit || 'box',
-          weightPerBox: item.product?.weight_per_box ?? null,
+          piecesPerBox: (item as any).pieces_per_box ?? item.product?.pieces_per_box ?? ppb,
+          pricingUnit: (item as any).pricing_unit || item.product?.pricing_unit || 'box',
+          weightPerBox: (item as any).weight_per_box ?? item.product?.weight_per_box ?? null,
         };
       }));
       setNotes(order.notes || '');
@@ -342,7 +342,17 @@ const DeliverySaleDialog: React.FC<DeliverySaleDialogProps> = ({ open, onOpenCha
 
   // Detect partial delivery (items reduced or removed)
   const partialDeliveryDiff = useMemo(() => {
-    const diffs: { productId: string; productName: string; originalQty: number; newQty: number; diffQty: number; unitPrice: number }[] = [];
+    const diffs: {
+      productId: string;
+      productName: string;
+      originalQty: number;
+      newQty: number;
+      diffQty: number;
+      unitPrice: number;
+      pricingUnit?: string;
+      weightPerBox?: number | null;
+      piecesPerBox?: number;
+    }[] = [];
     for (const item of saleItems) {
       if (item.originalItemId && item.originalQuantity > 0 && item.quantity < item.originalQuantity) {
         diffs.push({
@@ -352,6 +362,9 @@ const DeliverySaleDialog: React.FC<DeliverySaleDialogProps> = ({ open, onOpenCha
           newQty: item.quantity,
           diffQty: item.originalQuantity - item.quantity,
           unitPrice: item.unitPrice,
+          pricingUnit: item.pricingUnit,
+          weightPerBox: item.weightPerBox,
+          piecesPerBox: item.piecesPerBox,
         });
       }
     }
@@ -509,6 +522,9 @@ const DeliverySaleDialog: React.FC<DeliverySaleDialogProps> = ({ open, onOpenCha
               unit_price: item.unitPrice,
               total_price: item.totalPrice,
               gift_quantity: item.giftQuantity || 0,
+              pricing_unit: item.pricingUnit || 'box',
+              weight_per_box: item.weightPerBox ?? null,
+              pieces_per_box: item.piecesPerBox ?? null,
             }).eq('id', item.originalItemId);
             changes.push({ منتج: item.productName, من: item.originalQuantity, إلى: item.quantity });
           }
@@ -677,6 +693,9 @@ const DeliverySaleDialog: React.FC<DeliverySaleDialogProps> = ({ open, onOpenCha
               quantity: diff.diffQty,
               unit_price: diff.unitPrice,
               total_price: diff.diffQty * diff.unitPrice,
+              pricing_unit: diff.pricingUnit || 'box',
+              weight_per_box: diff.weightPerBox ?? null,
+              pieces_per_box: diff.piecesPerBox ?? null,
             }));
             await supabase.from('order_items').insert(newItems);
             const newTotal = newItems.reduce((s, i) => s + i.total_price, 0);
