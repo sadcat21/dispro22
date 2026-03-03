@@ -325,13 +325,23 @@ const WarehouseStock: React.FC = () => {
                 ];
                 return (
                   <Card key={s.productId} className="overflow-hidden border-border/60 shadow-sm">
-                    {/* Product name + received + remaining */}
+                    {/* Product image + name + received + remaining */}
                     <button
                       className="w-full bg-primary/5 border-b border-border/40 px-3 py-2 flex items-center justify-between gap-2 hover:bg-primary/10 transition-colors"
                       onClick={() => setExpandedProduct(prev => prev === s.productId ? null : s.productId)}
                     >
-                      <div className="flex items-center gap-1.5 min-w-0">
+                      <div className="flex items-center gap-2 min-w-0">
                         <ChevronDown className={`w-3.5 h-3.5 text-muted-foreground shrink-0 transition-transform ${expandedProduct === s.productId ? 'rotate-180' : ''}`} />
+                        {(() => {
+                          const prod = products.find(p => p.id === s.productId);
+                          return prod?.image_url ? (
+                            <img src={prod.image_url} alt={s.productName} className="w-8 h-8 rounded-md object-cover shrink-0 border border-border" />
+                          ) : (
+                            <div className="w-8 h-8 rounded-md bg-muted flex items-center justify-center shrink-0">
+                              <Package className="w-4 h-4 text-muted-foreground" />
+                            </div>
+                          );
+                        })()}
                         <span className="font-semibold text-sm text-primary truncate">{s.productName}</span>
                       </div>
                       <div className="flex items-center gap-3 shrink-0">
