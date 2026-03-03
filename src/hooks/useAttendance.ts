@@ -36,18 +36,21 @@ export const useAttendance = () => {
   const { data: branchLocation } = useQuery({
     queryKey: ['branch-location', activeBranch?.id],
     queryFn: async () => {
+      const keys = ['warehouse_latitude', 'warehouse_longitude', 'attendance_max_distance'];
+      
       // Get warehouse location from app_settings
       const { data } = await supabase
         .from('app_settings')
         .select('key, value')
-        .in('key', ['warehouse_latitude', 'warehouse_longitude'])
+        .in('key', keys)
         .eq('branch_id', activeBranch?.id || '');
       
       if (data && data.length >= 2) {
         const lat = data.find(d => d.key === 'warehouse_latitude');
         const lng = data.find(d => d.key === 'warehouse_longitude');
+        const dist = data.find(d => d.key === 'attendance_max_distance');
         if (lat && lng) {
-          return { latitude: parseFloat(lat.value), longitude: parseFloat(lng.value) };
+          return { latitude: parseFloat(lat.value), longitude: parseFloat(lng.value), maxDistance: dist ? parseFloat(dist.value) : 50 };
         }
       }
 
@@ -55,14 +58,15 @@ export const useAttendance = () => {
       const { data: global } = await supabase
         .from('app_settings')
         .select('key, value')
-        .in('key', ['warehouse_latitude', 'warehouse_longitude'])
+        .in('key', keys)
         .is('branch_id', null);
       
       if (global && global.length >= 2) {
         const lat = global.find(d => d.key === 'warehouse_latitude');
         const lng = global.find(d => d.key === 'warehouse_longitude');
+        const dist = global.find(d => d.key === 'attendance_max_distance');
         if (lat && lng) {
-          return { latitude: parseFloat(lat.value), longitude: parseFloat(lng.value) };
+          return { latitude: parseFloat(lat.value), longitude: parseFloat(lng.value), maxDistance: dist ? parseFloat(dist.value) : 50 };
         }
       }
 
@@ -126,8 +130,9 @@ export const useAttendance = () => {
         const distKm = calculateDistance(workerLat, workerLng, branchLocation.latitude, branchLocation.longitude);
         const distMeters = distKm * 1000;
 
-        if (distMeters > 50) {
-          toast.error(`أنت بعيد عن المخزن (${Math.round(distMeters)} متر). يجب أن تكون على بُعد 50 متر أو أقل.`);
+        const maxDist = branchLocation.maxDistance || 50;
+        if (distMeters > maxDist) {
+          toast.error(`أنت بعيد عن المخزن (${Math.round(distMeters)} متر). يجب أن تكون على بُعد ${maxDist} متر أو أقل.`);
           return;
         }
 
