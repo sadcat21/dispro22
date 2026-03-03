@@ -192,9 +192,9 @@ export function formatReceiptForPrint(data: ReceiptData): Uint8Array {
   add(NORMAL_SIZE);
   add(BOLD_OFF);
 
-  // Worker name + receipt number on same line
-  const receiptNum = String(data.receiptNumber).padStart(6, '0');
-  addText(`${data.workerName} No ${receiptNum}`);
+  // Worker name + phone
+  const workerLine = data.workerPhone ? `${data.workerName} : ${data.workerPhone}` : data.workerName;
+  addText(workerLine);
   if (data.companyAddress) addText(data.companyAddress);
 
   // Date
@@ -211,12 +211,15 @@ export function formatReceiptForPrint(data: ReceiptData): Uint8Array {
     addText(`(Copie ${data.printCount + 1})`);
   }
 
-  // Payment type label (without "TYPE:" prefix)
+  // Payment type label + receipt number on same line
   const payLabel = getPaymentLabel(data);
+  const receiptNum = String(data.receiptNumber).padStart(6, '0');
   if (payLabel) {
     add(BOLD_ON);
-    addText(payLabel);
+    addText(`${payLabel} - N: ${receiptNum}`);
     add(BOLD_OFF);
+  } else {
+    addText(`N: ${receiptNum}`);
   }
 
   add(ALIGN_LEFT);
@@ -389,13 +392,13 @@ export function formatReceiptForPreview(data: ReceiptData): string {
     <div style="font-family:monospace;max-width:280px;margin:0 auto;font-size:11px;line-height:1.3;">
       <div style="text-align:center;margin-bottom:4px;">
         <div style="font-size:14px;font-weight:bold;">${data.companyName || 'Laser Food'}</div>
-        <div style="font-size:10px;">${data.workerName} N° ${String(data.receiptNumber).padStart(6, '0')}</div>
+        <div style="font-size:10px;">${data.workerName}${data.workerPhone ? ' : ' + data.workerPhone : ''}</div>
         ${data.companyAddress ? `<div>${data.companyAddress}</div>` : ''}
         <div>${dateStr} ${timeStr}</div>
         <div>CLIENT: ${data.customerName}</div>
         ${data.customerPhone ? `<div>TEL: ${data.customerPhone}</div>` : ''}
         ${data.printCount > 0 ? `<div style="color:#888;">(Copie ${data.printCount + 1})</div>` : ''}
-        ${payLabel ? `<div style="font-weight:bold;margin-top:2px;">${payLabel}</div>` : ''}
+        ${payLabel ? `<div style="font-weight:bold;margin-top:2px;">${payLabel} - N: ${String(data.receiptNumber).padStart(6, '0')}</div>` : `<div style="margin-top:2px;">N: ${String(data.receiptNumber).padStart(6, '0')}</div>`}
       </div>
       <hr style="border:none;border-top:1px dashed #000;"/>
       ${data.receiptType === 'debt_payment' ? `
