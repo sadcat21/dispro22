@@ -175,17 +175,35 @@ const MyDeliveries: React.FC = () => {
         return;
       }
 
-      const receiptItems: ReceiptItem[] = items.map(item => ({
-        productId: item.product_id,
-        productName: item.product?.name || 'منتج',
-        quantity: item.quantity,
-        unitPrice: Number(item.unit_price || 0),
-        totalPrice: Number(item.total_price || 0),
-        giftQuantity: item.gift_quantity || 0,
-        pricingUnit: (item as any).pricing_unit || item.product?.pricing_unit || 'box',
-        weightPerBox: (item as any).weight_per_box ?? item.product?.weight_per_box,
-        piecesPerBox: (item as any).pieces_per_box ?? item.product?.pieces_per_box,
-      }));
+      const receiptItems: ReceiptItem[] = items.map(item => {
+        const rawPricingUnit = (item as any).pricing_unit;
+        const rawWeightPerBox = (item as any).weight_per_box;
+        const rawPiecesPerBox = (item as any).pieces_per_box;
+        const productPricingUnit = item.product?.pricing_unit;
+        const fallbackToProductUnit =
+          rawPricingUnit === 'box' &&
+          rawWeightPerBox == null &&
+          rawPiecesPerBox == null &&
+          (productPricingUnit === 'kg' || productPricingUnit === 'unit');
+
+        return {
+          productId: item.product_id,
+          productName: item.product?.name || 'منتج',
+          quantity: item.quantity,
+          unitPrice: Number(item.unit_price || 0),
+          totalPrice: Number(item.total_price || 0),
+          giftQuantity: item.gift_quantity || 0,
+          pricingUnit: fallbackToProductUnit
+            ? productPricingUnit
+            : (rawPricingUnit || productPricingUnit || 'box'),
+          weightPerBox: fallbackToProductUnit
+            ? (item.product?.weight_per_box ?? null)
+            : (rawWeightPerBox ?? item.product?.weight_per_box),
+          piecesPerBox: fallbackToProductUnit
+            ? (item.product?.pieces_per_box ?? null)
+            : (rawPiecesPerBox ?? item.product?.pieces_per_box),
+        };
+      });
 
       const totalAmount = Number(order.total_amount || 0);
 
