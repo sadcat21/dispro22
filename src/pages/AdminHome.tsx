@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useNavigation } from '@/hooks/useNavigation';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useFontSize } from '@/contexts/FontSizeContext';
-import { Calculator, Banknote, ArrowLeft, Navigation, Users, Receipt, ShoppingCart, Scale, Trophy } from 'lucide-react';
+import { Calculator, Banknote, ArrowLeft, Navigation, Users, Receipt, ShoppingCart, Scale, Trophy, CalendarDays } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -124,7 +124,7 @@ const AdminHome: React.FC = () => {
 
       {/* Surplus/Deficit Treasury & Rewards */}
       {(role === 'admin' || role === 'branch_admin') && (
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-3 gap-3">
           <div
             className="relative overflow-hidden rounded-xl border-2 border-violet-300 bg-gradient-to-br from-violet-50 to-violet-100 p-4 cursor-pointer active:scale-[0.97] transition-all hover:shadow-lg"
             onClick={() => navigate('/surplus-deficit')}
@@ -138,6 +138,13 @@ const AdminHome: React.FC = () => {
           >
             <Trophy className="w-7 h-7 text-yellow-600 mb-1" />
             <p className="font-bold text-xs text-yellow-900">المكافآت والعقوبات</p>
+          </div>
+          <div
+            className="relative overflow-hidden rounded-xl border-2 border-emerald-300 bg-gradient-to-br from-emerald-50 to-emerald-100 p-4 cursor-pointer active:scale-[0.97] transition-all hover:shadow-lg"
+            onClick={() => navigate('/attendance')}
+          >
+            <CalendarDays className="w-7 h-7 text-emerald-600 mb-1" />
+            <p className="font-bold text-xs text-emerald-900">المداومة</p>
           </div>
         </div>
       )}
