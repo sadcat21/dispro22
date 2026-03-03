@@ -5,8 +5,9 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { CalendarDays, Clock, ChevronRight, ChevronLeft, LogIn, LogOut, Timer, MapPin } from 'lucide-react';
-import { format, startOfMonth, endOfMonth, addMonths, eachWeekOfInterval, endOfWeek, startOfWeek, isWithinInterval, isSameDay } from 'date-fns';
+import { useAuth } from '@/contexts/AuthContext';
+import { CalendarDays, ChevronRight, ChevronLeft, LogIn, LogOut, Timer, AlertTriangle } from 'lucide-react';
+import { format, startOfMonth, endOfMonth, addMonths, eachWeekOfInterval, endOfWeek, isSameDay } from 'date-fns';
 import { ar } from 'date-fns/locale';
 
 interface Props {
@@ -19,10 +20,36 @@ interface Props {
 const DAYS_AR = ['السبت', 'الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة'];
 
 const WorkerAttendanceLogDialog: React.FC<Props> = ({ open, onOpenChange, workerId, workerName }) => {
+  const { activeBranch } = useAuth();
   const [currentMonth, setCurrentMonth] = useState(new Date());
 
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
+
+  // Fetch work start time setting
+  const { data: workStartTime = '08:00' } = useQuery({
+    queryKey: ['work-start-time', activeBranch?.id],
+    queryFn: async () => {
+      const keys = ['work_start_time'];
+      const { data } = await supabase
+        .from('app_settings')
+        .select('key, value')
+        .in('key', keys)
+        .eq('branch_id', activeBranch?.id || '');
+      
+      if (data && data.length > 0) return data[0].value;
+
+      const { data: global } = await supabase
+        .from('app_settings')
+        .select('key, value')
+        .in('key', keys)
+        .is('branch_id', null);
+      
+      if (global && global.length > 0) return global[0].value;
+      return '08:00';
+    },
+    enabled: open,
+  });
 
   const { data: logs = [], isLoading } = useQuery({
     queryKey: ['worker-attendance-log', workerId, format(monthStart, 'yyyy-MM')],
@@ -40,9 +67,22 @@ const WorkerAttendanceLogDialog: React.FC<Props> = ({ open, onOpenChange, worker
     enabled: open && !!workerId,
   });
 
+  // Parse work start time into hours and minutes
+  const workStartParts = useMemo(() => {
+    const [h, m] = (workStartTime || '08:00').split(':').map(Number);
+    return { hours: h || 8, minutes: m || 0 };
+  }, [workStartTime]);
+
+  // Calculate lateness in minutes for a clock-in record
+  const getLatenessMinutes = (clockInDate: string) => {
+    const d = new Date(clockInDate);
+    const clockInMinutes = d.getHours() * 60 + d.getMinutes();
+    const startMinutes = workStartParts.hours * 60 + workStartParts.minutes;
+    return Math.max(0, clockInMinutes - startMinutes);
+  };
+
   // Group logs into weeks (Saturday to Thursday)
   const weeks = useMemo(() => {
-    // Get weeks starting from Saturday (weekStartsOn: 6)
     const weekStarts = eachWeekOfInterval(
       { start: monthStart, end: monthEnd },
       { weekStartsOn: 6 }
@@ -50,7 +90,6 @@ const WorkerAttendanceLogDialog: React.FC<Props> = ({ open, onOpenChange, worker
 
     return weekStarts.map(weekStart => {
       const weekEnd = endOfWeek(weekStart, { weekStartsOn: 6 });
-      // Only show Saturday to Thursday (6 days)
       const days: Date[] = [];
       for (let i = 0; i < 6; i++) {
         const day = new Date(weekStart);
@@ -59,10 +98,7 @@ const WorkerAttendanceLogDialog: React.FC<Props> = ({ open, onOpenChange, worker
       }
 
       const dayLogs = days.map(day => {
-        const dayRecords = logs.filter(l => {
-          const logDate = new Date(l.recorded_at);
-          return isSameDay(logDate, day);
-        });
+        const dayRecords = logs.filter(l => isSameDay(new Date(l.recorded_at), day));
         const clockIn = dayRecords.find((l: any) => l.action_type === 'clock_in');
         const clockOut = [...dayRecords].reverse().find((l: any) => l.action_type === 'clock_out');
         
@@ -71,41 +107,59 @@ const WorkerAttendanceLogDialog: React.FC<Props> = ({ open, onOpenChange, worker
           durationMinutes = Math.round((new Date(clockOut.recorded_at).getTime() - new Date(clockIn.recorded_at).getTime()) / 60000);
         }
 
+        const latenessMinutes = clockIn ? getLatenessMinutes(clockIn.recorded_at) : 0;
+
         return {
           date: day,
           clockIn,
           clockOut,
           durationMinutes,
+          latenessMinutes,
           isInMonth: day.getMonth() === currentMonth.getMonth(),
         };
       });
 
       return { weekStart, weekEnd, days: dayLogs };
     });
-  }, [logs, monthStart, monthEnd, currentMonth]);
+  }, [logs, monthStart, monthEnd, currentMonth, workStartParts]);
 
   // Monthly totals
   const monthlyStats = useMemo(() => {
     let totalMinutes = 0;
     let daysWorked = 0;
+    let totalLateness = 0;
+    let lateDays = 0;
     weeks.forEach(week => {
       week.days.forEach(day => {
-        if (day.isInMonth && day.durationMinutes > 0) {
-          totalMinutes += day.durationMinutes;
+        if (day.isInMonth && day.clockIn) {
           daysWorked++;
+          totalMinutes += day.durationMinutes;
+          if (day.latenessMinutes > 0) {
+            totalLateness += day.latenessMinutes;
+            lateDays++;
+          }
         }
       });
     });
-    return { totalMinutes, daysWorked, hours: Math.floor(totalMinutes / 60), minutes: totalMinutes % 60 };
+    return {
+      totalMinutes, daysWorked,
+      hours: Math.floor(totalMinutes / 60), minutes: totalMinutes % 60,
+      totalLateness, lateDays,
+      lateH: Math.floor(totalLateness / 60), lateM: totalLateness % 60,
+    };
   }, [weeks]);
 
   const formatTime = (dateStr: string) => new Date(dateStr).toLocaleTimeString('ar-DZ', { hour: '2-digit', minute: '2-digit' });
 
   const getDayName = (date: Date) => {
     const dayIndex = date.getDay();
-    // Map JS day (0=Sun) to our array
     const map: Record<number, number> = { 6: 0, 0: 1, 1: 2, 2: 3, 3: 4, 4: 5, 5: 6 };
     return DAYS_AR[map[dayIndex] ?? 0];
+  };
+
+  const formatLateness = (mins: number) => {
+    if (mins < 60) return `${mins} د`;
+    return `${Math.floor(mins / 60)}سا ${mins % 60}د`;
   };
 
   return (
@@ -132,13 +186,22 @@ const WorkerAttendanceLogDialog: React.FC<Props> = ({ open, onOpenChange, worker
         </div>
 
         {/* Monthly Stats */}
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Badge variant="secondary" className="text-xs">
             <Timer className="w-3 h-3 ml-1" />
             {monthlyStats.hours} سا {monthlyStats.minutes} د
           </Badge>
           <Badge variant="outline" className="text-xs">
             {monthlyStats.daysWorked} يوم عمل
+          </Badge>
+          {monthlyStats.totalLateness > 0 && (
+            <Badge variant="destructive" className="text-xs">
+              <AlertTriangle className="w-3 h-3 ml-1" />
+              تأخير: {formatLateness(monthlyStats.totalLateness)} ({monthlyStats.lateDays} يوم)
+            </Badge>
+          )}
+          <Badge variant="outline" className="text-[10px] text-muted-foreground">
+            بداية العمل: {workStartTime}
           </Badge>
         </div>
 
@@ -151,6 +214,7 @@ const WorkerAttendanceLogDialog: React.FC<Props> = ({ open, onOpenChange, worker
             <div className="space-y-4 pb-2">
               {weeks.map((week, wi) => {
                 const weekTotalMin = week.days.reduce((s, d) => s + (d.isInMonth ? d.durationMinutes : 0), 0);
+                const weekLateness = week.days.reduce((s, d) => s + (d.isInMonth ? d.latenessMinutes : 0), 0);
                 const wh = Math.floor(weekTotalMin / 60);
                 const wm = weekTotalMin % 60;
 
@@ -161,39 +225,50 @@ const WorkerAttendanceLogDialog: React.FC<Props> = ({ open, onOpenChange, worker
                       <span className="text-xs font-bold text-muted-foreground">
                         الأسبوع {wi + 1}
                       </span>
-                      {weekTotalMin > 0 && (
-                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-                          {wh} سا {wm} د
-                        </Badge>
-                      )}
+                      <div className="flex gap-1.5">
+                        {weekLateness > 0 && (
+                          <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
+                            تأخير {formatLateness(weekLateness)}
+                          </Badge>
+                        )}
+                        {weekTotalMin > 0 && (
+                          <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                            {wh} سا {wm} د
+                          </Badge>
+                        )}
+                      </div>
                     </div>
 
                     {/* Days */}
                     {week.days.map((day, di) => {
                       if (!day.isInMonth) return null;
-                      // Hide future days
                       const today = new Date();
                       today.setHours(23, 59, 59, 999);
                       if (day.date > today) return null;
                       const hasData = !!day.clockIn;
                       const durH = Math.floor(day.durationMinutes / 60);
                       const durM = day.durationMinutes % 60;
+                      const isLate = day.latenessMinutes > 0;
 
                       return (
                         <div
                           key={di}
                           className={`flex items-center gap-2 p-2 rounded-lg border text-xs ${
-                            hasData ? 'bg-card border-border' : 'bg-muted/30 border-transparent'
+                            hasData
+                              ? isLate
+                                ? 'bg-destructive/5 border-destructive/20'
+                                : 'bg-card border-border'
+                              : 'bg-muted/30 border-transparent'
                           }`}
                         >
                           {/* Day name & date */}
-                          <div className="w-16 shrink-0">
+                          <div className="w-14 shrink-0">
                             <p className="font-bold text-foreground">{getDayName(day.date)}</p>
                             <p className="text-[10px] text-muted-foreground">{format(day.date, 'd')}</p>
                           </div>
 
                           {hasData ? (
-                            <>
+                            <div className="flex flex-1 items-center gap-2 flex-wrap">
                               {/* Clock in */}
                               <div className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
                                 <LogIn className="w-3 h-3" />
@@ -212,12 +287,20 @@ const WorkerAttendanceLogDialog: React.FC<Props> = ({ open, onOpenChange, worker
 
                               {/* Duration */}
                               {day.durationMinutes > 0 && (
-                                <div className="flex items-center gap-1 text-muted-foreground mr-auto">
+                                <div className="flex items-center gap-1 text-muted-foreground">
                                   <Timer className="w-3 h-3" />
                                   <span>{durH}:{String(durM).padStart(2, '0')}</span>
                                 </div>
                               )}
-                            </>
+
+                              {/* Lateness */}
+                              {isLate && (
+                                <div className="flex items-center gap-1 text-destructive mr-auto">
+                                  <AlertTriangle className="w-3 h-3" />
+                                  <span>{formatLateness(day.latenessMinutes)}</span>
+                                </div>
+                              )}
+                            </div>
                           ) : (
                             <span className="text-muted-foreground">غائب</span>
                           )}
