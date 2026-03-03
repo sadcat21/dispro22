@@ -306,48 +306,51 @@ const WorkerSalesSummaryDialog: React.FC<Props> = ({ open, onOpenChange, workerI
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md max-h-[85vh] overflow-hidden flex flex-col" dir="rtl">
-        <DialogHeader>
-          <DialogTitle className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <ShoppingBag className="w-5 h-5 text-primary" />
-              تجميع مبيعات {workerName}
-            </div>
-            <div className="flex items-center gap-1 text-xs font-normal text-muted-foreground">
-              <Calendar className="w-3.5 h-3.5" />
-              <span>{todayDate}</span>
-            </div>
-          </DialogTitle>
-        </DialogHeader>
+        {!expandedProduct && (
+          <DialogHeader>
+            <DialogTitle className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <ShoppingBag className="w-5 h-5 text-primary" />
+                تجميع مبيعات {workerName}
+              </div>
+              <div className="flex items-center gap-1 text-xs font-normal text-muted-foreground">
+                <Calendar className="w-3.5 h-3.5" />
+                <span>{todayDate}</span>
+              </div>
+            </DialogTitle>
+          </DialogHeader>
+        )}
 
-        {/* Combined stats + time row */}
-        <div className="flex flex-wrap gap-1.5 items-center text-xs">
-          <Badge variant="secondary" className="text-xs">
-            {salesData?.orderCount || 0} طلبية
-          </Badge>
-          <Badge variant="outline" className="text-xs">
-            {totalQty} وحدة
-          </Badge>
-          <Badge className="text-xs bg-primary/10 text-primary border-0">
-            {totalAmount.toLocaleString('ar-DZ')} د.ج
-          </Badge>
-          {lastAccounting && (
-            <Badge variant="outline" className="text-[10px] text-muted-foreground">
-              منذ آخر محاسبة
+        {!expandedProduct && (
+          <div className="flex flex-wrap gap-1.5 items-center text-xs">
+            <Badge variant="secondary" className="text-xs">
+              {salesData?.orderCount || 0} طلبية
             </Badge>
-          )}
-          {firstTime && (
-            <span className="flex items-center gap-1 rounded-full px-2 py-0.5 bg-[hsl(var(--success)/0.18)] text-[hsl(var(--success-foreground))] font-semibold text-[11px]">
-              <Clock className="w-3 h-3" />
-              {firstTime.toLocaleTimeString('ar-DZ', { hour: '2-digit', minute: '2-digit' })}
-            </span>
-          )}
-          {lastTime && (
-            <span className="flex items-center gap-1 rounded-full px-2 py-0.5 bg-destructive/15 text-destructive font-semibold text-[11px]">
-              <Clock className="w-3 h-3" />
-              {lastTime.toLocaleTimeString('ar-DZ', { hour: '2-digit', minute: '2-digit' })}
-            </span>
-          )}
-        </div>
+            <Badge variant="outline" className="text-xs">
+              {totalQty} وحدة
+            </Badge>
+            <Badge className="text-xs bg-primary/10 text-primary border-0">
+              {totalAmount.toLocaleString('ar-DZ')} د.ج
+            </Badge>
+            {lastAccounting && (
+              <Badge variant="outline" className="text-[10px] text-muted-foreground">
+                منذ آخر محاسبة
+              </Badge>
+            )}
+            {firstTime && (
+              <span className="flex items-center gap-1 rounded-full px-2 py-0.5 bg-[hsl(var(--success)/0.18)] text-[hsl(var(--success-foreground))] font-semibold text-[11px]">
+                <Clock className="w-3 h-3" />
+                {firstTime.toLocaleTimeString('ar-DZ', { hour: '2-digit', minute: '2-digit' })}
+              </span>
+            )}
+            {lastTime && (
+              <span className="flex items-center gap-1 rounded-full px-2 py-0.5 bg-destructive/15 text-destructive font-semibold text-[11px]">
+                <Clock className="w-3 h-3" />
+                {lastTime.toLocaleTimeString('ar-DZ', { hour: '2-digit', minute: '2-digit' })}
+              </span>
+            )}
+          </div>
+        )}
 
         <ScrollArea className="flex-1">
           {isLoading ? (
