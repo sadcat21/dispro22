@@ -41,6 +41,7 @@ const defaultTier: Omit<ProductOfferTier, 'id' | 'offer_id' | 'created_at'> = {
   worker_reward_amount: 0,
   tier_order: 0,
   is_stackable: false,
+  conditions: null,
 };
 
 const CreateOfferDialog: React.FC<CreateOfferDialogProps> = ({
@@ -301,6 +302,7 @@ const CreateOfferDialog: React.FC<CreateOfferDialogProps> = ({
           worker_reward_amount: tier.worker_reward_amount,
           tier_order: index,
           is_stackable: tier.is_stackable ?? false,
+          conditions: tier.conditions || null,
         }));
 
         const { error: tiersError } = await supabase

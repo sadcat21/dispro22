@@ -1,0 +1,1 @@
+ALTER TABLE public.product_offer_tiers ADD COLUMN conditions jsonb DEFAULT null;
