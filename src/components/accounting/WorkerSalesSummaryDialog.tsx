@@ -66,25 +66,41 @@ const ExpandedCarousel: React.FC<{
 
   return (
     <div className="flex flex-col gap-2 pb-2">
-      {/* Navigation header */}
-      <div className="flex items-center justify-between px-1 py-1.5">
-        <button
-          onClick={goPrev}
-          disabled={currentIdx === 0}
-          className="p-1 rounded-full bg-muted hover:bg-primary/10 disabled:opacity-30 transition-colors"
-        >
-          <ChevronRight className="w-5 h-5" />
-        </button>
+      {/* Navigation with thumbnails */}
+      <div className="flex items-center justify-between px-1 py-1.5 gap-2">
+        {/* Previous thumbnail */}
+        {currentIdx > 0 ? (
+          <button onClick={goPrev} className="w-10 h-10 rounded-lg overflow-hidden border border-border hover:border-primary/50 transition-colors shrink-0">
+            {items[currentIdx - 1].imageUrl ? (
+              <img src={items[currentIdx - 1].imageUrl!} alt="" className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full bg-muted flex items-center justify-center">
+                <Package className="w-4 h-4 text-muted-foreground" />
+              </div>
+            )}
+          </button>
+        ) : (
+          <div className="w-10 h-10 shrink-0" />
+        )}
+
         <span className="text-xs text-muted-foreground">
           {currentIdx + 1} / {items.length}
         </span>
-        <button
-          onClick={goNext}
-          disabled={currentIdx === items.length - 1}
-          className="p-1 rounded-full bg-muted hover:bg-primary/10 disabled:opacity-30 transition-colors"
-        >
-          <ChevronLeft className="w-5 h-5" />
-        </button>
+
+        {/* Next thumbnail */}
+        {currentIdx < items.length - 1 ? (
+          <button onClick={goNext} className="w-10 h-10 rounded-lg overflow-hidden border border-border hover:border-primary/50 transition-colors shrink-0">
+            {items[currentIdx + 1].imageUrl ? (
+              <img src={items[currentIdx + 1].imageUrl!} alt="" className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full bg-muted flex items-center justify-center">
+                <Package className="w-4 h-4 text-muted-foreground" />
+              </div>
+            )}
+          </button>
+        ) : (
+          <div className="w-10 h-10 shrink-0" />
+        )}
       </div>
 
       {/* Product card */}
