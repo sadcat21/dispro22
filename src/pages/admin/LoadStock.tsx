@@ -1524,12 +1524,22 @@ const LoadStock: React.FC = () => {
                 
                 // Check if there's an accounting session between this session and the previous one
                 const prevSession = filteredSessions[idx - 1];
-                const hasAccountingBetween = prevSession && accountingSessions.some(a => {
-                  const aDate = new Date(a.completed_at).getTime();
-                  const thisDate = new Date(session.created_at).getTime();
+                let hasAccountingBetween = false;
+                const thisDate = new Date(session.created_at).getTime();
+                
+                if (prevSession) {
                   const prevDate = new Date(prevSession.created_at).getTime();
-                  return aDate > thisDate && aDate <= prevDate;
-                });
+                  hasAccountingBetween = accountingSessions.some(a => {
+                    const aDate = new Date(a.completed_at).getTime();
+                    return aDate > thisDate && aDate <= prevDate;
+                  });
+                } else {
+                  // First item (most recent) - check if any accounting session completed after it
+                  hasAccountingBetween = accountingSessions.some(a => {
+                    const aDate = new Date(a.completed_at).getTime();
+                    return aDate > thisDate;
+                  });
+                }
 
                 return (
                   <React.Fragment key={session.id}>
