@@ -7,11 +7,22 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { inferPricingSubtype } from '@/utils/pricingSubtype';
 
 interface SalesDetailsSummaryProps {
   workerId: string;
   periodStart: string;
   periodEnd: string;
+}
+
+interface CatalogProductPricing {
+  price_retail: number | null;
+  price_gros: number | null;
+  price_super_gros: number | null;
+  price_invoice: number | null;
+  pricing_unit: string | null;
+  weight_per_box: number | null;
+  pieces_per_box: number | null;
 }
 
 interface OrderItem {
@@ -22,6 +33,10 @@ interface OrderItem {
   price_subtype: string | null;
   payment_type: string | null;
   gift_quantity: number;
+  pricing_unit: string | null;
+  weight_per_box: number | null;
+  pieces_per_box: number | null;
+  catalog_product: CatalogProductPricing | null;
 }
 
 interface OrderDetail {
@@ -110,7 +125,7 @@ const SalesDetailsSummary: React.FC<SalesDetailsSummaryProps> = ({ workerId, per
       // Fetch order_items with actual unit_price and price_subtype
       const { data: orderItemsData } = await supabase
         .from('order_items')
-        .select('order_id, quantity, unit_price, total_price, price_subtype, payment_type, gift_quantity, product:products(name)')
+        .select('order_id, quantity, unit_price, total_price, price_subtype, payment_type, gift_quantity, pricing_unit, weight_per_box, pieces_per_box, product:products(name, pricing_unit, weight_per_box, pieces_per_box, price_retail, price_gros, price_super_gros, price_invoice)')
         .in('order_id', orderIds);
 
       const itemsByOrder: Record<string, OrderItem[]> = {};
@@ -118,14 +133,31 @@ const SalesDetailsSummary: React.FC<SalesDetailsSummaryProps> = ({ workerId, per
         const orderId = (item as any).order_id;
         if (!orderId) return;
         if (!itemsByOrder[orderId]) itemsByOrder[orderId] = [];
+
+        const product = (item as any).product || null;
+
         itemsByOrder[orderId].push({
-          product_name: (item as any).product?.name || '',
+          product_name: product?.name || '',
           quantity: Number(item.quantity || 0),
           unit_price: Number(item.unit_price || 0),
           total_price: Number(item.total_price || 0),
           price_subtype: (item as any).price_subtype || null,
           payment_type: (item as any).payment_type || null,
           gift_quantity: Number(item.gift_quantity || 0),
+          pricing_unit: (item as any).pricing_unit || null,
+          weight_per_box: Number((item as any).weight_per_box || 0) || null,
+          pieces_per_box: Number((item as any).pieces_per_box || 0) || null,
+          catalog_product: product
+            ? {
+                price_retail: Number(product.price_retail || 0) || null,
+                price_gros: Number(product.price_gros || 0) || null,
+                price_super_gros: Number(product.price_super_gros || 0) || null,
+                price_invoice: Number(product.price_invoice || 0) || null,
+                pricing_unit: product.pricing_unit || null,
+                weight_per_box: Number(product.weight_per_box || 0) || null,
+                pieces_per_box: Number(product.pieces_per_box || 0) || null,
+              }
+            : null,
         });
       });
 
@@ -238,9 +270,16 @@ const SalesDetailsSummary: React.FC<SalesDetailsSummaryProps> = ({ workerId, per
     const resolvedPaidQty = Number(Math.max(0, paidQtyByDiff > 0 ? paidQtyByDiff : paidQtyByAmount).toFixed(3));
     if (resolvedPaidQty <= 0) return;
 
-    const rawSubtype = item.price_subtype || (o.price_subtype || c.default_price_subtype || 'gros');
-    const isInvoice = (item.payment_type || o.payment_type) === 'with_invoice';
-    const subtype = isInvoice ? 'invoice' : rawSubtype;
+    const subtype = inferPricingSubtype({
+      itemPaymentType: item.payment_type || o.payment_type,
+      unitPrice,
+      explicitSubtype: item.price_subtype || o.price_subtype || null,
+      fallbackSubtype: c.default_price_subtype || 'gros',
+      product: item.catalog_product,
+      pricingUnit: item.pricing_unit,
+      weightPerBox: item.weight_per_box,
+      piecesPerBox: item.pieces_per_box,
+    });
     const lineTotal = totalPrice > 0 ? totalPrice : resolvedPaidQty * unitPrice;
     const existing = productPriceBreakdown[item.product_name].find(e => e.subtype === subtype && Math.abs(e.unitPrice - unitPrice) < 0.01);
     if (existing) {
