@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import EmptyTruckDialog from './EmptyTruckDialog';
+import { inferPricingSubtype } from '@/utils/pricingSubtype';
 
 interface ProductStockSummaryProps {
   workerId: string;
@@ -118,7 +119,7 @@ const ProductStockSummary: React.FC<ProductStockSummaryProps> = ({
 
       const { data: orderItems } = await supabase
         .from('order_items')
-        .select('order_id, quantity, gift_quantity, unit_price, total_price, price_subtype, payment_type, pricing_unit, weight_per_box, pieces_per_box, product:products(name)')
+        .select('order_id, quantity, gift_quantity, unit_price, total_price, price_subtype, payment_type, pricing_unit, weight_per_box, pieces_per_box, product:products(name, pricing_unit, weight_per_box, pieces_per_box, price_retail, price_gros, price_super_gros, price_invoice)')
         .in('order_id', orderIds);
 
       const productMap: Record<string, SoldProductRow> = {};
@@ -145,12 +146,19 @@ const ProductStockSummary: React.FC<ProductStockSummaryProps> = ({
 
         const orderPaymentType = orderPaymentTypeMap.get(orderId) || '';
         const itemPaymentType = (item as any).payment_type || orderPaymentType;
-        const rawSubtype = item.price_subtype || orderCustomerSubtypeMap.get(orderId) || 'gros';
-        const isInvoice = itemPaymentType === 'with_invoice';
-        const subtype = isInvoice ? 'invoice' : rawSubtype;
         const itemPricingUnit = (item as any).pricing_unit || 'box';
         const itemWeightPerBox = Number((item as any).weight_per_box || 0);
         const itemPiecesPerBox = Number((item as any).pieces_per_box || 0);
+        const subtype = inferPricingSubtype({
+          itemPaymentType,
+          unitPrice,
+          explicitSubtype: (item as any).price_subtype || null,
+          fallbackSubtype: orderCustomerSubtypeMap.get(orderId) || 'gros',
+          product: (item as any).product || null,
+          pricingUnit: itemPricingUnit,
+          weightPerBox: itemWeightPerBox > 0 ? itemWeightPerBox : null,
+          piecesPerBox: itemPiecesPerBox > 0 ? itemPiecesPerBox : null,
+        });
         const lineTotal = totalPrice > 0 ? totalPrice : paidQty * unitPrice;
 
         if (!productMap[productName]) {
