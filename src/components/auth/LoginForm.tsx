@@ -107,6 +107,41 @@ const LoginForm: React.FC = () => {
               )}
             </Button>
           </form>
+
+          <div className="mt-4 pt-4 border-t border-border space-y-2">
+            <p className="text-xs text-muted-foreground text-center mb-2">دخول سريع</p>
+            <div className="flex flex-col gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full text-xs"
+                disabled={isLoading}
+                onClick={() => { setUsername('hssm0909'); setPassword('hssm0909'); }}
+              >
+                🔑 مدير النظام
+              </Button>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 text-xs"
+                  disabled={isLoading}
+                  onClick={() => { setUsername('Hicham27'); setPassword('Hicham27'); }}
+                >
+                  🚚 هشام (توصيل)
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 text-xs"
+                  disabled={isLoading}
+                  onClick={() => { setUsername('zinou27'); setPassword('zinou27'); }}
+                >
+                  📊 زينو (مبيعات)
+                </Button>
+              </div>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
