@@ -565,38 +565,33 @@ const CreateSessionDialog: React.FC<CreateSessionDialogProps> = ({ open, onOpenC
             {/* ━━━ Step 9: Stock & Sales Tracking ━━━ */}
             {selectedWorkerId && periodStart && periodEnd && (
               <>
-                <StepSection step={9} title="تتبع المخزون والمبيعات" color="primary">
-                  {viewByProduct ? (
-                    <div className="space-y-3">
+                {viewByProduct ? (
+                  <>
+                    <StepSection step={9} title="ملخص شامل حسب المنتج" color="primary" badge="A">
                       <ProductStockSummary workerId={selectedWorkerId} branchId={activeBranch?.id} periodStart={periodStart} periodEnd={periodEnd} viewByProduct promoTracking={calc?.promoTracking} />
-                      <div className="border-t pt-3">
-                        <SectionDividerWithIcon icon={<Truck className="w-4 h-4 text-primary" />} label="تفاصيل مراجعة الشاحنة" />
-                        <TruckReviewSection workerId={selectedWorkerId} />
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      <div>
-                        <SectionDividerWithIcon icon={<Package className="w-4 h-4 text-primary" />} label={t('accounting.truck_stock') || 'تتبع المنتجات'} />
-                        <ProductStockSummary workerId={selectedWorkerId} branchId={activeBranch?.id} periodStart={periodStart} periodEnd={periodEnd} />
-                      </div>
-                      <div className="border-t pt-3">
-                        <SectionDividerWithIcon icon={<Truck className="w-4 h-4 text-primary" />} label="تفاصيل مراجعة الشاحنة" />
-                        <TruckReviewSection workerId={selectedWorkerId} />
-                      </div>
-                      <div className="border-t pt-3">
-                        <SectionDividerWithIcon icon={<ShoppingBag className="w-4 h-4 text-primary" />} label={t('accounting.sales_details')} />
-                        <SalesDetailsSummary workerId={selectedWorkerId} periodStart={periodStart} periodEnd={periodEnd} />
-                      </div>
-                      {calc && calc.promoTracking.length > 0 && (
-                        <div className="border-t pt-3">
-                          <SectionDividerWithIcon icon={<Tag className="w-4 h-4 text-purple-600" />} label="تتبع العروض" />
-                          <PromoTrackingSummary items={calc.promoTracking} totalGiftValue={calc.giftOfferValue} />
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </StepSection>
+                    </StepSection>
+                    <StepSection step={9} title="تفاصيل مراجعة الشاحنة" color="primary" badge="B">
+                      <TruckReviewSection workerId={selectedWorkerId} />
+                    </StepSection>
+                  </>
+                ) : (
+                  <>
+                    <StepSection step={9} title={t('accounting.truck_stock') || 'تتبع المنتجات'} color="primary" badge="A">
+                      <ProductStockSummary workerId={selectedWorkerId} branchId={activeBranch?.id} periodStart={periodStart} periodEnd={periodEnd} />
+                    </StepSection>
+                    <StepSection step={9} title="تفاصيل مراجعة الشاحنة" color="primary" badge="B">
+                      <TruckReviewSection workerId={selectedWorkerId} />
+                    </StepSection>
+                    <StepSection step={9} title={t('accounting.sales_details')} color="primary" badge="C">
+                      <SalesDetailsSummary workerId={selectedWorkerId} periodStart={periodStart} periodEnd={periodEnd} />
+                    </StepSection>
+                    {calc && calc.promoTracking.length > 0 && (
+                      <StepSection step={9} title="تتبع العروض" color="purple" badge="D">
+                        <PromoTrackingSummary items={calc.promoTracking} totalGiftValue={calc.giftOfferValue} />
+                      </StepSection>
+                    )}
+                  </>
+                )}
 
                 {/* ━━━ Step 10: Debt Collections Detail ━━━ */}
                 <StepSection step={10} title="تفاصيل الديون المحصلة" color="orange">
@@ -721,11 +716,10 @@ const StepSection: React.FC<{
   return (
     <div className={`rounded-xl border-2 p-3.5 space-y-2.5 ${important ? 'border-primary bg-primary/5' : 'border-border'}`}>
       <div className="flex items-center gap-2.5">
-        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${colorClass}`}>
-          {step}
+        <div className={`${badge ? 'w-auto px-1.5 min-w-[1.5rem]' : 'w-6'} h-6 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${colorClass}`}>
+          {badge ? `${step}-${badge}` : step}
         </div>
         <h3 className="font-bold text-sm flex-1">{title}</h3>
-        {badge && <span className={`text-xs font-bold ${colorClass.split(' ').find(c => c.startsWith('text-'))}`}>{badge}</span>}
       </div>
       {children}
     </div>
