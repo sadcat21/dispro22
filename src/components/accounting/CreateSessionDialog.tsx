@@ -296,8 +296,8 @@ const CreateSessionDialog: React.FC<CreateSessionDialogProps> = ({ open, onOpenC
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[92vw] sm:w-full sm:max-w-lg max-h-[90vh] p-0 gap-0 rounded-xl" dir={dir}>
-        <DialogHeader className="px-3 py-3 border-b bg-muted/30">
+      <DialogContent className="max-w-lg max-h-[90vh] p-0 gap-0 overflow-hidden" dir={dir}>
+        <DialogHeader className="p-4 pb-3 border-b bg-muted/30">
           <div className="flex items-center justify-between">
             <DialogTitle className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -315,27 +315,30 @@ const CreateSessionDialog: React.FC<CreateSessionDialogProps> = ({ open, onOpenC
           </div>
         </DialogHeader>
 
-        <ScrollArea className="max-h-[calc(90vh-6rem)] px-3 py-3 [&_[data-radix-scroll-area-viewport]]:[scrollbar-gutter:stable] [&_[data-radix-scroll-area-scrollbar]]:w-2 [&_[data-radix-scroll-area-thumb]]:bg-muted-foreground/40">
+        <ScrollArea className="max-h-[calc(90vh-6rem)] px-4 py-3">
           <div className="space-y-3">
 
             {/* ━━━ Step 1: Period ━━━ */}
             <StepSection step={1} title={t('accounting.period') || 'الفترة'} color="primary">
-              <div className="flex items-center gap-1.5" dir="rtl">
-                <Input 
-                  type="datetime-local" 
-                  value={periodStart} 
-                  onChange={e => setPeriodStart(e.target.value)} 
-                  className="text-[11px] h-8 rounded-lg border-muted flex-1 [direction:ltr]" 
-                />
-                <Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-primary hover:text-primary/80" onClick={() => setPeriodEnd(nowLocal())}>
-                  <RefreshCw className="w-3.5 h-3.5" />
-                </Button>
-                <Input 
-                  type="datetime-local" 
-                  value={periodEnd} 
-                  onChange={e => setPeriodEnd(e.target.value)} 
-                  className="text-[11px] h-8 rounded-lg border-muted flex-1 [direction:ltr]" 
-                />
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold">{t('accounting.period_start')}</Label>
+                  <Input type="datetime-local" value={periodStart} onChange={e => setPeriodStart(e.target.value)} className="text-xs rounded-lg" />
+                </div>
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs font-semibold">{t('accounting.period_end')}</Label>
+                    <Button type="button" variant="ghost" size="sm" className="h-5 px-1.5 text-[10px] text-primary hover:text-primary/80 gap-1" onClick={() => setPeriodEnd(nowLocal())}>
+                      <RefreshCw className="w-3 h-3" />
+                      {t('common.refresh') || 'تحديث'}
+                    </Button>
+                  </div>
+                  <Input type="datetime-local" value={periodEnd} onChange={e => setPeriodEnd(e.target.value)} className="text-xs rounded-lg" />
+                </div>
+              </div>
+              <div className="flex items-center justify-between bg-muted/40 rounded-lg px-3 py-2 mt-2">
+                <Label className="text-xs font-medium text-muted-foreground">تحديث تلقائي للبيانات</Label>
+                <Switch checked={autoRefresh} onCheckedChange={setAutoRefresh} />
               </div>
             </StepSection>
 
@@ -524,7 +527,7 @@ const CreateSessionDialog: React.FC<CreateSessionDialogProps> = ({ open, onOpenC
 
                 {/* ━━━ Step 7: Grand Summary ━━━ */}
                 <StepSection step={7} title={t('accounting.grand_summary')} color="primary" important>
-                  <div className="grid grid-cols-2 gap-2 text-xs min-w-0">
+                  <div className="grid grid-cols-2 gap-2 text-xs">
                     <SummaryItem label={t('accounting.total_sales')} value={calc.totalSales} />
                     <SummaryItem label={t('accounting.total_paid')} value={calc.totalPaid} color="green" />
                     <SummaryItem label={t('accounting.new_debts')} value={calc.newDebts} color="red" />
@@ -757,9 +760,9 @@ const PaymentRow: React.FC<{ label: string; value: number; highlight?: boolean }
 );
 
 const SummaryItem: React.FC<{ label: string; value: number; color?: string }> = ({ label, value, color }) => (
-  <div className="min-w-0 text-center p-2 bg-background rounded-lg">
-    <p className="text-muted-foreground text-[10px] truncate">{label}</p>
-    <p className={`font-bold text-sm truncate ${
+  <div className="text-center p-2 bg-background rounded-lg">
+    <p className="text-muted-foreground text-[10px]">{label}</p>
+    <p className={`font-bold text-sm ${
       color === 'green' ? 'text-green-600' :
       color === 'red' ? 'text-destructive' :
       color === 'orange' ? 'text-orange-600' :
