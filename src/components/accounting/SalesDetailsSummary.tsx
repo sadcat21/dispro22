@@ -42,6 +42,7 @@ interface OrderDetail {
 interface CustomerSummary {
   customer_id: string;
   customer_name: string;
+  default_price_subtype: string;
   orders: OrderDetail[];
   total_amount: number;
   order_count: number;
@@ -98,7 +99,7 @@ const SalesDetailsSummary: React.FC<SalesDetailsSummaryProps> = ({ workerId, per
 
       const { data: deliveredOrders } = await supabase
         .from('orders')
-        .select('id, customer_id, total_amount, payment_status, payment_type, invoice_payment_method, partial_amount, notes, updated_at, customer:customers(name), order_items(price_subtype, payment_type)')
+        .select('id, customer_id, total_amount, payment_status, payment_type, invoice_payment_method, partial_amount, notes, updated_at, customer:customers(name, default_price_subtype), order_items(price_subtype, payment_type)')
         .in('id', orderIds)
         .eq('assigned_worker_id', workerId)
         .eq('status', 'delivered')
@@ -133,10 +134,12 @@ const SalesDetailsSummary: React.FC<SalesDetailsSummaryProps> = ({ workerId, per
       for (const o of deliveredOrders) {
         const custId = o.customer_id;
         const custName = (o as any).customer?.name || '';
+        const custDefaultSubtype = (o as any).customer?.default_price_subtype || 'gros';
         if (!customerMap[custId]) {
           customerMap[custId] = {
             customer_id: custId,
             customer_name: custName,
+            default_price_subtype: custDefaultSubtype,
             orders: [],
             total_amount: 0,
             order_count: 0,
@@ -228,7 +231,7 @@ const SalesDetailsSummary: React.FC<SalesDetailsSummaryProps> = ({ workerId, per
     const paidQty = Math.max(0, item.quantity - (item.gift_quantity || 0));
     if (paidQty <= 0) return;
     
-    const rawSubtype = item.price_subtype || (o.price_subtype || 'gros');
+    const rawSubtype = item.price_subtype || (o.price_subtype || c.default_price_subtype || 'gros');
     const isInvoice = (item.payment_type || o.payment_type) === 'with_invoice';
     const subtype = isInvoice ? 'invoice' : rawSubtype;
     const existing = productPriceBreakdown[item.product_name].find(e => e.subtype === subtype && Math.abs(e.unitPrice - item.unit_price) < 0.01);
