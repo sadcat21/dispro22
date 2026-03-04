@@ -203,6 +203,7 @@ const DocumentCollectionsPopover: React.FC = () => {
           orderTotal={Number(selectedOrder.total_amount)}
           customerName={selectedOrder.customer?.store_name || selectedOrder.customer?.name || '—'}
           documentType={selectedOrder.invoice_payment_method as 'check' | 'receipt' | 'transfer'}
+          initialCheckReceived={true}
           initialVerification={(selectedOrder as any).document_verification}
           onConfirm={async (data) => {
             if (!workerId) return;
