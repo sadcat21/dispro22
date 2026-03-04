@@ -152,8 +152,33 @@ const WorkerActions: React.FC = () => {
       const sessionIds = sessions.map(s => s.id);
       const { data: items } = await supabase
         .from('loading_session_items')
-        .select('product_id, quantity, gift_quantity')
+        .select('product_id, quantity, gift_quantity, previous_quantity')
         .in('session_id', sessionIds);
+      return items || [];
+    },
+    enabled: !!selectedWorker?.id && truckStockOpen,
+  });
+
+  // Fetch last review session quantities as fallback for رصيد
+  const { data: truckReviewData } = useQuery({
+    queryKey: ['worker-truck-review', selectedWorker?.id, lastWorkerAccounting],
+    queryFn: async () => {
+      let reviewQuery = supabase
+        .from('loading_sessions')
+        .select('id')
+        .eq('worker_id', selectedWorker!.id)
+        .eq('status', 'review')
+        .order('created_at', { ascending: false })
+        .limit(1);
+      if (lastWorkerAccounting) {
+        reviewQuery = reviewQuery.gte('created_at', lastWorkerAccounting);
+      }
+      const { data: sessions } = await reviewQuery;
+      if (!sessions || sessions.length === 0) return [];
+      const { data: items } = await supabase
+        .from('loading_session_items')
+        .select('product_id, quantity')
+        .eq('session_id', sessions[0].id);
       return items || [];
     },
     enabled: !!selectedWorker?.id && truckStockOpen,
@@ -198,24 +223,32 @@ const WorkerActions: React.FC = () => {
     enabled: !!selectedWorker?.id && truckStockOpen,
   });
 
+  const truckReviewQuantities = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const item of (truckReviewData || [])) {
+      map[item.product_id] = (map[item.product_id] || 0) + item.quantity;
+    }
+    return map;
+  }, [truckReviewData]);
+
   const truckMovementStats = useMemo(() => {
-    const stats: Record<string, { loaded: number; sold: number; giftQty: number; giftUnit: string }> = {};
+    const stats: Record<string, { loaded: number; totalLoad: number; sold: number; giftQty: number; giftUnit: string }> = {};
     for (const item of (truckLoadedData || [])) {
-      if (!stats[item.product_id]) stats[item.product_id] = { loaded: 0, sold: 0, giftQty: 0, giftUnit: 'piece' };
+      if (!stats[item.product_id]) stats[item.product_id] = { loaded: 0, totalLoad: 0, sold: 0, giftQty: 0, giftUnit: 'piece' };
       stats[item.product_id].loaded += item.quantity + (item.gift_quantity || 0);
+      stats[item.product_id].totalLoad += (item.previous_quantity || 0) + item.quantity + (item.gift_quantity || 0);
     }
     for (const item of (truckSoldData || [])) {
-      if (!stats[item.product_id]) stats[item.product_id] = { loaded: 0, sold: 0, giftQty: 0, giftUnit: 'piece' };
+      if (!stats[item.product_id]) stats[item.product_id] = { loaded: 0, totalLoad: 0, sold: 0, giftQty: 0, giftUnit: 'piece' };
       stats[item.product_id].sold += item.quantity;
       if ((item.gift_quantity || 0) > 0) {
         stats[item.product_id].giftQty += item.gift_quantity;
         stats[item.product_id].giftUnit = (item as any).gift_unit || 'piece';
       }
     }
-    // Also add gifts from loading sessions
     for (const item of (truckLoadedData || [])) {
       if ((item.gift_quantity || 0) > 0) {
-        if (!stats[item.product_id]) stats[item.product_id] = { loaded: 0, sold: 0, giftQty: 0, giftUnit: 'piece' };
+        if (!stats[item.product_id]) stats[item.product_id] = { loaded: 0, totalLoad: 0, sold: 0, giftQty: 0, giftUnit: 'piece' };
         stats[item.product_id].giftQty += item.gift_quantity;
       }
     }
@@ -382,6 +415,7 @@ const WorkerActions: React.FC = () => {
                     .map((item: any) => {
                       const stats = truckMovementStats[item.product_id];
                       const loaded = stats?.loaded || 0;
+                      const totalLoad = stats?.totalLoad || truckReviewQuantities[item.product_id] || item.quantity;
                       const sold = stats?.sold || 0;
                       const giftQty = stats?.giftQty || 0;
                       const giftUnit = stats?.giftUnit === 'piece' ? 'قطعة' : stats?.giftUnit === 'box' ? 'صندوق' : stats?.giftUnit === 'kg' ? 'كغ' : 'قطعة';
@@ -394,22 +428,26 @@ const WorkerActions: React.FC = () => {
                               {item.quantity}
                             </span>
                           </div>
-                          <div className="flex items-center gap-3 text-xs text-muted-foreground border-t pt-1 mt-1">
-                            <span className="flex items-center gap-0.5">
-                              <TrendingUp className="w-3 h-3 text-blue-500" />
+                          <div className="flex items-center gap-2 text-xs border-t pt-1.5 mt-1 flex-wrap">
+                            <span className="flex items-center gap-0.5 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 px-1.5 py-0.5 rounded font-semibold">
+                              <Package className="w-3 h-3" />
+                              رصيد: {totalLoad}
+                            </span>
+                            <span className="flex items-center gap-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded">
+                              <TrendingUp className="w-3 h-3" />
                               شحن: {loaded}
                             </span>
-                            <span className="flex items-center gap-0.5">
-                              <TrendingDown className="w-3 h-3 text-green-500" />
+                            <span className="flex items-center gap-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 px-1.5 py-0.5 rounded">
+                              <TrendingDown className="w-3 h-3" />
                               مباع: {sold}
                             </span>
                             {giftQty > 0 && (
-                              <span className="flex items-center gap-0.5">
-                                <Gift className="w-3 h-3 text-orange-500" />
+                              <span className="flex items-center gap-0.5 bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 px-1.5 py-0.5 rounded">
+                                <Gift className="w-3 h-3" />
                                 هدايا: {giftQty} {giftUnit}
                               </span>
                             )}
-                            <span className="font-semibold">باقي: {item.quantity}</span>
+                            <span className="font-bold bg-muted px-1.5 py-0.5 rounded">باقي: {item.quantity}</span>
                           </div>
                         </div>
                       );
