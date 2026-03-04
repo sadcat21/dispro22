@@ -73,17 +73,9 @@ export const useSessionCalculations = (params: SessionCalcParams | null, options
         if (v.includes('T')) return v + ':00+01:00';
         return isEnd ? v + 'T23:59:59+01:00' : v + 'T00:00:00+01:00';
       };
-      // For debt payments, use full-day range to capture all payments on covered dates
-      const toFullDayRange = (v: string, isEnd: boolean) => {
-        let datePart = v;
-        if (v.includes('T')) datePart = v.split('T')[0];
-        if (datePart.length > 10) datePart = datePart.substring(0, 10);
-        return isEnd ? datePart + 'T23:59:59+01:00' : datePart + 'T00:00:00+01:00';
-      };
+      // Use exact period timestamps for debt payments (no full-day expansion)
       const periodStartTz = toTimestampTz(periodStart, false);
       const periodEndTz = toTimestampTz(periodEnd, true);
-      const debtStartTz = toFullDayRange(periodStart, false);
-      const debtEndTz = toFullDayRange(periodEnd, true);
 
       // 1. Fetch delivered orders with items
       const { data: orders } = await supabase
@@ -94,25 +86,23 @@ export const useSessionCalculations = (params: SessionCalcParams | null, options
         .gte('updated_at', periodStartTz)
         .lte('updated_at', periodEndTz);
 
-      // 2. Fetch debt payments (use full-day range to capture all payments on covered dates)
+      // 2. Fetch debt payments (use exact period timestamps)
       const { data: debtPayments } = await supabase
         .from('debt_payments')
         .select('amount, payment_method')
         .eq('worker_id', workerId)
-        .gte('collected_at', debtStartTz)
-        .lte('collected_at', debtEndTz);
+        .gte('collected_at', periodStartTz)
+        .lte('collected_at', periodEndTz);
 
-      // 2b. Fetch collected pending documents (treated as non-cash collections)
-      const periodStartDate = periodStart.includes('T') ? periodStart.split('T')[0] : periodStart.substring(0, 10);
-      const periodEndDate = periodEnd.includes('T') ? periodEnd.split('T')[0] : periodEnd.substring(0, 10);
+      // 2b. Fetch collected pending documents (use exact timestamps)
       const { data: collectedDocuments } = await supabase
         .from('document_collections')
-        .select('status, action, collection_date, order:orders!document_collections_order_id_fkey(total_amount, invoice_payment_method)')
+        .select('status, action, collection_date, created_at, order:orders!document_collections_order_id_fkey(total_amount, invoice_payment_method)')
         .eq('worker_id', workerId)
         .eq('action', 'collected')
         .neq('status', 'rejected')
-        .gte('collection_date', periodStartDate)
-        .lte('collection_date', periodEndDate);
+        .gte('created_at', periodStartTz)
+        .lte('created_at', periodEndTz);
 
       // 3. Fetch expenses
       const { data: expenseData } = await supabase
