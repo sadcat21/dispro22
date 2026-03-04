@@ -562,13 +562,36 @@ const ProductStockSummary: React.FC<ProductStockSummaryProps> = ({
           {soldProducts.map((row) => (
             <Collapsible key={row.product_name}>
               <div className="border rounded-lg overflow-hidden">
-                <CollapsibleTrigger className="w-full flex items-center justify-between p-2 text-start hover:bg-muted/30 transition-colors">
-                  <span className="font-medium text-sm text-wrap">{row.product_name}</span>
-                  <span className="flex items-center gap-1.5 shrink-0 ms-2">
-                    <span className="text-xs text-muted-foreground">{fmtQty(row.quantity)} صندوق</span>
-                    <span className="text-xs font-bold">{row.total_value.toLocaleString()} DA</span>
-                    <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
-                  </span>
+                <CollapsibleTrigger className="w-full flex flex-col gap-1 p-2 text-start hover:bg-muted/30 transition-colors">
+                  <div className="flex items-center justify-between w-full">
+                    <span className="font-medium text-sm text-wrap">{row.product_name}</span>
+                    <span className="flex items-center gap-1.5 shrink-0 ms-2">
+                      <span className="text-xs text-muted-foreground">{fmtQty(row.quantity)} صندوق</span>
+                      <span className="text-xs font-bold">{row.total_value.toLocaleString()} DA</span>
+                      <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    {(() => {
+                      const subtypeAbbr: Record<string, string> = { retail: 'D', gros: 'G', super_gros: 'SG', invoice: 'F1' };
+                      const subtypeColor: Record<string, string> = {
+                        retail: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+                        gros: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
+                        super_gros: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
+                        invoice: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400',
+                      };
+                      const grouped: Record<string, number> = {};
+                      row.pricing_rows.forEach(pr => {
+                        const key = pr.subtype || 'gros';
+                        grouped[key] = (grouped[key] || 0) + pr.quantity;
+                      });
+                      return Object.entries(grouped).map(([subtype, qty]) => (
+                        <span key={subtype} className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-md ${subtypeColor[subtype] || 'bg-muted text-muted-foreground'}`}>
+                          {subtypeAbbr[subtype] || subtype} ({fmtQty(qty)})
+                        </span>
+                      ));
+                    })()}
+                  </div>
                 </CollapsibleTrigger>
 
                 <CollapsibleContent>
