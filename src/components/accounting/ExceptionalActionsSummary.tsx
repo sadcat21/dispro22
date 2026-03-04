@@ -1,10 +1,25 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { AlertTriangle, Edit, Printer, XCircle, Trash2, Gift, RotateCcw } from 'lucide-react';
+import {
+  AlertTriangle,
+  ChevronDown,
+  ChevronUp,
+  Edit,
+  Printer,
+  RotateCcw,
+  Trash2,
+  XCircle,
+} from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { ar } from 'date-fns/locale';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
+import { useRealtimeSubscription } from '@/hooks/useRealtimeSubscription';
 
 interface ExceptionalActionsSummaryProps {
   workerId: string;
@@ -17,101 +32,225 @@ interface ExceptionalAction {
   action_type: string;
   entity_type: string;
   entity_id: string | null;
-  details: Record<string, any> | null;
+  details: Record<string, unknown> | null;
   created_at: string;
 }
 
-const EXCEPTIONAL_ACTIONS = [
-  'update',        // post-delivery modifications
-  'delete',        // order deletions
-  'status_change', // cancellations
-  'payment_update', // payment changes
-  'reprint',       // receipt reprints
+interface DetailRow {
+  id: string;
+  label: string;
+  value?: string;
+  before?: string;
+  after?: string;
+}
+
+const EXCEPTIONAL_ACTIONS = ['update', 'delete', 'status_change', 'payment_update', 'reprint'];
+const CANCELLED_KEYWORDS = ['cancelled', 'cancel', 'ملغي', 'ملغاة', 'إلغاء'];
+const ROUTINE_STATUS_KEYWORDS = [
+  'in_progress',
+  'delivered',
+  'assigned',
+  'قيد التوصيل',
+  'تم التوصيل',
+  'تم التسليم',
 ];
 
 const toTz = (v: string, isEnd: boolean) => {
   if (v.includes('+') || v.includes('Z')) return v;
-  if (v.includes('T')) return v + ':00+01:00';
-  return isEnd ? v + 'T23:59:59+01:00' : v + 'T00:00:00+01:00';
+  if (v.includes('T')) return `${v}:00+01:00`;
+  return isEnd ? `${v}T23:59:59+01:00` : `${v}T00:00:00+01:00`;
+};
+
+const asRecord = (value: unknown): Record<string, unknown> => {
+  if (value && typeof value === 'object' && !Array.isArray(value)) {
+    return value as Record<string, unknown>;
+  }
+  return {};
+};
+
+const toDisplayValue = (value: unknown): string => {
+  if (value === null || value === undefined || value === '') return '—';
+  if (typeof value === 'number') return value.toLocaleString('fr-DZ');
+  if (typeof value === 'boolean') return value ? 'نعم' : 'لا';
+  return String(value);
+};
+
+const getPaymentMethodLabel = (value: unknown): string => {
+  const v = String(value || '').toLowerCase();
+  if (v === 'full') return 'كامل';
+  if (v === 'partial') return 'جزئي';
+  if (v === 'debt') return 'دين';
+  return toDisplayValue(value);
+};
+
+const normalizeStatusText = (value: unknown): string => String(value || '').trim().toLowerCase();
+
+const isCancelledStatus = (value: unknown): boolean => {
+  const status = normalizeStatusText(value);
+  return CANCELLED_KEYWORDS.some((word) => status.includes(word));
+};
+
+const isRoutineStatus = (value: unknown): boolean => {
+  const status = normalizeStatusText(value);
+  return ROUTINE_STATUS_KEYWORDS.some((word) => status.includes(word));
 };
 
 const getActionIcon = (action: ExceptionalAction) => {
   const details = action.details || {};
   const isPostDelivery = details?.نوع_التعديل === 'تعديل بعد التوصيل';
-  
+
   if (action.action_type === 'delete') return <Trash2 className="w-3.5 h-3.5 text-destructive" />;
-  if (action.action_type === 'status_change' && details?.الحالة_الجديدة === 'cancelled')
+  if (action.action_type === 'status_change' && isCancelledStatus(details?.الحالة_الجديدة)) {
     return <XCircle className="w-3.5 h-3.5 text-destructive" />;
-  if (action.action_type === 'reprint') return <Printer className="w-3.5 h-3.5 text-amber-600" />;
-  if (isPostDelivery) return <Edit className="w-3.5 h-3.5 text-orange-600" />;
-  if (action.action_type === 'update') return <Edit className="w-3.5 h-3.5 text-blue-600" />;
-  return <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />;
+  }
+  if (action.action_type === 'reprint') return <Printer className="w-3.5 h-3.5 text-muted-foreground" />;
+  if (isPostDelivery) return <Edit className="w-3.5 h-3.5 text-primary" />;
+  if (action.action_type === 'update') return <Edit className="w-3.5 h-3.5 text-accent" />;
+  return <AlertTriangle className="w-3.5 h-3.5 text-muted-foreground" />;
 };
 
 const getActionLabel = (action: ExceptionalAction): string => {
   const details = action.details || {};
-  
-  if (action.action_type === 'delete' && action.entity_type === 'order')
-    return 'حذف طلبية';
-  if (action.action_type === 'delete' && action.entity_type === 'promo')
-    return 'حذف عملية برومو';
-  if (action.action_type === 'status_change' && details?.الحالة_الجديدة === 'cancelled')
+
+  if (action.action_type === 'delete' && action.entity_type === 'order') return 'حذف طلبية';
+  if (action.action_type === 'delete' && action.entity_type === 'promo') return 'حذف عملية برومو';
+  if (action.action_type === 'status_change' && isCancelledStatus(details?.الحالة_الجديدة)) {
     return 'إلغاء طلبية';
-  if (action.action_type === 'reprint')
-    return 'إعادة طباعة وصل';
-  if (action.action_type === 'payment_update')
-    return 'تعديل طريقة الدفع';
-  if (details?.نوع_التعديل === 'تعديل بعد التوصيل')
-    return 'تعديل بعد التوصيل';
-  if (action.action_type === 'update' && action.entity_type === 'order')
-    return 'تعديل طلبية';
-  if (action.action_type === 'update' && action.entity_type === 'promo')
-    return 'تعديل برومو';
+  }
+  if (action.action_type === 'reprint') return 'إعادة طباعة وصل';
+  if (action.action_type === 'payment_update') return 'تعديل طريقة الدفع';
+  if (details?.نوع_التعديل === 'تعديل بعد التوصيل') return 'تعديل بعد التوصيل';
+  if (action.action_type === 'update' && action.entity_type === 'order') return 'تعديل طلبية';
+  if (action.action_type === 'update' && action.entity_type === 'promo') return 'تعديل برومو';
   return `${action.action_type} - ${action.entity_type}`;
 };
 
 const getActionColor = (action: ExceptionalAction): string => {
   const details = action.details || {};
-  if (action.action_type === 'delete' || (action.action_type === 'status_change' && details?.الحالة_الجديدة === 'cancelled'))
+  if (action.action_type === 'delete' || (action.action_type === 'status_change' && isCancelledStatus(details?.الحالة_الجديدة))) {
     return 'bg-destructive/10 border-destructive/30';
-  if (details?.نوع_التعديل === 'تعديل بعد التوصيل')
-    return 'bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800';
-  return 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800';
+  }
+  if (details?.نوع_التعديل === 'تعديل بعد التوصيل') {
+    return 'bg-primary/10 border-primary/30';
+  }
+  return 'bg-muted/40 border-border';
 };
 
-const formatChanges = (details: Record<string, any> | null): string[] => {
-  if (!details) return [];
-  const lines: string[] = [];
-  
-  if (details.العميل) lines.push(`العميل: ${details.العميل}`);
-  
-  // Post-delivery modifications - show item changes
-  if (details.التغييرات && Array.isArray(details.التغييرات)) {
-    for (const change of details.التغييرات) {
-      if (change.عملية === 'تعديل كمية') {
-        const giftInfo = change.هدية_سابقة !== undefined && change.هدية_جديدة !== undefined
-          ? ` | هدية: ${change.هدية_سابقة} ← ${change.هدية_جديدة}`
-          : '';
-        lines.push(`${change.منتج}: ${change.كمية_سابقة} ← ${change.كمية_جديدة}${giftInfo}`);
-      } else if (change.عملية === 'حذف') {
-        lines.push(`${change.منتج}: حذف (${change.كمية_سابقة})`);
-      } else if (change.عملية === 'إضافة جديد') {
-        lines.push(`${change.منتج}: إضافة (${change.كمية})`);
-      }
-    }
+const buildDetailRows = (detailsInput: Record<string, unknown> | null): DetailRow[] => {
+  if (!detailsInput) return [];
+
+  const details = asRecord(detailsInput);
+  const rows: DetailRow[] = [];
+
+  if (details.العميل) {
+    rows.push({ id: 'customer', label: 'العميل', value: toDisplayValue(details.العميل) });
   }
 
   if (details.طريقة_دفع_الفارق) {
-    lines.push(`دفع الفارق: ${details.طريقة_دفع_الفارق}${details.المبلغ_المدفوع ? ` (${Number(details.المبلغ_المدفوع).toLocaleString()} DA)` : ''}`);
+    const amount = details.المبلغ_المدفوع !== undefined
+      ? ` (${toDisplayValue(details.المبلغ_المدفوع)} DA)`
+      : '';
+    rows.push({
+      id: 'payment-diff',
+      label: 'دفع الفارق',
+      value: `${getPaymentMethodLabel(details.طريقة_دفع_الفارق)}${amount}`,
+    });
   }
 
-  return lines;
+  if (details.الحالة_السابقة !== undefined || details.الحالة_الجديدة !== undefined) {
+    rows.push({
+      id: 'status-change',
+      label: 'الحالة',
+      before: toDisplayValue(details.الحالة_السابقة),
+      after: toDisplayValue(details.الحالة_الجديدة),
+    });
+  }
+
+  const changes = details.التغييرات;
+  if (Array.isArray(changes)) {
+    changes.forEach((change, index) => {
+      const c = asRecord(change);
+      const productName = toDisplayValue(c.منتج || `منتج ${index + 1}`);
+      const operation = String(c.عملية || '').trim();
+
+      const hasQuantityPair = c.كمية_سابقة !== undefined || c.كمية_جديدة !== undefined || c.من !== undefined || c.إلى !== undefined;
+      if (hasQuantityPair) {
+        const beforeQty = c.كمية_سابقة ?? c.من;
+        const afterQty = c.كمية_جديدة ?? c.إلى;
+        rows.push({
+          id: `qty-${index}`,
+          label: `${productName} • ${operation || 'تعديل كمية'}`,
+          before: toDisplayValue(beforeQty),
+          after: toDisplayValue(afterQty),
+        });
+      } else if (operation === 'إضافة جديد' && c.كمية !== undefined) {
+        rows.push({
+          id: `qty-add-${index}`,
+          label: `${productName} • إضافة`,
+          before: '0',
+          after: toDisplayValue(c.كمية),
+        });
+      } else if (operation === 'حذف') {
+        rows.push({
+          id: `qty-delete-${index}`,
+          label: `${productName} • حذف`,
+          before: toDisplayValue(c.كمية_سابقة ?? c.من),
+          after: '0',
+        });
+      }
+
+      if (c.هدية_سابقة !== undefined || c.هدية_جديدة !== undefined) {
+        rows.push({
+          id: `gift-${index}`,
+          label: `${productName} • هدية`,
+          before: toDisplayValue(c.هدية_سابقة),
+          after: toDisplayValue(c.هدية_جديدة),
+        });
+      } else if (c.هدية !== undefined) {
+        rows.push({
+          id: `gift-single-${index}`,
+          label: `${productName} • هدية`,
+          value: toDisplayValue(c.هدية),
+        });
+      }
+    });
+  }
+
+  Object.keys(details)
+    .filter((key) => key.endsWith('_سابقة'))
+    .forEach((oldKey) => {
+      const base = oldKey.replace(/_سابقة$/, '');
+      const newKey = `${base}_جديدة`;
+      if (!(newKey in details)) return;
+      const alreadyAdded = rows.some((row) => row.id === `pair-${base}` || row.label.startsWith(base));
+      if (alreadyAdded) return;
+
+      rows.push({
+        id: `pair-${base}`,
+        label: base,
+        before: toDisplayValue(details[oldKey]),
+        after: toDisplayValue(details[newKey]),
+      });
+    });
+
+  return rows;
 };
 
 const ExceptionalActionsSummary: React.FC<ExceptionalActionsSummaryProps> = ({
-  workerId, periodStart, periodEnd,
+  workerId,
+  periodStart,
+  periodEnd,
 }) => {
-  const { data: actions, isLoading } = useQuery({
+  const [openItems, setOpenItems] = useState<Record<string, boolean>>({});
+
+  useRealtimeSubscription(
+    `session-exceptional-actions-${workerId || 'none'}`,
+    [{ table: 'activity_logs', filter: workerId ? `worker_id=eq.${workerId}` : undefined }],
+    [['session-exceptional-actions', workerId, periodStart, periodEnd]],
+    !!workerId && !!periodStart && !!periodEnd,
+  );
+
+  const { data: actions } = useQuery({
     queryKey: ['session-exceptional-actions', workerId, periodStart, periodEnd],
     queryFn: async (): Promise<ExceptionalAction[]> => {
       const startTz = toTz(periodStart, false);
@@ -128,14 +267,11 @@ const ExceptionalActionsSummary: React.FC<ExceptionalActionsSummaryProps> = ({
 
       if (error) throw error;
 
-      // Filter to truly exceptional actions (exclude routine status changes like "assigned" -> "in_progress")
-      return (data || []).filter((a: any) => {
-        const details = a.details || {};
-        // Keep cancellations
-        if (a.action_type === 'status_change' && details?.الحالة_الجديدة === 'cancelled') return true;
-        // Skip routine status transitions
-        if (a.action_type === 'status_change' && ['in_progress', 'delivered', 'assigned'].includes(details?.الحالة_الجديدة)) return false;
-        // Keep all deletes, updates, reprints, payment_updates
+      return (data || []).filter((a) => {
+        const details = asRecord(a.details);
+
+        if (a.action_type === 'status_change' && isCancelledStatus(details?.الحالة_الجديدة)) return true;
+        if (a.action_type === 'status_change' && isRoutineStatus(details?.الحالة_الجديدة)) return false;
         if (['delete', 'update', 'reprint', 'payment_update'].includes(a.action_type)) return true;
         return false;
       }) as ExceptionalAction[];
@@ -143,23 +279,28 @@ const ExceptionalActionsSummary: React.FC<ExceptionalActionsSummaryProps> = ({
     enabled: !!workerId && !!periodStart && !!periodEnd,
   });
 
-  // Count gift reversals from post-delivery changes
-  const giftReversals = (actions || []).filter(a => {
-    const details = a.details || {};
-    if (details?.نوع_التعديل !== 'تعديل بعد التوصيل') return false;
-    const changes = details?.التغييرات;
-    if (!Array.isArray(changes)) return false;
-    return changes.some((c: any) => 
-      c.هدية_سابقة !== undefined && c.هدية_جديدة !== undefined && c.هدية_سابقة !== c.هدية_جديدة
-    );
-  });
+  const giftReversals = useMemo(
+    () =>
+      (actions || []).filter((action) => {
+        const details = asRecord(action.details);
+        if (details?.نوع_التعديل !== 'تعديل بعد التوصيل') return false;
+        const changes = details?.التغييرات;
+        if (!Array.isArray(changes)) return false;
+
+        return changes.some((change) => {
+          const c = asRecord(change);
+          return c.هدية_سابقة !== undefined && c.هدية_جديدة !== undefined && c.هدية_سابقة !== c.هدية_جديدة;
+        });
+      }),
+    [actions],
+  );
 
   const isEmpty = !actions || actions.length === 0;
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2" dir="rtl">
       {giftReversals.length > 0 && (
-        <Badge className="bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400 text-[10px]">
+        <Badge className="bg-primary/10 text-primary border border-primary/30 text-[10px]">
           <RotateCcw className="w-3 h-3 ml-1" />
           {giftReversals.length} تراجع هدايا
         </Badge>
@@ -169,35 +310,69 @@ const ExceptionalActionsSummary: React.FC<ExceptionalActionsSummaryProps> = ({
         <p className="text-xs text-muted-foreground">لا توجد إجراءات استثنائية خلال هذه الفترة ✓</p>
       ) : (
         <div className="space-y-1.5">
-          {actions!.map(action => {
-            const changeLines = formatChanges(action.details);
+          {actions.map((action) => {
+            const rows = buildDetailRows(action.details);
+            const isOpen = !!openItems[action.id];
+
             return (
-              <div
+              <Collapsible
                 key={action.id}
-                className={`rounded-lg border p-2.5 space-y-1 ${getActionColor(action)}`}
+                open={isOpen}
+                onOpenChange={(open) => setOpenItems((prev) => ({ ...prev, [action.id]: open }))}
               >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5">
-                    {getActionIcon(action)}
-                    <span className="text-xs font-semibold">{getActionLabel(action)}</span>
-                  </div>
-                  <span className="text-[10px] text-muted-foreground">
-                    {format(new Date(action.created_at), 'HH:mm', { locale: ar })}
-                  </span>
+                <div className={`rounded-lg border ${getActionColor(action)}`}>
+                  <CollapsibleTrigger asChild>
+                    <button
+                      type="button"
+                      className="w-full p-2.5 flex items-center justify-between gap-2 text-right"
+                      aria-label={`عرض تفاصيل ${getActionLabel(action)}`}
+                    >
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        {getActionIcon(action)}
+                        <span className="text-xs font-semibold truncate">{getActionLabel(action)}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <span className="text-[10px] text-muted-foreground">
+                          {format(new Date(action.created_at), 'HH:mm', { locale: ar })}
+                        </span>
+                        {isOpen ? (
+                          <ChevronUp className="w-3.5 h-3.5 text-muted-foreground" />
+                        ) : (
+                          <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
+                        )}
+                      </div>
+                    </button>
+                  </CollapsibleTrigger>
+
+                  <CollapsibleContent>
+                    <div className="px-2.5 pb-2.5 pt-1.5 border-t border-border/50 space-y-1.5">
+                      {action.entity_id && (
+                        <p className="text-[10px] text-muted-foreground font-mono">#{action.entity_id.slice(0, 8)}</p>
+                      )}
+
+                      {rows.length === 0 ? (
+                        <p className="text-[11px] text-muted-foreground">لا توجد تفاصيل إضافية.</p>
+                      ) : (
+                        rows.map((row) => (
+                          <div key={row.id} className="rounded-md bg-background/70 border border-border/60 px-2 py-1.5 space-y-1">
+                            <p className="text-[11px] font-medium text-foreground/90">{row.label}</p>
+
+                            {row.before !== undefined && row.after !== undefined ? (
+                              <div className="flex items-center gap-1 text-[11px] font-semibold">
+                                <span className="text-[hsl(var(--success))]">{row.before}</span>
+                                <span className="text-muted-foreground">←</span>
+                                <span className="text-destructive">{row.after}</span>
+                              </div>
+                            ) : (
+                              <p className="text-[11px] text-foreground/80">{row.value}</p>
+                            )}
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </CollapsibleContent>
                 </div>
-                {action.entity_id && (
-                  <p className="text-[10px] text-muted-foreground font-mono">
-                    #{action.entity_id.slice(0, 8)}
-                  </p>
-                )}
-                {changeLines.length > 0 && (
-                  <div className="space-y-0.5 pt-0.5">
-                    {changeLines.map((line, idx) => (
-                      <p key={idx} className="text-[11px] text-foreground/80 leading-tight">{line}</p>
-                    ))}
-                  </div>
-                )}
-              </div>
+              </Collapsible>
             );
           })}
         </div>
