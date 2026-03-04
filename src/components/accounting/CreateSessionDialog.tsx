@@ -315,7 +315,7 @@ const CreateSessionDialog: React.FC<CreateSessionDialogProps> = ({ open, onOpenC
           </div>
         </DialogHeader>
 
-        <ScrollArea className="max-h-[calc(90vh-6rem)] px-3 py-3 [&_[data-radix-scroll-area-viewport]]:[scrollbar-gutter:stable] [&_[data-radix-scroll-area-scrollbar]]:w-2 [&_[data-radix-scroll-area-thumb]]:bg-muted-foreground/40">
+        <ScrollArea className="max-h-[calc(90vh-6rem)] px-3 py-3 [&_[data-radix-scroll-area-scrollbar]]:hidden">
           <div className="space-y-3">
 
             {/* ━━━ Step 1: Period ━━━ */}
@@ -625,7 +625,7 @@ const CreateSessionDialog: React.FC<CreateSessionDialogProps> = ({ open, onOpenC
               </div>
             </DialogTitle>
           </DialogHeader>
-          <ScrollArea className="max-h-[calc(90vh-12rem)] px-4 py-3 space-y-3">
+          <ScrollArea className="max-h-[calc(90vh-12rem)] px-4 py-3 space-y-3 [&_[data-radix-scroll-area-scrollbar]]:hidden">
             {calc && (
               <WorkerHandoverSummary
                 workerId={selectedWorkerId}
