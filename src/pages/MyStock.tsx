@@ -53,7 +53,6 @@ const MyStock: React.FC = () => {
   const { data: loadedData } = useQuery({
     queryKey: ['my-stock-loaded', workerId, lastAccountingDate],
     queryFn: async () => {
-      // Get loading sessions for this worker since last accounting
       let sessionsQuery = supabase
         .from('loading_sessions')
         .select('id')
@@ -72,6 +71,35 @@ const MyStock: React.FC = () => {
         .from('loading_session_items')
         .select('product_id, quantity, gift_quantity, previous_quantity')
         .in('session_id', sessionIds);
+
+      return items || [];
+    },
+    enabled: !!workerId,
+  });
+
+  // Fetch last review session quantities as fallback for رصيد
+  const { data: reviewData } = useQuery({
+    queryKey: ['my-stock-review', workerId, lastAccountingDate],
+    queryFn: async () => {
+      let reviewQuery = supabase
+        .from('loading_sessions')
+        .select('id')
+        .eq('worker_id', workerId!)
+        .eq('status', 'review')
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      if (lastAccountingDate) {
+        reviewQuery = reviewQuery.gte('created_at', lastAccountingDate);
+      }
+
+      const { data: sessions } = await reviewQuery;
+      if (!sessions || sessions.length === 0) return [];
+
+      const { data: items } = await supabase
+        .from('loading_session_items')
+        .select('product_id, quantity')
+        .eq('session_id', sessions[0].id);
 
       return items || [];
     },
@@ -123,6 +151,15 @@ const MyStock: React.FC = () => {
     },
     enabled: !!workerId,
   });
+
+  // Build review quantities map (fallback for products not in loading sessions)
+  const reviewQuantities = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const item of (reviewData || [])) {
+      map[item.product_id] = (map[item.product_id] || 0) + item.quantity;
+    }
+    return map;
+  }, [reviewData]);
 
   // Calculate loaded per product from loading sessions
   const movementStats = useMemo(() => {
@@ -212,7 +249,7 @@ const MyStock: React.FC = () => {
             const isZero = item.quantity === 0;
             const stats = movementStats[item.product_id];
             const loaded = stats?.loaded || 0;
-            const totalLoad = stats?.totalLoad || 0;
+            const totalLoad = stats?.totalLoad || reviewQuantities[item.product_id] || item.quantity;
             const sold = stats?.sold || 0;
             const gifts = giftStats[item.product_id];
             const giftQty = gifts?.totalGifts || 0;
