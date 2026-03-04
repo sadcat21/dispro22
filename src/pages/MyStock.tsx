@@ -70,7 +70,7 @@ const MyStock: React.FC = () => {
       const sessionIds = sessions.map(s => s.id);
       const { data: items } = await supabase
         .from('loading_session_items')
-        .select('product_id, quantity, gift_quantity')
+        .select('product_id, quantity, gift_quantity, previous_quantity')
         .in('session_id', sessionIds);
 
       return items || [];
@@ -126,13 +126,14 @@ const MyStock: React.FC = () => {
 
   // Calculate loaded per product from loading sessions
   const movementStats = useMemo(() => {
-    const stats: Record<string, { loaded: number; sold: number }> = {};
+    const stats: Record<string, { loaded: number; totalLoad: number; sold: number }> = {};
     for (const item of (loadedData || [])) {
-      if (!stats[item.product_id]) stats[item.product_id] = { loaded: 0, sold: 0 };
+      if (!stats[item.product_id]) stats[item.product_id] = { loaded: 0, totalLoad: 0, sold: 0 };
       stats[item.product_id].loaded += item.quantity + (item.gift_quantity || 0);
+      stats[item.product_id].totalLoad += (item.previous_quantity || 0) + item.quantity + (item.gift_quantity || 0);
     }
     for (const item of (soldData || [])) {
-      if (!stats[item.product_id]) stats[item.product_id] = { loaded: 0, sold: 0 };
+      if (!stats[item.product_id]) stats[item.product_id] = { loaded: 0, totalLoad: 0, sold: 0 };
       stats[item.product_id].sold += item.quantity;
     }
     return stats;
@@ -211,6 +212,7 @@ const MyStock: React.FC = () => {
             const isZero = item.quantity === 0;
             const stats = movementStats[item.product_id];
             const loaded = stats?.loaded || 0;
+            const totalLoad = stats?.totalLoad || 0;
             const sold = stats?.sold || 0;
             const gifts = giftStats[item.product_id];
             const giftQty = gifts?.totalGifts || 0;
@@ -231,6 +233,12 @@ const MyStock: React.FC = () => {
                       <TrendingUp className="w-3 h-3 text-blue-500" />
                       شحن: {loaded}
                     </span>
+                    {totalLoad > 0 && (
+                      <span className="flex items-center gap-0.5">
+                        <Package className="w-3 h-3 text-purple-500" />
+                        رصيد: {totalLoad}
+                      </span>
+                    )}
                     <span className="flex items-center gap-0.5">
                       <TrendingDown className="w-3 h-3 text-green-500" />
                       مباع: {sold}
