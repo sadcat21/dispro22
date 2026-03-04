@@ -24,10 +24,14 @@ interface PostDeliveryConfirmDialogProps {
   newTotal: number;
   onConfirm: (paymentType: 'full' | 'partial' | 'no_payment', paidAmount?: number) => void;
   isSubmitting: boolean;
+  customerHasDebt?: boolean;
+  customerDebtAmount?: number;
+  customerCreditBalance?: number;
 }
 
 const PostDeliveryConfirmDialog: React.FC<PostDeliveryConfirmDialogProps> = ({
   open, onOpenChange, changes, originalTotal, newTotal, onConfirm, isSubmitting,
+  customerHasDebt, customerDebtAmount = 0, customerCreditBalance = 0,
 }) => {
   const { t, dir } = useLanguage();
   const [paymentType, setPaymentType] = useState<'full' | 'partial' | 'no_payment'>('full');
@@ -123,12 +127,18 @@ const PostDeliveryConfirmDialog: React.FC<PostDeliveryConfirmDialogProps> = ({
               {isIncrease && (
                 <div className="border border-amber-200 bg-amber-50 rounded-lg p-3 text-sm text-amber-800">
                   <p className="font-bold mb-1">💰 العميل مطالب بدفع {absDifference.toLocaleString()} دج إضافية</p>
+                  {customerCreditBalance > 0 && (
+                    <p className="text-xs mt-1">💳 لدى العميل رصيد فائض: {customerCreditBalance.toLocaleString()} دج (سيتم خصمه تلقائياً)</p>
+                  )}
                 </div>
               )}
 
               {isDecrease && (
                 <div className="border border-blue-200 bg-blue-50 rounded-lg p-3 text-sm text-blue-800">
-                  <p className="font-bold mb-1">💸 يجب إعادة {absDifference.toLocaleString()} دج للعميل</p>
+                  <p className="font-bold mb-1">💸 فارق لصالح العميل: {absDifference.toLocaleString()} دج</p>
+                  {customerHasDebt && customerDebtAmount > 0 && (
+                    <p className="text-xs mt-1">📋 لدى العميل ديون بقيمة: {customerDebtAmount.toLocaleString()} دج (سيتم خصم الفارق منها تلقائياً)</p>
+                  )}
                 </div>
               )}
             </div>
@@ -142,15 +152,27 @@ const PostDeliveryConfirmDialog: React.FC<PostDeliveryConfirmDialogProps> = ({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="full">
-                      {isIncrease ? 'دفع كامل الفارق' : 'إعادة كامل المبلغ'}
-                    </SelectItem>
-                    <SelectItem value="partial">
-                      {isIncrease ? 'دفع جزئي' : 'إعادة جزئية'}
-                    </SelectItem>
-                    <SelectItem value="no_payment">
-                      {isIncrease ? 'بدون دفع (دين)' : 'بدون إرجاع (رصيد للعميل)'}
-                    </SelectItem>
+                    {isIncrease ? (
+                      <>
+                        <SelectItem value="full">دفع كامل الفارق</SelectItem>
+                        <SelectItem value="partial">دفع جزئي</SelectItem>
+                        <SelectItem value="no_payment">
+                          {customerCreditBalance > 0
+                            ? `خصم من رصيد العميل (${customerCreditBalance.toLocaleString()} دج)`
+                            : 'بدون دفع (دين)'}
+                        </SelectItem>
+                      </>
+                    ) : (
+                      <>
+                        <SelectItem value="full">إعادة كامل المبلغ للعميل</SelectItem>
+                        <SelectItem value="partial">إعادة جزئية</SelectItem>
+                        <SelectItem value="no_payment">
+                          {customerHasDebt && customerDebtAmount > 0
+                            ? `خصم من دين العميل (${customerDebtAmount.toLocaleString()} دج)`
+                            : 'بدون إرجاع (رصيد فائض للعميل)'}
+                        </SelectItem>
+                      </>
+                    )}
                   </SelectContent>
                 </Select>
 

@@ -50,6 +50,8 @@ const ModifyOrderDialog: React.FC<ModifyOrderDialogProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [assignedWorkerId, setAssignedWorkerId] = useState(order.assigned_worker_id || '');
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [customerDebtTotal, setCustomerDebtTotal] = useState(0);
+  const [customerCreditTotal, setCustomerCreditTotal] = useState(0);
 
   const canChangeWorker = role === 'admin' || role === 'branch_admin' || order.created_by === workerId;
 
@@ -226,10 +228,28 @@ const ModifyOrderDialog: React.FC<ModifyOrderDialogProps> = ({
       difference: i.new_quantity - i.original_quantity,
     }));
 
-  const handleSaveClick = () => {
+  const handleSaveClick = async () => {
     if (!hasChanges || !workerId) return;
-    // For delivered orders with product changes, show confirmation dialog
     if (order.status === 'delivered' && productChanges.length > 0) {
+      // Fetch customer debts and credits before showing dialog
+      const { data: debts } = await supabase
+        .from('customer_debts')
+        .select('total_amount, paid_amount, remaining_amount')
+        .eq('customer_id', order.customer_id)
+        .in('status', ['active', 'partially_paid']);
+      const debtSum = (debts || []).reduce((s, d) => s + (d.remaining_amount ?? (d.total_amount - d.paid_amount)), 0);
+      setCustomerDebtTotal(debtSum);
+
+      const { data: credits } = await supabase
+        .from('customer_credits')
+        .select('amount')
+        .eq('customer_id', order.customer_id)
+        .eq('is_used', false)
+        .eq('status', 'approved')
+        .eq('credit_type', 'financial');
+      const creditSum = (credits || []).reduce((s, c) => s + c.amount, 0);
+      setCustomerCreditTotal(creditSum);
+
       setShowConfirmDialog(true);
       return;
     }
@@ -361,31 +381,112 @@ const ModifyOrderDialog: React.FC<ModifyOrderDialogProps> = ({
 
       // Handle post-delivery payment difference
       const totalDiff = orderTotal - originalTotal;
-      if (order.status === 'delivered' && totalDiff > 0 && paymentType) {
-        if (paymentType === 'no_payment') {
-          // Register as debt
-          await supabase.from('customer_debts').insert({
-            customer_id: order.customer_id,
-            order_id: order.id,
-            worker_id: workerId,
-            branch_id: order.branch_id,
-            total_amount: totalDiff,
-            paid_amount: 0,
-            status: 'active',
-            notes: 'فارق تعديل طلبية بعد التوصيل',
-          });
-        } else if (paymentType === 'partial' && paidAmount && paidAmount < totalDiff) {
-          const debtAmount = totalDiff - paidAmount;
-          await supabase.from('customer_debts').insert({
-            customer_id: order.customer_id,
-            order_id: order.id,
-            worker_id: workerId,
-            branch_id: order.branch_id,
-            total_amount: debtAmount,
-            paid_amount: 0,
-            status: 'active',
-            notes: 'فارق تعديل طلبية بعد التوصيل (دفع جزئي)',
-          });
+      if (order.status === 'delivered' && totalDiff !== 0 && paymentType) {
+        if (totalDiff > 0) {
+          // INCREASE: customer owes more
+          let remainingDiff = totalDiff;
+          
+          if (paymentType === 'partial' && paidAmount) {
+            remainingDiff = totalDiff - paidAmount;
+          } else if (paymentType === 'full') {
+            remainingDiff = 0;
+          }
+
+          if (remainingDiff > 0) {
+            // Check customer credits first
+            const { data: credits } = await supabase
+              .from('customer_credits')
+              .select('id, amount')
+              .eq('customer_id', order.customer_id)
+              .eq('is_used', false)
+              .eq('status', 'approved')
+              .eq('credit_type', 'financial')
+              .order('created_at', { ascending: true });
+
+            let creditDeducted = 0;
+            for (const credit of (credits || [])) {
+              if (remainingDiff <= 0) break;
+              const deduct = Math.min(credit.amount, remainingDiff);
+              if (deduct >= credit.amount) {
+                await supabase.from('customer_credits').update({ is_used: true, used_at: new Date().toISOString(), used_in_order_id: order.id }).eq('id', credit.id);
+              } else {
+                await supabase.from('customer_credits').update({ amount: credit.amount - deduct }).eq('id', credit.id);
+              }
+              remainingDiff -= deduct;
+              creditDeducted += deduct;
+            }
+
+            // Remainder becomes debt
+            if (remainingDiff > 0) {
+              await supabase.from('customer_debts').insert({
+                customer_id: order.customer_id,
+                order_id: order.id,
+                worker_id: workerId,
+                branch_id: order.branch_id,
+                total_amount: remainingDiff,
+                paid_amount: 0,
+                status: 'active',
+                notes: creditDeducted > 0 
+                  ? `فارق تعديل طلبية بعد التوصيل (تم خصم ${creditDeducted.toLocaleString()} دج من رصيد العميل)`
+                  : 'فارق تعديل طلبية بعد التوصيل',
+              });
+            }
+          }
+        } else {
+          // DECREASE: customer is owed money (totalDiff < 0)
+          const refundAmount = Math.abs(totalDiff);
+          let remainingRefund = refundAmount;
+
+          if (paymentType === 'full') {
+            remainingRefund = 0; // Refunded in cash
+          } else if (paymentType === 'partial' && paidAmount) {
+            remainingRefund = refundAmount - paidAmount;
+          }
+
+          if (remainingRefund > 0) {
+            // Try to deduct from customer's existing debts
+            const { data: debts } = await supabase
+              .from('customer_debts')
+              .select('id, total_amount, paid_amount, remaining_amount')
+              .eq('customer_id', order.customer_id)
+              .in('status', ['active', 'partially_paid'])
+              .order('created_at', { ascending: true });
+
+            let debtDeducted = 0;
+            for (const debt of (debts || [])) {
+              if (remainingRefund <= 0) break;
+              const debtRemaining = (debt.remaining_amount ?? (debt.total_amount - debt.paid_amount));
+              const deduct = Math.min(debtRemaining, remainingRefund);
+              const newPaid = debt.paid_amount + deduct;
+              const newRemaining = debt.total_amount - newPaid;
+              await supabase.from('customer_debts').update({
+                paid_amount: newPaid,
+                remaining_amount: newRemaining,
+                status: newRemaining <= 0 ? 'paid' : 'partially_paid',
+                notes: (debt as any).notes ? `${(debt as any).notes} | خصم ${deduct.toLocaleString()} دج من فارق تعديل` : `خصم ${deduct.toLocaleString()} دج من فارق تعديل`,
+              }).eq('id', debt.id);
+              remainingRefund -= deduct;
+              debtDeducted += deduct;
+            }
+
+            // Remainder becomes customer credit (surplus)
+            if (remainingRefund > 0) {
+              await supabase.from('customer_credits').insert({
+                customer_id: order.customer_id,
+                order_id: order.id,
+                worker_id: workerId!,
+                branch_id: order.branch_id,
+                amount: remainingRefund,
+                credit_type: 'financial',
+                status: 'approved',
+                approved_by: workerId,
+                approved_at: new Date().toISOString(),
+                notes: debtDeducted > 0
+                  ? `فائض من تعديل طلبية بعد التوصيل (تم خصم ${debtDeducted.toLocaleString()} دج من ديون العميل)`
+                  : 'فائض من تعديل طلبية بعد التوصيل',
+              });
+            }
+          }
         }
       }
 
@@ -412,6 +513,7 @@ const ModifyOrderDialog: React.FC<ModifyOrderDialogProps> = ({
       queryClient.invalidateQueries({ queryKey: ['worker-truck-stock'] });
       queryClient.invalidateQueries({ queryKey: ['customer-debts'] });
       queryClient.invalidateQueries({ queryKey: ['customer-debt-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['customer-credits'] });
 
       toast.success(t('orders.order_modified'));
       onOpenChange(false);
@@ -564,6 +666,9 @@ const ModifyOrderDialog: React.FC<ModifyOrderDialogProps> = ({
         newTotal={orderTotal}
         onConfirm={handlePostDeliveryConfirm}
         isSubmitting={isSubmitting}
+        customerHasDebt={customerDebtTotal > 0}
+        customerDebtAmount={customerDebtTotal}
+        customerCreditBalance={customerCreditTotal}
       />
     </Dialog>
   );
