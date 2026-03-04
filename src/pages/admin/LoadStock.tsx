@@ -1157,36 +1157,43 @@ const LoadStock: React.FC = () => {
   return (
     <div className="flex flex-col h-[calc(100vh-8rem)]">
       {/* Header */}
-      <div className="p-4 pb-2 space-y-3">
-        <h2 className="text-xl font-bold flex items-center gap-2">
-          <Truck className="w-5 h-5 text-primary" />
-          {t('stock.load_to_worker')}
-        </h2>
+      <div className="px-3 pt-3 pb-1 space-y-2.5">
+        <div className="flex items-center gap-2.5">
+          <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+            <Truck className="w-5 h-5 text-primary" />
+          </div>
+          <h2 className="text-lg font-bold">{t('stock.load_to_worker')}</h2>
+        </div>
 
         {/* Worker Selection */}
-        <Button variant="outline" className="w-full justify-between h-11" onClick={() => setShowWorkerPicker(true)}>
-          <div className="flex items-center gap-2">
-            <User className="w-4 h-4 text-primary" />
-            <span>{selectedWorker ? workers.find(w => w.id === selectedWorker)?.full_name : t('stock.select_worker')}</span>
+        <button
+          className="w-full flex items-center justify-between h-12 px-3 rounded-xl ring-1 ring-border/60 bg-card hover:bg-muted/30 active:scale-[0.99] transition-all"
+          onClick={() => setShowWorkerPicker(true)}
+        >
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+              <User className="w-4 h-4 text-primary" />
+            </div>
+            <span className="text-sm font-medium">{selectedWorker ? workers.find(w => w.id === selectedWorker)?.full_name : t('stock.select_worker')}</span>
           </div>
           <ChevronDown className="w-4 h-4 text-muted-foreground" />
-        </Button>
+        </button>
 
         {/* Stock Summary Collapsible */}
         {selectedWorker && !suggestionsLoading && suggestions.length > 0 && (
           <Collapsible>
             <CollapsibleTrigger asChild>
-              <Button variant="outline" className="w-full flex items-center justify-between">
+              <button className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl ring-1 ring-border/60 bg-card hover:bg-muted/30 active:scale-[0.99] transition-all">
                 <div className="flex items-center gap-2">
-                  {hasDeficit ? <AlertTriangle className="w-4 h-4 text-destructive" /> : <CheckCircle className="w-4 h-4 text-primary" />}
-                  <span className="font-semibold text-sm">{hasDeficit ? t('stock.needs_loading') : t('stock.stock_sufficient')}</span>
-                  {hasDeficit && <Badge variant="destructive" className="text-xs">{totalDeficit} {t('stock.boxes')}</Badge>}
+                  {hasDeficit ? <AlertTriangle className="w-4 h-4 text-destructive" /> : <CheckCircle className="w-4 h-4 text-green-600" />}
+                  <span className="font-semibold text-[13px]">{hasDeficit ? t('stock.needs_loading') : t('stock.stock_sufficient')}</span>
+                  {hasDeficit && <Badge variant="destructive" className="text-[10px] px-2 rounded-full">{totalDeficit} {t('stock.boxes')}</Badge>}
                 </div>
                 <ChevronDown className="w-4 h-4 text-muted-foreground" />
-              </Button>
+              </button>
             </CollapsibleTrigger>
             <CollapsibleContent className="mt-2">
-              <div className="grid gap-2 max-h-[30vh] overflow-y-auto">
+              <div className="grid gap-1.5 max-h-[30vh] overflow-y-auto">
                 {suggestions.map(s => {
                   const sessionLoad = sessionItems.filter(si => si.product_id === s.product_id);
                   const loadedBoxes = sessionLoad.reduce((sum: number, si: any) => sum + (si.quantity || 0), 0);
@@ -1194,69 +1201,63 @@ const LoadStock: React.FC = () => {
                   const newGiftUnit = sessionLoad[0]?.gift_unit || 'piece';
                   const product = products.find(p => p.id === s.product_id);
                   const piecesPerBox = product?.pieces_per_box || 20;
-                  // Total new = boxes + gifts in custom format
                   const giftInCustom = newGiftUnit === 'box' ? newGiftQty : totalPiecesToCustom(newGiftQty, piecesPerBox);
                   const totalNewLoaded = newGiftQty > 0 ? addCustomQty(loadedBoxes, giftInCustom, piecesPerBox) : loadedBoxes;
-                  // Use piece-based math to get old stock
                   const oldStock = totalNewLoaded > 0 ? subtractCustomQty(s.current_stock, totalNewLoaded, piecesPerBox) : s.current_stock;
                   const surplus = Math.max(0, s.current_stock - s.pending_orders_quantity);
-                  
-                  // Gifts from current session only
                   const newGiftInCustom = newGiftUnit === 'box' ? newGiftQty : totalPiecesToCustom(newGiftQty, piecesPerBox);
                   const totalGiftsCustom = newGiftInCustom;
                   const hasGifts = totalGiftsCustom > 0;
                   return (
-                    <Card key={s.product_id} className="border">
-                      <CardContent className="p-3">
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center gap-2">
-                            <Package className="w-4 h-4 text-primary" />
-                            <span className="font-semibold text-sm">{s.product_name}</span>
-                          </div>
-                          {s.suggested_load > 0 ? (
-                            <Badge variant="destructive" className="text-xs">يحتاج +{fmtQty(s.suggested_load)}</Badge>
-                          ) : (
-                            <Badge variant="outline" className="text-xs border-primary/30 text-primary">✓ كافي</Badge>
-                          )}
+                    <div key={s.product_id} className="rounded-xl ring-1 ring-border/40 bg-card p-2.5">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <div className="flex items-center gap-1.5">
+                          <Package className="w-3.5 h-3.5 text-primary" />
+                          <span className="font-semibold text-[12px]">{s.product_name}</span>
                         </div>
-                        <div className={`grid ${hasGifts ? 'grid-cols-8' : 'grid-cols-7'} gap-1 text-xs`}>
-                          <div className="bg-muted/50 rounded p-1 text-center">
-                            <div className="text-muted-foreground text-[10px]">المتبقي</div>
-                            <div className="font-bold">{fmtQty(oldStock)}</div>
-                          </div>
-                          <div className="bg-blue-50 dark:bg-blue-950/30 rounded p-1 text-center">
-                            <div className="text-muted-foreground text-[10px]">شحن</div>
-                            <div className="font-bold text-blue-600 dark:text-blue-400">{fmtQty((workerLoadedData || {})[s.product_id] || 0)}</div>
-                          </div>
-                          <div className="bg-orange-50 dark:bg-orange-950/30 rounded p-1 text-center">
-                            <div className="text-muted-foreground text-[10px]">بدون محاسبة</div>
-                            <div className="font-bold text-orange-600 dark:text-orange-400">{fmtQty((workerLoadedSinceAccounting || {})[s.product_id] || 0)}</div>
-                          </div>
-                          <div className="bg-primary/5 rounded p-1 text-center">
-                            <div className="text-muted-foreground text-[10px]">جديد</div>
-                            <div className="font-bold text-primary">{loadedBoxes > 0 ? `+${fmtQty(loadedBoxes)}` : '—'}</div>
-                          </div>
-                          <div className="bg-muted/50 rounded p-1 text-center">
-                            <div className="text-muted-foreground text-[10px]">الكلي</div>
-                            <div className="font-bold">{fmtQty(s.current_stock)}</div>
-                          </div>
-                          <div className="bg-muted/50 rounded p-1 text-center">
-                            <div className="text-muted-foreground text-[10px]">طلبات</div>
-                            <div className="font-bold">{fmtQty(s.pending_orders_quantity)}</div>
-                          </div>
-                          <div className="bg-muted/50 rounded p-1 text-center">
-                            <div className="text-muted-foreground text-[10px]">فائض</div>
-                            <div className="font-bold">{fmtQty(surplus)}</div>
-                          </div>
-                          {hasGifts && (
-                            <div className="bg-destructive/5 rounded p-1 text-center">
-                              <div className="text-muted-foreground text-[10px]">هدايا</div>
-                              <div className="font-bold text-destructive">{fmtQty(totalGiftsCustom)}</div>
-                            </div>
-                          )}
+                        {s.suggested_load > 0 ? (
+                          <Badge variant="destructive" className="text-[9px] px-1.5 py-0 h-4 rounded-full">يحتاج +{fmtQty(s.suggested_load)}</Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 rounded-full border-green-400 text-green-600">✓ كافي</Badge>
+                        )}
+                      </div>
+                      <div className={`grid ${hasGifts ? 'grid-cols-8' : 'grid-cols-7'} gap-0.5 text-[10px]`}>
+                        <div className="bg-muted/50 rounded-lg p-1 text-center">
+                          <div className="text-muted-foreground text-[8px]">المتبقي</div>
+                          <div className="font-bold">{fmtQty(oldStock)}</div>
                         </div>
-                      </CardContent>
-                    </Card>
+                        <div className="bg-blue-50 dark:bg-blue-950/30 rounded-lg p-1 text-center">
+                          <div className="text-muted-foreground text-[8px]">شحن</div>
+                          <div className="font-bold text-blue-600 dark:text-blue-400">{fmtQty((workerLoadedData || {})[s.product_id] || 0)}</div>
+                        </div>
+                        <div className="bg-orange-50 dark:bg-orange-950/30 rounded-lg p-1 text-center">
+                          <div className="text-muted-foreground text-[8px]">بدون محاسبة</div>
+                          <div className="font-bold text-orange-600 dark:text-orange-400">{fmtQty((workerLoadedSinceAccounting || {})[s.product_id] || 0)}</div>
+                        </div>
+                        <div className="bg-primary/5 rounded-lg p-1 text-center">
+                          <div className="text-muted-foreground text-[8px]">جديد</div>
+                          <div className="font-bold text-primary">{loadedBoxes > 0 ? `+${fmtQty(loadedBoxes)}` : '—'}</div>
+                        </div>
+                        <div className="bg-muted/50 rounded-lg p-1 text-center">
+                          <div className="text-muted-foreground text-[8px]">الكلي</div>
+                          <div className="font-bold">{fmtQty(s.current_stock)}</div>
+                        </div>
+                        <div className="bg-muted/50 rounded-lg p-1 text-center">
+                          <div className="text-muted-foreground text-[8px]">طلبات</div>
+                          <div className="font-bold">{fmtQty(s.pending_orders_quantity)}</div>
+                        </div>
+                        <div className="bg-muted/50 rounded-lg p-1 text-center">
+                          <div className="text-muted-foreground text-[8px]">فائض</div>
+                          <div className="font-bold">{fmtQty(surplus)}</div>
+                        </div>
+                        {hasGifts && (
+                          <div className="bg-destructive/5 rounded-lg p-1 text-center">
+                            <div className="text-muted-foreground text-[8px]">هدايا</div>
+                            <div className="font-bold text-destructive">{fmtQty(totalGiftsCustom)}</div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   );
                 })}
               </div>
@@ -1272,12 +1273,14 @@ const LoadStock: React.FC = () => {
 
         {/* Session Status */}
         {activeSessionId && (
-          <div className="flex items-center justify-between bg-primary/5 border border-primary/20 rounded-lg p-2">
+          <div className="flex items-center justify-between bg-primary/5 ring-1 ring-primary/20 rounded-xl px-3 py-2.5">
             <div className="flex items-center gap-2 text-sm">
-              <Package className="w-4 h-4 text-primary" />
-              <span className="font-medium">جلسة شحن نشطة</span>
-              <Badge variant="secondary">{sessionItems.length} منتج</Badge>
-              {totalSessionQty > 0 && <Badge>{totalSessionQty} صندوق</Badge>}
+              <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center">
+                <Package className="w-3.5 h-3.5 text-primary" />
+              </div>
+              <span className="font-medium text-[13px]">جلسة شحن نشطة</span>
+              <Badge variant="secondary" className="text-[10px] rounded-full">{sessionItems.length} منتج</Badge>
+              {totalSessionQty > 0 && <Badge className="text-[10px] rounded-full">{totalSessionQty} صندوق</Badge>}
             </div>
           </div>
         )}
@@ -1293,123 +1296,125 @@ const LoadStock: React.FC = () => {
       </div>
 
       {/* Scrollable Session Items */}
-      <ScrollArea className="flex-1 px-4">
+      <ScrollArea className="flex-1 px-3">
         {activeSessionId && sessionItems.length > 0 ? (
-          <div className="space-y-2 pb-4">
+          <div className="space-y-1.5 pb-4 pt-1">
             {sessionItems.map((item: any) => (
-              <Card key={item.id} className="border cursor-pointer hover:border-primary/40 transition-colors" onClick={() => handleEditSessionItem(item)}>
-                <CardContent className="p-3 flex items-center gap-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <Package className="w-4 h-4 text-primary shrink-0" />
-                      <span className="font-medium text-sm truncate">{item.product?.name || item.notes || ''}</span>
-                    </div>
-                    <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground flex-wrap">
-                      <span>الكمية: <strong>{fmtQty(item.quantity)}</strong></span>
-                      {item.gift_quantity > 0 && (
-                        <>
-                          <span>|</span>
-                          <span className="text-destructive">هدايا: <strong>{fmtQty(item.gift_quantity)} {item.gift_unit === 'box' ? 'صندوق' : 'قطعة'}</strong></span>
-                        </>
-                      )}
-                      {item.is_custom_load && (
-                        <Badge className="bg-blue-500 text-white text-[10px] px-1.5 py-0">شحن مخصص</Badge>
-                      )}
-                    </div>
-                    {item.is_custom_load && item.custom_load_note && (
-                      <div className="text-[10px] text-blue-600 mt-0.5">{item.custom_load_note}</div>
+              <div key={item.id} className="flex items-center gap-3 p-3 rounded-xl ring-1 ring-border/40 bg-card cursor-pointer hover:bg-muted/30 active:scale-[0.99] transition-all" onClick={() => handleEditSessionItem(item)}>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <Package className="w-3.5 h-3.5 text-primary shrink-0" />
+                    <span className="font-medium text-[13px] truncate">{item.product?.name || item.notes || ''}</span>
+                  </div>
+                  <div className="flex items-center gap-2 mt-1 text-[11px] text-muted-foreground flex-wrap">
+                    <span>الكمية: <strong>{fmtQty(item.quantity)}</strong></span>
+                    {item.gift_quantity > 0 && (
+                      <>
+                        <span className="text-border">|</span>
+                        <span className="text-destructive">هدايا: <strong>{fmtQty(item.gift_quantity)} {item.gift_unit === 'box' ? 'صندوق' : 'قطعة'}</strong></span>
+                      </>
+                    )}
+                    {item.is_custom_load && (
+                      <Badge className="bg-blue-500 text-white text-[9px] px-1.5 py-0 rounded-full">شحن مخصص</Badge>
                     )}
                   </div>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="shrink-0 text-destructive hover:bg-destructive/10"
-                    onClick={(e) => { e.stopPropagation(); handleRemoveSessionItem(item); }}
-                    disabled={deleteSessionItem.isPending}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </CardContent>
-              </Card>
+                  {item.is_custom_load && item.custom_load_note && (
+                    <div className="text-[10px] text-blue-600 mt-0.5">{item.custom_load_note}</div>
+                  )}
+                </div>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="shrink-0 text-destructive hover:bg-destructive/10 h-8 w-8 rounded-lg"
+                  onClick={(e) => { e.stopPropagation(); handleRemoveSessionItem(item); }}
+                  disabled={deleteSessionItem.isPending}
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              </div>
             ))}
           </div>
         ) : activeSessionId ? (
-          <div className="text-center py-10 text-muted-foreground">
-            <Package className="w-10 h-10 mx-auto mb-2 opacity-30" />
-            <p className="text-sm">لا توجد منتجات في الجلسة بعد</p>
-            <p className="text-xs">اضغط "إضافة منتج" لبدء الشحن</p>
+          <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+            <div className="w-16 h-16 rounded-2xl bg-muted/50 flex items-center justify-center mb-3">
+              <Package className="w-8 h-8 text-muted-foreground/40" />
+            </div>
+            <p className="text-sm font-medium">لا توجد منتجات في الجلسة بعد</p>
+            <p className="text-[11px] text-muted-foreground/70 mt-0.5">اضغط "إضافة منتج" لبدء الشحن</p>
           </div>
         ) : selectedWorker ? (
-          <div className="text-center py-10 text-muted-foreground">
-            <Truck className="w-10 h-10 mx-auto mb-2 opacity-30" />
-            <p className="text-sm">ابدأ جلسة شحن جديدة</p>
+          <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+            <div className="w-16 h-16 rounded-2xl bg-muted/50 flex items-center justify-center mb-3">
+              <Truck className="w-8 h-8 text-muted-foreground/40" />
+            </div>
+            <p className="text-sm font-medium">ابدأ جلسة شحن جديدة</p>
           </div>
         ) : null}
       </ScrollArea>
 
       {/* Fixed Bottom Buttons */}
       {selectedWorker && (
-        <div className="p-4 pt-2 border-t bg-background space-y-2">
+        <div className="px-3 pt-2 pb-3 border-t bg-background space-y-2">
            {!activeSessionId ? (
             <>
               {!hasReviewToday && (
-                <div className="flex items-center gap-2 p-2 rounded-md bg-orange-50 dark:bg-orange-900/10 border border-orange-300 text-orange-700 dark:text-orange-400 text-xs">
-                  <AlertTriangle className="w-4 h-4 shrink-0" />
+                <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-amber-50 dark:bg-amber-900/10 ring-1 ring-amber-200 dark:ring-amber-800 text-amber-700 dark:text-amber-400 text-[11px]">
+                  <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
                   <span>يجب إجراء جلسة مراجعة قبل الشحن أو التفريغ</span>
                 </div>
               )}
               <Button
                 variant="outline"
-                className={hasReviewToday 
-                  ? "w-full border-green-400 text-green-700 bg-green-50/50 dark:bg-green-900/10 hover:bg-green-100 dark:hover:bg-green-900/20"
-                  : "w-full border-blue-400 text-blue-700 bg-blue-50/50 dark:bg-blue-900/10 hover:bg-blue-100 dark:hover:bg-blue-900/20"
-                }
+                className={`w-full h-10 rounded-xl text-[13px] ${hasReviewToday 
+                  ? "border-green-400 text-green-700 bg-green-50/50 dark:bg-green-900/10 hover:bg-green-100 dark:hover:bg-green-900/20"
+                  : "border-blue-400 text-blue-700 bg-blue-50/50 dark:bg-blue-900/10 hover:bg-blue-100 dark:hover:bg-blue-900/20"
+                }`}
                 onClick={() => setShowVerificationDialog(true)}
                 disabled={isEmptying}
               >
                 {hasReviewToday ? <CheckCircle className="w-4 h-4 me-1" /> : <Search className="w-4 h-4 me-1" />}
                 {hasReviewToday ? 'تمت المراجعة ✓ (إعادة المراجعة)' : 'بدء جلسة مراجعة (إلزامي)'}
               </Button>
-              <Button onClick={handleStartSession} className="w-full" disabled={createSession.isPending || !hasReviewToday}>
+              <Button onClick={handleStartSession} className="w-full h-11 rounded-xl text-[13px] shadow-sm" disabled={createSession.isPending || !hasReviewToday}>
                 {createSession.isPending && <Loader2 className="w-4 h-4 animate-spin me-2" />}
                 <Plus className="w-4 h-4 me-1" />
                 بدء جلسة شحن جديدة
               </Button>
-                <div className="grid grid-cols-3 gap-2">
-                  <Button variant="outline" onClick={() => setShowSessionHistory(true)}>
-                    <History className="w-4 h-4 me-1" />
-                    سجل الجلسات
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="text-destructive border-destructive/30 hover:bg-destructive/5"
-                    onClick={handleEmptyTruckPreview}
-                    disabled={isEmptying || !hasReviewToday}
-                  >
-                    {isEmptying ? <Loader2 className="w-4 h-4 animate-spin me-2" /> : <PackageX className="w-4 h-4 me-1" />}
-                    {t('stock.empty_truck')}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="border-orange-400 text-orange-700 bg-orange-50/50 dark:bg-orange-900/10 hover:bg-orange-100 dark:hover:bg-orange-900/20"
-                    onClick={() => setShowExchangeDialog(true)}
-                    disabled={!selectedWorker}
-                  >
-                    <RefreshCw className="w-4 h-4 me-1" />
-                    تغيير
-                  </Button>
-                </div>
+              <div className="grid grid-cols-3 gap-1.5">
+                <Button variant="outline" onClick={() => setShowSessionHistory(true)} className="h-10 rounded-xl text-[11px] px-2">
+                  <History className="w-3.5 h-3.5 me-1" />
+                  سجل الجلسات
+                </Button>
+                <Button
+                  variant="outline"
+                  className="h-10 rounded-xl text-[11px] px-2 text-destructive border-destructive/30 hover:bg-destructive/5"
+                  onClick={handleEmptyTruckPreview}
+                  disabled={isEmptying || !hasReviewToday}
+                >
+                  {isEmptying ? <Loader2 className="w-3.5 h-3.5 animate-spin me-1" /> : <PackageX className="w-3.5 h-3.5 me-1" />}
+                  {t('stock.empty_truck')}
+                </Button>
+                <Button
+                  variant="outline"
+                  className="h-10 rounded-xl text-[11px] px-2 border-orange-400 text-orange-700 bg-orange-50/50 dark:bg-orange-900/10 hover:bg-orange-100 dark:hover:bg-orange-900/20"
+                  onClick={() => setShowExchangeDialog(true)}
+                  disabled={!selectedWorker}
+                >
+                  <RefreshCw className="w-3.5 h-3.5 me-1" />
+                  تغيير
+                </Button>
+              </div>
             </>
           ) : (
             <>
               <div className="flex gap-2">
-                <Button onClick={handleOpenAddProduct} className="flex-1">
+                <Button onClick={handleOpenAddProduct} className="flex-1 h-10 rounded-xl text-[13px] shadow-sm">
                   <Plus className="w-4 h-4 me-1" />
                   إضافة منتج
                 </Button>
                 <Button
                   variant="outline"
-                  className="flex-1 border-primary/30 text-primary hover:bg-primary/5"
+                  className="flex-1 h-10 rounded-xl text-[13px] border-primary/30 text-primary hover:bg-primary/5"
                   onClick={() => setShowPartialLoadDialog(true)}
                   disabled={isSaving}
                 >
@@ -1420,7 +1425,7 @@ const LoadStock: React.FC = () => {
               <div className="flex gap-2">
                 <Button
                   variant="default"
-                  className="flex-1 bg-primary hover:bg-primary/90"
+                  className="flex-1 h-10 rounded-xl text-[13px] shadow-sm bg-primary hover:bg-primary/90"
                   onClick={handleCompleteSession}
                   disabled={sessionItems.length === 0 || completeSession.isPending}
                 >
@@ -1430,7 +1435,7 @@ const LoadStock: React.FC = () => {
                 </Button>
                 <Button
                   variant="outline"
-                  className="flex-1 text-destructive border-destructive/30 hover:bg-destructive/5"
+                  className="flex-1 h-10 rounded-xl text-[13px] text-destructive border-destructive/30 hover:bg-destructive/5"
                   onClick={() => handleDeleteSession(activeSessionId!)}
                   disabled={deleteSession.isPending}
                 >
@@ -1443,7 +1448,6 @@ const LoadStock: React.FC = () => {
           )}
         </div>
       )}
-
       {/* Add Product Dialog */}
       <Dialog open={showAddProductDialog} onOpenChange={setShowAddProductDialog}>
         <DialogContent className="max-w-sm">
