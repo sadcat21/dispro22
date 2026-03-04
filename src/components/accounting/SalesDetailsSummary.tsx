@@ -20,6 +20,7 @@ interface OrderItem {
   unit_price: number;
   total_price: number;
   price_subtype: string | null;
+  payment_type: string | null;
   gift_quantity: number;
 }
 
@@ -80,23 +81,35 @@ const SalesDetailsSummary: React.FC<SalesDetailsSummaryProps> = ({ workerId, per
   const { data: customerSummaries, isLoading } = useQuery({
     queryKey: ['sales-by-customer', workerId, periodStart, periodEnd],
     queryFn: async (): Promise<CustomerSummary[]> => {
+      const periodStartTz = toTz(periodStart, false);
+      const periodEndTz = toTz(periodEnd, true);
+
+      const { data: stockMovements } = await supabase
+        .from('stock_movements')
+        .select('order_id')
+        .eq('worker_id', workerId)
+        .eq('movement_type', 'delivery')
+        .eq('status', 'approved')
+        .gte('created_at', periodStartTz)
+        .lte('created_at', periodEndTz);
+
+      const orderIds = Array.from(new Set((stockMovements || []).map((m: any) => m.order_id).filter(Boolean)));
+      if (orderIds.length === 0) return [];
+
       const { data: deliveredOrders } = await supabase
         .from('orders')
-        .select('id, customer_id, total_amount, payment_status, payment_type, invoice_payment_method, partial_amount, notes, updated_at, customer:customers(name), order_items(price_subtype)')
+        .select('id, customer_id, total_amount, payment_status, payment_type, invoice_payment_method, partial_amount, notes, updated_at, customer:customers(name), order_items(price_subtype, payment_type)')
+        .in('id', orderIds)
         .eq('assigned_worker_id', workerId)
         .eq('status', 'delivered')
-        .gte('updated_at', toTz(periodStart, false))
-        .lte('updated_at', toTz(periodEnd, true))
         .order('updated_at', { ascending: false });
 
       if (!deliveredOrders || deliveredOrders.length === 0) return [];
 
-      const orderIds = deliveredOrders.map(o => o.id);
-
       // Fetch order_items with actual unit_price and price_subtype
       const { data: orderItemsData } = await supabase
         .from('order_items')
-        .select('order_id, quantity, unit_price, total_price, price_subtype, gift_quantity, product:products(name)')
+        .select('order_id, quantity, unit_price, total_price, price_subtype, payment_type, gift_quantity, product:products(name)')
         .in('order_id', orderIds);
 
       const itemsByOrder: Record<string, OrderItem[]> = {};
@@ -110,6 +123,7 @@ const SalesDetailsSummary: React.FC<SalesDetailsSummaryProps> = ({ workerId, per
           unit_price: Number(item.unit_price || 0),
           total_price: Number(item.total_price || 0),
           price_subtype: (item as any).price_subtype || null,
+          payment_type: (item as any).payment_type || null,
           gift_quantity: Number(item.gift_quantity || 0),
         });
       });
@@ -213,7 +227,8 @@ const SalesDetailsSummary: React.FC<SalesDetailsSummaryProps> = ({ workerId, per
     if (!productPriceBreakdown[item.product_name]) productPriceBreakdown[item.product_name] = [];
     const paidQty = Math.max(0, item.quantity - (item.gift_quantity || 0));
     if (paidQty <= 0) return;
-    const subtype = item.price_subtype || o.price_subtype || (o.payment_type === 'with_invoice' ? 'invoice' : 'gros');
+    const itemPaymentType = item.payment_type || o.payment_type;
+    const subtype = item.price_subtype || (itemPaymentType === 'with_invoice' ? 'invoice' : (o.price_subtype || 'gros'));
     const existing = productPriceBreakdown[item.product_name].find(e => e.subtype === subtype && Math.abs(e.unitPrice - item.unit_price) < 0.01);
     if (existing) {
       existing.quantity += paidQty;

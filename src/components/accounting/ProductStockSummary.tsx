@@ -87,25 +87,34 @@ const ProductStockSummary: React.FC<ProductStockSummaryProps> = ({
       const periodStartTz = toTz(periodStart, false);
       const periodEndTz = toTz(periodEnd, true);
 
-      const { data: orders } = await supabase
-        .from('orders')
-        .select('id, total_amount, payment_type')
-        .eq('assigned_worker_id', workerId)
-        .eq('status', 'delivered')
-        .gte('updated_at', periodStartTz)
-        .lte('updated_at', periodEndTz);
+      const { data: stockMovements } = await supabase
+        .from('stock_movements')
+        .select('order_id')
+        .eq('worker_id', workerId)
+        .eq('movement_type', 'delivery')
+        .eq('status', 'approved')
+        .gte('created_at', periodStartTz)
+        .lte('created_at', periodEndTz);
 
-      const ordersTotalSales = orders?.reduce((s, o) => s + Number(o.total_amount || 0), 0) || 0;
-      const orderIds = orders?.map(o => o.id) || [];
-      const orderPaymentTypeMap = new Map((orders || []).map(o => [o.id, o.payment_type || '']));
+      const orderIds = Array.from(new Set((stockMovements || []).map((m: any) => m.order_id).filter(Boolean)));
 
       if (orderIds.length === 0) {
         return { soldProducts: [] as SoldProductRow[], ordersTotalSales: 0, trackedTotal: 0, untrackedCount: 0 };
       }
 
+      const { data: orders } = await supabase
+        .from('orders')
+        .select('id, total_amount, payment_type')
+        .in('id', orderIds)
+        .eq('assigned_worker_id', workerId)
+        .eq('status', 'delivered');
+
+      const ordersTotalSales = orders?.reduce((s, o) => s + Number(o.total_amount || 0), 0) || 0;
+      const orderPaymentTypeMap = new Map((orders || []).map(o => [o.id, o.payment_type || '']));
+
       const { data: orderItems } = await supabase
         .from('order_items')
-        .select('order_id, quantity, gift_quantity, unit_price, total_price, price_subtype, product:products(name)')
+        .select('order_id, quantity, gift_quantity, unit_price, total_price, price_subtype, payment_type, product:products(name)')
         .in('order_id', orderIds);
 
       const productMap: Record<string, SoldProductRow> = {};
@@ -124,8 +133,9 @@ const ProductStockSummary: React.FC<ProductStockSummaryProps> = ({
         if (paidQty <= 0) continue;
 
         const unitPrice = Number(item.unit_price || 0);
-        const paymentType = orderPaymentTypeMap.get(orderId) || '';
-        const subtype = item.price_subtype || (paymentType === 'with_invoice' ? 'invoice' : 'gros');
+        const orderPaymentType = orderPaymentTypeMap.get(orderId) || '';
+        const itemPaymentType = (item as any).payment_type || orderPaymentType;
+        const subtype = item.price_subtype || (itemPaymentType === 'with_invoice' ? 'invoice' : 'gros');
 
         if (!productMap[productName]) {
           productMap[productName] = {
