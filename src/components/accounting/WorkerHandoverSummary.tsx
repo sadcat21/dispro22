@@ -288,14 +288,6 @@ const WorkerHandoverSummary: React.FC<WorkerHandoverSummaryProps> = ({
       label: 'هدايا مسلّمة',
       value: `${totalGiftPieces} قطعة`,
       color: 'text-pink-500',
-      sub: `${fmt(Math.round(calc.giftOfferValue))} DA`,
-    });
-  } else {
-    rows.push({
-      icon: <Gift className="w-3.5 h-3.5 text-muted-foreground" />,
-      label: 'هدايا مسلّمة',
-      value: 'لا يوجد',
-      color: 'text-muted-foreground',
     });
   }
 
