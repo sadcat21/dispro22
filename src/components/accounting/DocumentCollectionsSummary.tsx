@@ -130,20 +130,26 @@ const DocumentCollectionsSummary: React.FC<DocumentCollectionsSummaryProps> = ({
     queryFn: async () => {
       const startDate = extractDate(periodStart);
       const endDate = extractDate(periodEnd);
-      const startTz = startDate + 'T00:00:00+01:00';
-      const endTz = endDate + 'T23:59:59+01:00';
+      // Use exact period timestamps
+      const toTz = (v: string, isEnd: boolean) => {
+        if (v.includes('+') || v.includes('Z')) return v;
+        if (v.includes('T')) return v + ':00+01:00';
+        return isEnd ? v + 'T23:59:59+01:00' : v + 'T00:00:00+01:00';
+      };
+      const startTz = toTz(periodStart, false);
+      const endTz = toTz(periodEnd, true);
 
       const result: CollectedDoc[] = [];
 
       // 1) Pending documents that were actually collected (source of truth)
       const { data: pendingCollections } = await supabase
         .from('document_collections')
-        .select(`id, action, status, collection_date, order_id, order:orders!document_collections_order_id_fkey(id, total_amount, invoice_payment_method, document_status, document_verification, customer:customers!orders_customer_id_fkey(name))`)
+        .select(`id, action, status, collection_date, created_at, order_id, order:orders!document_collections_order_id_fkey(id, total_amount, invoice_payment_method, document_status, document_verification, customer:customers!orders_customer_id_fkey(name))`)
         .eq('worker_id', workerId)
         .eq('action', 'collected')
         .neq('status', 'rejected')
-        .gte('collection_date', startDate)
-        .lte('collection_date', endDate);
+        .gte('created_at', startTz)
+        .lte('created_at', endTz);
 
       for (const c of (pendingCollections || [])) {
         const order = c.order as any;
@@ -196,10 +202,13 @@ const DocumentCollectionsSummary: React.FC<DocumentCollectionsSummaryProps> = ({
   const { data: stampedInvoices } = useQuery({
     queryKey: ['session-stamped-invoices', workerId, periodStart, periodEnd],
     queryFn: async () => {
-      const startDate = extractDate(periodStart);
-      const endDate = extractDate(periodEnd);
-      const startTz = startDate + 'T00:00:00+01:00';
-      const endTz = endDate + 'T23:59:59+01:00';
+      const toTz2 = (v: string, isEnd: boolean) => {
+        if (v.includes('+') || v.includes('Z')) return v;
+        if (v.includes('T')) return v + ':00+01:00';
+        return isEnd ? v + 'T23:59:59+01:00' : v + 'T00:00:00+01:00';
+      };
+      const startTz = toTz2(periodStart, false);
+      const endTz = toTz2(periodEnd, true);
 
       const { data } = await supabase
         .from('orders')

@@ -35,10 +35,14 @@ const DebtCollectionsSummary: React.FC<DebtCollectionsSummaryProps> = ({ workerI
       const startDate = extractDate(periodStart);
       const endDate = extractDate(periodEnd);
 
-      // Query debt_payments with expanded full-day range in UTC to cover timezone differences
-      // Start 1 day before and end 1 day after to account for timezone offsets
-      const startTz = startDate + 'T00:00:00+01:00';
-      const endTz = endDate + 'T23:59:59+01:00';
+      // Use exact period timestamps for debt_payments (timestamp column)
+      const toTz = (v: string, isEnd: boolean) => {
+        if (v.includes('+') || v.includes('Z')) return v;
+        if (v.includes('T')) return v + ':00+01:00';
+        return isEnd ? v + 'T23:59:59+01:00' : v + 'T00:00:00+01:00';
+      };
+      const startTz = toTz(periodStart, false);
+      const endTz = toTz(periodEnd, true);
 
       const { data: payments, error } = await supabase
         .from('debt_payments')
@@ -47,13 +51,16 @@ const DebtCollectionsSummary: React.FC<DebtCollectionsSummaryProps> = ({ workerI
         .gte('collected_at', startTz)
         .lte('collected_at', endTz);
 
-      // Also query debt_collections by collection_date (DATE type - more reliable)
+      // Also query debt_collections by collection_date (DATE type)
+      // Use exact dates but filter with period timestamps where possible
       const { data: collections } = await supabase
         .from('debt_collections')
-        .select('amount_collected, payment_method, debt_id, action')
+        .select('amount_collected, payment_method, debt_id, action, collection_date, created_at')
         .eq('worker_id', workerId)
         .gte('collection_date', startDate)
         .lte('collection_date', endDate)
+        .gte('created_at', startTz)
+        .lte('created_at', endTz)
         .in('action', ['partial_payment', 'full_payment']);
 
       if (error) throw error;
