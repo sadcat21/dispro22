@@ -6,15 +6,17 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Banknote, CreditCard, AlertTriangle, CheckCircle, Loader2, DollarSign, Undo2, Wallet } from 'lucide-react';
+import { Banknote, CreditCard, AlertTriangle, CheckCircle, Loader2, DollarSign, Undo2, Wallet, MinusCircle } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { formatNumber } from '@/utils/formatters';
+import { useCustomerDebtSummary } from '@/hooks/useCustomerDebts';
 
 interface DeliveryPaymentDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   orderTotal: number;
   customerName: string;
+  customerId?: string;
   prepaidAmount?: number;
   frozenPaymentType?: string;
   frozenInvoiceMethod?: string | null;
@@ -27,7 +29,7 @@ interface DeliveryPaymentDialogProps {
     isNoPayment?: boolean;
     confirmedPaymentType?: string;
     confirmedInvoiceMethod?: string | null;
-    overpaymentAction?: 'refund' | 'credit';
+    overpaymentAction?: 'refund' | 'credit' | 'deduct_debt';
     overpaymentAmount?: number;
   }) => Promise<void>;
 }
@@ -37,6 +39,7 @@ const DeliveryPaymentDialog: React.FC<DeliveryPaymentDialogProps> = ({
   onOpenChange,
   orderTotal,
   customerName,
+  customerId,
   prepaidAmount = 0,
   frozenPaymentType,
   frozenInvoiceMethod,
@@ -48,7 +51,10 @@ const DeliveryPaymentDialog: React.FC<DeliveryPaymentDialogProps> = ({
   const [paymentMethod, setPaymentMethod] = useState('cash');
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [overpaymentAction, setOverpaymentAction] = useState<'refund' | 'credit' | null>(null);
+  const [overpaymentAction, setOverpaymentAction] = useState<'refund' | 'credit' | 'deduct_debt' | null>(null);
+
+  const { data: debtSummary } = useCustomerDebtSummary(customerId || null);
+  const hasActiveDebt = (debtSummary?.totalDebt || 0) > 0;
 
   const paidNum = Number(paidAmount) || 0;
   const isOverpayment = paymentMode === 'partial' && paidNum > orderTotal;
@@ -213,7 +219,7 @@ const DeliveryPaymentDialog: React.FC<DeliveryPaymentDialogProps> = ({
                       </p>
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className={`grid ${hasActiveDebt ? 'grid-cols-3' : 'grid-cols-2'} gap-2`}>
                     <Button
                       type="button"
                       size="sm"
@@ -232,9 +238,39 @@ const DeliveryPaymentDialog: React.FC<DeliveryPaymentDialogProps> = ({
                       onClick={() => setOverpaymentAction('credit')}
                     >
                       <Wallet className="w-3.5 h-3.5 me-1" />
-                      وضع في رصيد العميل
+                      رصيد العميل
                     </Button>
+                    {hasActiveDebt && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={overpaymentAction === 'deduct_debt' ? 'default' : 'outline'}
+                        className="text-xs h-10"
+                        onClick={() => setOverpaymentAction('deduct_debt')}
+                      >
+                        <MinusCircle className="w-3.5 h-3.5 me-1" />
+                        خصم من الدين
+                      </Button>
+                    )}
                   </div>
+                  {overpaymentAction === 'deduct_debt' && hasActiveDebt && (
+                    <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-2 text-sm space-y-1">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">إجمالي الدين:</span>
+                        <span className="font-bold">{formatNumber(debtSummary!.totalDebt, language)} {t('common.currency')}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">الفائض للخصم:</span>
+                        <span className="font-bold text-emerald-600">{formatNumber(Math.min(overpaymentAmount, debtSummary!.totalDebt), language)} {t('common.currency')}</span>
+                      </div>
+                      {overpaymentAmount > debtSummary!.totalDebt && (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">المتبقي بعد الخصم:</span>
+                          <span className="font-bold text-orange-600">{formatNumber(overpaymentAmount - debtSummary!.totalDebt, language)} {t('common.currency')}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
                   {!overpaymentAction && (
                     <p className="text-xs text-muted-foreground text-center">يرجى اختيار ما سيتم فعله بالفائض</p>
                   )}

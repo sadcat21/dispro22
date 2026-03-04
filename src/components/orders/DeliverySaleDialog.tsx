@@ -529,7 +529,7 @@ const DeliverySaleDialog: React.FC<DeliverySaleDialogProps> = ({ open, onOpenCha
     notes?: string;
     isFullPayment: boolean;
     isNoPayment?: boolean;
-    overpaymentAction?: 'refund' | 'credit';
+    overpaymentAction?: 'refund' | 'credit' | 'deduct_debt';
     overpaymentAmount?: number;
   }) => {
     setIsSaving(true);
@@ -672,6 +672,53 @@ const DeliverySaleDialog: React.FC<DeliverySaleDialogProps> = ({ open, onOpenCha
           customer_name: order.customer?.name || '',
           notes: `فائض مالي من عميل - طلبية ${order.id.slice(0, 8)}`,
         });
+      }
+
+      // Handle overpayment - deduct from customer's active debts
+      if (paymentData.overpaymentAction === 'deduct_debt' && paymentData.overpaymentAmount && paymentData.overpaymentAmount > 0) {
+        const { data: activeDebts } = await supabase
+          .from('customer_debts')
+          .select('id, total_amount, paid_amount, remaining_amount')
+          .eq('customer_id', order.customer_id)
+          .in('status', ['active', 'partially_paid'])
+          .order('created_at', { ascending: true });
+
+        let surplusLeft = paymentData.overpaymentAmount;
+        if (activeDebts && activeDebts.length > 0) {
+          for (const debt of activeDebts) {
+            if (surplusLeft <= 0) break;
+            const remaining = Number(debt.remaining_amount) || (Number(debt.total_amount) - Number(debt.paid_amount));
+            const deduction = Math.min(surplusLeft, remaining);
+            const newPaid = Number(debt.paid_amount) + deduction;
+            const newStatus = newPaid >= Number(debt.total_amount) ? 'paid' : 'partially_paid';
+
+            await supabase.from('customer_debts').update({ paid_amount: newPaid, status: newStatus }).eq('id', debt.id);
+            await supabase.from('debt_payments').insert({
+              debt_id: debt.id, worker_id: workerId!, amount: deduction,
+              payment_method: 'cash', notes: `خصم فائض من طلبية ${order.id.slice(0, 8)}`,
+            });
+            await supabase.from('debt_collections').insert({
+              debt_id: debt.id, worker_id: workerId!,
+              action: deduction >= remaining ? 'full_payment' : 'partial_payment',
+              amount_collected: deduction, payment_method: 'cash',
+              notes: `خصم فائض مالي من طلبية ${order.id.slice(0, 8)}`, status: 'pending',
+            });
+            surplusLeft -= deduction;
+          }
+        }
+        // If surplus remains after paying all debts, add to credit
+        if (surplusLeft > 0) {
+          await createCredit.mutateAsync({
+            customer_id: order.customer_id, credit_type: 'financial', amount: surplusLeft,
+            order_id: order.id, worker_id: workerId!,
+            branch_id: order.branch_id || activeBranch?.id,
+            notes: `فائض متبقي بعد خصم الديون - طلبية ${order.id.slice(0, 8)}`,
+          });
+        }
+        queryClient.invalidateQueries({ queryKey: ['customer-debts'] });
+        queryClient.invalidateQueries({ queryKey: ['customer-debt-summary'] });
+        queryClient.invalidateQueries({ queryKey: ['debt-payments'] });
+        queryClient.invalidateQueries({ queryKey: ['pending-collections'] });
       }
 
       // Use credit balance if opted
@@ -1168,6 +1215,7 @@ const DeliverySaleDialog: React.FC<DeliverySaleDialogProps> = ({ open, onOpenCha
         onOpenChange={setShowPaymentDialog}
         orderTotal={totals.amountAfterPrepaid}
         customerName={order.customer?.name || ''}
+        customerId={order.customer_id}
         prepaidAmount={prepaidAmount}
         onConfirm={handlePaymentConfirm}
       />
