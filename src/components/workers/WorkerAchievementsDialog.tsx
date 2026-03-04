@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -43,13 +43,13 @@ const WorkerAchievementsDialog: React.FC<WorkerAchievementsDialogProps> = ({
   open, onOpenChange, workerId, workerName
 }) => {
   const today = format(new Date(), 'yyyy-MM-dd');
+  const [activeFilter, setActiveFilter] = useState<string | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ['worker-achievements', workerId, today],
     queryFn: async () => {
-      if (!workerId) return { visits: [], orderCount: 0, deliveryCount: 0 };
+      if (!workerId) return { visits: [], counts: {} };
 
-      // Fetch today's visits
       const { data: visits } = await supabase
         .from('visit_tracking')
         .select('*')
@@ -58,7 +58,6 @@ const WorkerAchievementsDialog: React.FC<WorkerAchievementsDialogProps> = ({
         .lte('created_at', today + 'T23:59:59')
         .order('created_at', { ascending: false });
 
-      // Get customer names
       const customerIds = [...new Set((visits || []).filter(v => v.customer_id).map(v => v.customer_id!))];
       let customerMap = new Map<string, string>();
       if (customerIds.length > 0) {
@@ -76,7 +75,6 @@ const WorkerAchievementsDialog: React.FC<WorkerAchievementsDialogProps> = ({
         customer_name: v.customer_id ? customerMap.get(v.customer_id) || '' : '',
       }));
 
-      // Count by type
       const counts: Record<string, number> = {};
       for (const v of enrichedVisits) {
         counts[v.operation_type] = (counts[v.operation_type] || 0) + 1;
@@ -91,10 +89,15 @@ const WorkerAchievementsDialog: React.FC<WorkerAchievementsDialogProps> = ({
   const visits = data?.visits || [];
   const totalOps = visits.length;
 
+  const filteredVisits = useMemo(() => {
+    if (!activeFilter) return visits;
+    return visits.filter((v: any) => v.operation_type === activeFilter);
+  }, [visits, activeFilter]);
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md" dir="rtl">
-        <DialogHeader>
+    <Dialog open={open} onOpenChange={(o) => { onOpenChange(o); if (!o) setActiveFilter(null); }}>
+      <DialogContent className="max-w-md max-h-[85vh] flex flex-col" dir="rtl">
+        <DialogHeader className="shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <Package className="w-5 h-5 text-primary" />
             منجزات اليوم - {workerName}
@@ -111,25 +114,41 @@ const WorkerAchievementsDialog: React.FC<WorkerAchievementsDialogProps> = ({
             <p>لا توجد عمليات مسجلة اليوم</p>
           </div>
         ) : (
-          <div className="space-y-4">
-            {/* Summary badges */}
-            <div className="flex flex-wrap gap-2">
+          <div className="flex flex-col gap-3 min-h-0 flex-1">
+            {/* Filter buttons */}
+            <div className="flex flex-wrap gap-1.5 shrink-0">
+              <button
+                onClick={() => setActiveFilter(null)}
+                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold transition-colors border ${
+                  !activeFilter
+                    ? 'bg-primary text-primary-foreground border-primary'
+                    : 'bg-muted/60 hover:bg-muted text-foreground border-border'
+                }`}
+              >
+                الكل
+                <span className="font-bold">{totalOps}</span>
+              </button>
               {Object.entries(counts).map(([type, count]) => (
-                <Badge key={type} variant="outline" className={`gap-1.5 px-2.5 py-1 ${OPERATION_COLORS[type] || ''}`}>
+                <button
+                  key={type}
+                  onClick={() => setActiveFilter(activeFilter === type ? null : type)}
+                  className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-medium transition-colors border ${
+                    activeFilter === type
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : OPERATION_COLORS[type] || 'border-border'
+                  }`}
+                >
                   {OPERATION_ICONS[type]}
                   <span>{getOperationLabel(type as OperationType)}</span>
                   <span className="font-bold">{count}</span>
-                </Badge>
+                </button>
               ))}
-              <Badge variant="secondary" className="gap-1 px-2.5 py-1 font-bold">
-                الإجمالي: {totalOps}
-              </Badge>
             </div>
 
-            {/* Timeline */}
-            <ScrollArea className="max-h-[50vh]">
-              <div className="space-y-2">
-                {visits.map((v: any) => (
+            {/* Timeline with scroll */}
+            <ScrollArea className="flex-1 min-h-0" style={{ maxHeight: 'calc(85vh - 200px)' }}>
+              <div className="space-y-2 pe-1">
+                {filteredVisits.map((v: any) => (
                   <div key={v.id} className={`flex items-start gap-3 p-2.5 rounded-lg border ${OPERATION_COLORS[v.operation_type] || 'border-border'}`}>
                     <div className="mt-0.5">
                       {OPERATION_ICONS[v.operation_type] || <MapPin className="w-4 h-4" />}
@@ -150,6 +169,9 @@ const WorkerAchievementsDialog: React.FC<WorkerAchievementsDialogProps> = ({
                     </div>
                   </div>
                 ))}
+                {filteredVisits.length === 0 && (
+                  <p className="text-center text-sm text-muted-foreground py-4">لا توجد عمليات من هذا النوع</p>
+                )}
               </div>
             </ScrollArea>
           </div>
