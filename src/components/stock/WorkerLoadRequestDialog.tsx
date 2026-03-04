@@ -161,7 +161,7 @@ const WorkerLoadRequestDialog: React.FC<WorkerLoadRequestDialogProps> = ({ open,
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md max-h-[90vh] flex flex-col overflow-hidden">
+      <DialogContent className="max-w-md h-[90vh] max-h-[90vh] flex flex-col overflow-hidden">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Truck className="w-5 h-5 text-primary" />
@@ -187,7 +187,7 @@ const WorkerLoadRequestDialog: React.FC<WorkerLoadRequestDialogProps> = ({ open,
             <p className="text-sm">لا توجد طلبيات معلّقة</p>
           </div>
         ) : (
-          <>
+          <div className="flex-1 min-h-0 flex flex-col">
             <div className="flex items-center justify-between px-1">
               <Button variant="ghost" size="sm" onClick={toggleAll} className="text-xs">
                 {selectedOrderIds.size === orders.length ? 'إلغاء تحديد الكل' : `تحديد الكل (${orders.length})`}
@@ -197,41 +197,43 @@ const WorkerLoadRequestDialog: React.FC<WorkerLoadRequestDialogProps> = ({ open,
               )}
             </div>
 
-            <ScrollArea className="flex-1" style={{ maxHeight: '45vh' }}>
-              <div className="space-y-2 px-1 pb-2">
-                {orders.map(order => {
-                  const isSelected = selectedOrderIds.has(order.id);
-                  return (
-                    <Card
-                      key={order.id}
-                      className={`border cursor-pointer transition-colors ${isSelected ? 'border-primary bg-primary/5' : 'hover:border-muted-foreground/30'}`}
-                      onClick={() => toggleOrder(order.id)}
-                    >
-                      <CardContent className="p-3">
-                        <div className="flex items-start gap-3">
-                          <Checkbox checked={isSelected} onCheckedChange={() => toggleOrder(order.id)} className="mt-0.5" />
-                          <div className="flex-1 min-w-0">
-                            {order.store_name && <p className="font-bold text-sm truncate">{order.store_name}</p>}
-                            <p className={`text-sm truncate ${order.store_name ? 'text-muted-foreground text-xs' : 'font-medium'}`}>{order.customer_name}</p>
-                            {order.sector_name && (
-                              <div className="flex items-center gap-1 text-[10px] text-primary mt-0.5">
-                                <MapPin className="w-3 h-3" />
-                                {order.sector_name}
+            <div className="flex-1 min-h-0">
+              <ScrollArea className="h-full">
+                <div className="space-y-2 px-1 pb-2">
+                  {orders.map(order => {
+                    const isSelected = selectedOrderIds.has(order.id);
+                    return (
+                      <Card
+                        key={order.id}
+                        className={`border cursor-pointer transition-colors ${isSelected ? 'border-primary bg-primary/5' : 'hover:border-muted-foreground/30'}`}
+                        onClick={() => toggleOrder(order.id)}
+                      >
+                        <CardContent className="p-3">
+                          <div className="flex items-start gap-3">
+                            <Checkbox checked={isSelected} onCheckedChange={() => toggleOrder(order.id)} className="mt-0.5" />
+                            <div className="flex-1 min-w-0">
+                              {order.store_name && <p className="font-bold text-sm truncate">{order.store_name}</p>}
+                              <p className={`text-sm truncate ${order.store_name ? 'text-muted-foreground text-xs' : 'font-medium'}`}>{order.customer_name}</p>
+                              {order.sector_name && (
+                                <div className="flex items-center gap-1 text-[10px] text-primary mt-0.5">
+                                  <MapPin className="w-3 h-3" />
+                                  {order.sector_name}
+                                </div>
+                              )}
+                              <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+                                <span>{format(new Date(order.created_at), 'MM/dd HH:mm')}</span>
+                                <span>{order.items.length} منتج</span>
+                                {order.total_amount && <span className="font-medium">{order.total_amount.toLocaleString()} د.ج</span>}
                               </div>
-                            )}
-                            <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-                              <span>{format(new Date(order.created_at), 'MM/dd HH:mm')}</span>
-                              <span>{order.items.length} منتج</span>
-                              {order.total_amount && <span className="font-medium">{order.total_amount.toLocaleString()} د.ج</span>}
                             </div>
                           </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-              </div>
-            </ScrollArea>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              </ScrollArea>
+            </div>
 
             {selectedOrderIds.size > 0 && (
               <div className="border-t pt-2">
@@ -251,7 +253,7 @@ const WorkerLoadRequestDialog: React.FC<WorkerLoadRequestDialogProps> = ({ open,
                 </ScrollArea>
               </div>
             )}
-          </>
+          </div>
         )}
 
         <DialogFooter className="gap-2">
