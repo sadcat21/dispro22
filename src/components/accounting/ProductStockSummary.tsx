@@ -107,13 +107,14 @@ const ProductStockSummary: React.FC<ProductStockSummaryProps> = ({
 
       const { data: orders } = await supabase
         .from('orders')
-        .select('id, total_amount, payment_type')
+        .select('id, total_amount, payment_type, customer:customers(default_price_subtype)')
         .in('id', orderIds)
         .eq('assigned_worker_id', workerId)
         .eq('status', 'delivered');
 
       const ordersTotalSales = orders?.reduce((s, o) => s + Number(o.total_amount || 0), 0) || 0;
       const orderPaymentTypeMap = new Map((orders || []).map(o => [o.id, o.payment_type || '']));
+      const orderCustomerSubtypeMap = new Map((orders || []).map(o => [o.id, (o as any).customer?.default_price_subtype || 'gros']));
 
       const { data: orderItems } = await supabase
         .from('order_items')
@@ -138,7 +139,7 @@ const ProductStockSummary: React.FC<ProductStockSummaryProps> = ({
         const unitPrice = Number(item.unit_price || 0);
         const orderPaymentType = orderPaymentTypeMap.get(orderId) || '';
         const itemPaymentType = (item as any).payment_type || orderPaymentType;
-        const rawSubtype = item.price_subtype || 'gros';
+        const rawSubtype = item.price_subtype || orderCustomerSubtypeMap.get(orderId) || 'gros';
         const isInvoice = itemPaymentType === 'with_invoice';
         const subtype = isInvoice ? 'invoice' : rawSubtype;
         const itemPricingUnit = (item as any).pricing_unit || 'box';
