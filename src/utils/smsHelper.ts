@@ -57,12 +57,7 @@ const resolveSmsPlugin = async (): Promise<SmsSenderPluginContract | null> => {
     return SafeSmsSender;
   }
 
-  // توافق رجعي مؤقت للـ APK القديم قبل المزامنة
-  if (Capacitor.isPluginAvailable('SmsSender')) {
-    const legacyModule = await import('capacitor-sms-sender');
-    return legacyModule.SmsSender as unknown as SmsSenderPluginContract;
-  }
-
+  // أوقفنا fallback لمكتبة legacy لأنها سبب شائع لانهيار Native على أجهزة حديثة
   return null;
 };
 
@@ -145,9 +140,9 @@ export const sendSmsDirectly = async (phone: string, message: string): Promise<b
         });
 
         timeoutId = window.setTimeout(() => {
-          console.warn(`[SMS] No status for sim ${sim} after 8s, trying next SIM`);
-          finalize(false);
-        }, 8000);
+          console.warn(`[SMS] No status for sim ${sim} after 10s, assuming sent to avoid duplicate retries`);
+          finalize(true);
+        }, 10000);
       } catch (listenerError) {
         console.warn('[SMS] Could not attach status listener, using optimistic mode:', listenerError);
       }
@@ -185,7 +180,7 @@ export const sendSmsDirectly = async (phone: string, message: string): Promise<b
       }
     };
 
-    const simCandidates = [0, 1];
+    const simCandidates = [0];
 
     for (const sim of simCandidates) {
       const sent = await sendWithSim(sim);

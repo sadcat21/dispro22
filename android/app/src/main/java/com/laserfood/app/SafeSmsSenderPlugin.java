@@ -7,12 +7,16 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.PackageManager;
 import android.os.Build;
+import android.os.Handler;
+import android.os.Looper;
 import android.telephony.SmsManager;
 import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
 
 import androidx.annotation.Nullable;
+import androidx.core.content.ContextCompat;
 
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
@@ -21,6 +25,7 @@ import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 import com.getcapacitor.annotation.Permission;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @CapacitorPlugin(
@@ -45,22 +50,30 @@ public class SafeSmsSenderPlugin extends Plugin {
         sendReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
-                JSObject ret = new JSObject();
-                ret.put("id", intent.getIntExtra("id", -1));
-                ret.put("res_status", getResultCode());
-                ret.put("status", getResultCode() == Activity.RESULT_OK ? "SENT" : "FAILED");
-                notifyListeners("smsSenderStatusUpdated", ret);
+                try {
+                    JSObject ret = new JSObject();
+                    ret.put("id", intent != null ? intent.getIntExtra("id", -1) : -1);
+                    ret.put("res_status", getResultCode());
+                    ret.put("status", getResultCode() == Activity.RESULT_OK ? "SENT" : "FAILED");
+                    notifyListeners("smsSenderStatusUpdated", ret);
+                } catch (Throwable ignored) {
+                    // لا نسمح لأي خطأ في BroadcastReceiver بإسقاط التطبيق
+                }
             }
         };
 
         deliveredReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
-                JSObject ret = new JSObject();
-                ret.put("id", intent.getIntExtra("id", -1));
-                ret.put("res_status", getResultCode());
-                ret.put("status", getResultCode() == Activity.RESULT_OK ? "DELIVERED" : "FAILED");
-                notifyListeners("smsSenderStatusUpdated", ret);
+                try {
+                    JSObject ret = new JSObject();
+                    ret.put("id", intent != null ? intent.getIntExtra("id", -1) : -1);
+                    ret.put("res_status", getResultCode());
+                    ret.put("status", getResultCode() == Activity.RESULT_OK ? "DELIVERED" : "FAILED");
+                    notifyListeners("smsSenderStatusUpdated", ret);
+                } catch (Throwable ignored) {
+                    // لا نسمح لأي خطأ في BroadcastReceiver بإسقاط التطبيق
+                }
             }
         };
 
@@ -101,6 +114,11 @@ public class SafeSmsSenderPlugin extends Plugin {
             return;
         }
 
+        if (!hasNativePermissionGranted(Manifest.permission.SEND_SMS)) {
+            call.reject("SEND_SMS permission is not granted at runtime");
+            return;
+        }
+
         Integer idBoxed = call.getInt("id");
         String text = call.getString("text", "").trim();
         String phone = call.getString("phone", "").trim();
@@ -117,36 +135,92 @@ public class SafeSmsSenderPlugin extends Plugin {
         }
 
         final int id = idBoxed;
+        final int safeSimSlot = Math.max(0, simSlot);
+        final String cleanPhone = phone.replaceAll("\\s+", "");
 
-        try {
-            SmsManager manager = getSmsManagerForSlot(simSlot);
-            if (manager == null) {
-                call.reject("Could not get SmsManager instance");
-                return;
+        Runnable sendRunnable = () -> {
+            try {
+                SmsManager manager = getSmsManagerForSlot(safeSimSlot);
+                if (manager == null) {
+                    call.reject("Could not get SmsManager instance");
+                    return;
+                }
+
+                int flags = PendingIntent.FLAG_UPDATE_CURRENT;
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    flags |= PendingIntent.FLAG_IMMUTABLE;
+                }
+
+                ArrayList<String> parts = manager.divideMessage(text);
+                if (parts == null || parts.isEmpty()) {
+                    call.reject("Message body is empty after normalization");
+                    return;
+                }
+
+                if (parts.size() == 1) {
+                    Intent sentIntent = new Intent(smsSentAction).setPackage(getContext().getPackageName());
+                    sentIntent.putExtra("id", id);
+                    PendingIntent sentPI = createSmsPendingIntent(requestCodeSafeAdd(id, 1000), sentIntent, flags);
+
+                    Intent deliveredIntent = new Intent(smsDeliveredAction).setPackage(getContext().getPackageName());
+                    deliveredIntent.putExtra("id", id);
+                    PendingIntent deliveredPI = createSmsPendingIntent(requestCodeSafeAdd(id, 2000), deliveredIntent, flags);
+
+                    manager.sendTextMessage(cleanPhone, null, parts.get(0), sentPI, deliveredPI);
+                } else {
+                    ArrayList<PendingIntent> sentIntents = buildPendingIntents(id, flags, smsSentAction, parts.size(), 1000);
+                    ArrayList<PendingIntent> deliveredIntents = buildPendingIntents(id, flags, smsDeliveredAction, parts.size(), 2000);
+                    manager.sendMultipartTextMessage(cleanPhone, null, parts, sentIntents, deliveredIntents);
+                }
+
+                JSObject ret = new JSObject();
+                ret.put("id", id);
+                ret.put("status", "PENDING");
+                ret.put("parts", parts.size());
+                call.resolve(ret);
+            } catch (Throwable t) {
+                call.reject("sendTextMessage failed: " + t.getClass().getSimpleName() + " - " + t.getMessage());
             }
+        };
 
-            int flags = PendingIntent.FLAG_UPDATE_CURRENT;
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                flags |= PendingIntent.FLAG_IMMUTABLE;
-            }
-
-            Intent sentIntent = new Intent(smsSentAction).setPackage(getContext().getPackageName());
-            sentIntent.putExtra("id", id);
-            PendingIntent sentPI = PendingIntent.getBroadcast(getContext(), id, sentIntent, flags);
-
-            Intent deliveredIntent = new Intent(smsDeliveredAction).setPackage(getContext().getPackageName());
-            deliveredIntent.putExtra("id", id);
-            PendingIntent deliveredPI = PendingIntent.getBroadcast(getContext(), id + 100000, deliveredIntent, flags);
-
-            manager.sendTextMessage(phone, null, text, sentPI, deliveredPI);
-
-            JSObject ret = new JSObject();
-            ret.put("id", id);
-            ret.put("status", "PENDING");
-            call.resolve(ret);
-        } catch (Throwable t) {
-            call.reject("sendTextMessage failed: " + t.getClass().getSimpleName() + " - " + t.getMessage());
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            sendRunnable.run();
+        } else {
+            new Handler(Looper.getMainLooper()).post(sendRunnable);
         }
+    }
+
+    private boolean hasNativePermissionGranted(String permission) {
+        return ContextCompat.checkSelfPermission(getContext(), permission) == PackageManager.PERMISSION_GRANTED;
+    }
+
+    private PendingIntent createSmsPendingIntent(int requestCode, Intent intent, int flags) {
+        return PendingIntent.getBroadcast(getContext(), Math.max(1, requestCode), intent, flags);
+    }
+
+    private ArrayList<PendingIntent> buildPendingIntents(int messageId, int flags, String action, int count, int startOffset) {
+        ArrayList<PendingIntent> pendingIntents = new ArrayList<>(count);
+
+        for (int i = 0; i < count; i++) {
+            Intent intent = new Intent(action).setPackage(getContext().getPackageName());
+            intent.putExtra("id", messageId);
+            intent.putExtra("part_index", i);
+            int requestCode = requestCodeSafeAdd(messageId, startOffset + i);
+            pendingIntents.add(createSmsPendingIntent(requestCode, intent, flags));
+        }
+
+        return pendingIntents;
+    }
+
+    private int requestCodeSafeAdd(int base, int delta) {
+        long sum = (long) base + (long) delta;
+        if (sum > Integer.MAX_VALUE) {
+            return (int) (sum % Integer.MAX_VALUE);
+        }
+        if (sum < 1) {
+            return 1;
+        }
+        return (int) sum;
     }
 
     @Nullable
@@ -154,7 +228,7 @@ public class SafeSmsSenderPlugin extends Plugin {
         final Context context = getContext();
 
         try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP_MR1) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP_MR1 && hasNativePermissionGranted(Manifest.permission.READ_PHONE_STATE)) {
                 SubscriptionManager subManager = context.getSystemService(SubscriptionManager.class);
                 if (subManager != null) {
                     List<SubscriptionInfo> subs = subManager.getActiveSubscriptionInfoList();
@@ -199,3 +273,4 @@ public class SafeSmsSenderPlugin extends Plugin {
         return SmsManager.getDefault();
     }
 }
+
