@@ -629,11 +629,19 @@ const DirectSaleDialog: React.FC<DirectSaleDialogProps> = ({ open, onOpenChange,
           orderId: order.id,
           companyName: companyInfo?.company_name,
         });
-        setTimeout(async () => {
-          const sent = await sendSmsDirectly(customerPhone, smsMessage);
-          if (sent) {
-            toast.success('تم إرسال رسالة التأكيد للعميل');
-          }
+        window.setTimeout(() => {
+          void (async () => {
+            try {
+              const sent = await sendSmsDirectly(customerPhone, smsMessage);
+              if (sent) {
+                toast.success('تم إرسال رسالة التأكيد للعميل');
+              } else {
+                console.warn('[SMS] Background SMS not confirmed for direct sale order:', order.id);
+              }
+            } catch (smsError) {
+              console.error('[SMS] Unexpected direct-sale SMS error:', smsError);
+            }
+          })();
         }, 500);
       }
 

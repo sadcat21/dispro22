@@ -799,11 +799,19 @@ const DeliverySaleDialog: React.FC<DeliverySaleDialogProps> = ({ open, onOpenCha
           orderId: order.id,
         });
         // إرسال SMS مباشرة من هاتف العامل بدون تدخل يدوي
-        setTimeout(async () => {
-          const sent = await sendSmsDirectly(customerPhone, smsMessage);
-          if (sent) {
-            toast.success('تم إرسال رسالة التأكيد للعميل');
-          }
+        window.setTimeout(() => {
+          void (async () => {
+            try {
+              const sent = await sendSmsDirectly(customerPhone, smsMessage);
+              if (sent) {
+                toast.success('تم إرسال رسالة التأكيد للعميل');
+              } else {
+                console.warn('[SMS] Background SMS not confirmed for delivery order:', order.id);
+              }
+            } catch (smsError) {
+              console.error('[SMS] Unexpected delivery SMS error:', smsError);
+            }
+          })();
         }, 1500);
       }
 
