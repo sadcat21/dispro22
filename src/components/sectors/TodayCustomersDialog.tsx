@@ -184,6 +184,24 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
     }
   };
 
+  const handleDeliveryVisit = (customer: any) => {
+    trackVisit({
+      customerId: customer.id,
+      operationType: 'delivery_visit',
+      notes: `زيارة بدون تسليم - ${customer.store_name || customer.name}`,
+    });
+    toast.success('تم تسجيل الزيارة بنجاح');
+  };
+
+  const handleSalesVisit = (customer: any) => {
+    trackVisit({
+      customerId: customer.id,
+      operationType: 'visit',
+      notes: `زيارة بدون طلبية - ${customer.store_name || customer.name}`,
+    });
+    toast.success('تم تسجيل الزيارة بنجاح');
+  };
+
   const handleSalesCustomerClick = (customerId: string) => {
     setSelectedCustomerForOrder(customerId);
     setShowCreateOrder(true);
@@ -246,8 +264,7 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
                       return (
                         <div
                           key={c.id}
-                          className={`flex items-center gap-2.5 p-3 ${!isDelivered && hasActiveOrder ? 'cursor-pointer hover:bg-muted/50 active:bg-muted transition-colors' : ''}`}
-                          onClick={() => !isDelivered && hasActiveOrder && handleDeliveryCustomerClick(c.id)}
+                          className="flex items-center gap-2.5 p-3"
                         >
                           <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${isDelivered ? 'bg-green-100 text-green-600' : 'bg-orange-100 text-orange-600'}`}>
                             <User className="w-4 h-4" />
@@ -258,9 +275,30 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
                           </div>
                           {isDelivered ? (
                             <Badge variant="outline" className="text-[10px] text-green-600 border-green-200">تم ✓</Badge>
-                          ) : hasActiveOrder ? (
-                            <Truck className="w-4 h-4 text-orange-500 shrink-0" />
-                          ) : null}
+                          ) : (
+                            <div className="flex items-center gap-1 shrink-0">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-7 w-7 p-0 text-muted-foreground hover:text-orange-600"
+                                title="زيارة بدون تسليم"
+                                onClick={() => handleDeliveryVisit(c)}
+                              >
+                                <Eye className="w-3.5 h-3.5" />
+                              </Button>
+                              {hasActiveOrder && (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-7 w-7 p-0 text-muted-foreground hover:text-green-600"
+                                  title="تسليم الطلبية"
+                                  onClick={() => handleDeliveryCustomerClick(c.id)}
+                                >
+                                  <Truck className="w-3.5 h-3.5" />
+                                </Button>
+                              )}
+                            </div>
+                          )}
                         </div>
                       );
                     })}
@@ -279,8 +317,7 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
                     {salesCustomers.map(c => (
                       <div
                         key={c.id}
-                        className="flex items-center gap-2.5 p-3 cursor-pointer hover:bg-muted/50 active:bg-muted transition-colors"
-                        onClick={() => handleSalesCustomerClick(c.id)}
+                        className="flex items-center gap-2.5 p-3"
                       >
                         <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
                           <User className="w-4 h-4" />
@@ -289,7 +326,26 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
                           <p className="text-sm font-medium truncate">{c.store_name || c.name}</p>
                           {c.phone && <p className="text-[11px] text-muted-foreground flex items-center gap-1"><Phone className="w-3 h-3" />{c.phone}</p>}
                         </div>
-                        <ShoppingCart className="w-4 h-4 text-blue-500 shrink-0" />
+                        <div className="flex items-center gap-1 shrink-0">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 w-7 p-0 text-muted-foreground hover:text-orange-600"
+                            title="زيارة بدون طلبية"
+                            onClick={() => handleSalesVisit(c)}
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 w-7 p-0 text-muted-foreground hover:text-blue-600"
+                            title="إنشاء طلبية"
+                            onClick={() => handleSalesCustomerClick(c.id)}
+                          >
+                            <ShoppingCart className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
                       </div>
                     ))}
                   </div>
