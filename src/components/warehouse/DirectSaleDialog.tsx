@@ -36,6 +36,7 @@ import CustomerDistanceIndicator from '@/components/orders/CustomerDistanceIndic
 import { useQueryClient } from '@tanstack/react-query';
 import { useTrackVisit } from '@/hooks/useVisitTracking';
 import { sendSmsDirectly, buildDeliveryConfirmationSms } from '@/utils/smsHelper';
+import { loadSmsSettings, buildSmsFromTemplate, openSmsApp } from '@/components/settings/SmsSettingsCard';
 
 interface StockItem {
   id: string;
@@ -618,29 +619,39 @@ const DirectSaleDialog: React.FC<DirectSaleDialogProps> = ({ open, onOpenChange,
       // Track direct sale visit GPS
       trackVisit({ customerId: selectedCustomerId, operationType: 'direct_sale', operationId: order.id });
 
-      // إرسال SMS تلقائي للعميل بعد البيع المباشر
+      // إرسال SMS حسب الإعدادات
       const customerPhone = selectedCustomer?.phone;
       if (customerPhone) {
-        const smsMessage = buildDeliveryConfirmationSms({
-          customerName: selectedCustomer?.name || '',
-          totalAmount: orderTotals.totalAmount,
-          paidAmount: paymentData.paidAmount,
-          remainingAmount: paymentData.remainingAmount,
-          orderId: order.id,
-          companyName: companyInfo?.company_name,
-        });
-        // إرسال SMS مباشرة بخلفية التطبيق (بدون تأخير إضافي)
         void (async () => {
           try {
-            const sent = await sendSmsDirectly(customerPhone, smsMessage);
-            if (sent) {
-              toast.success('تم إرسال رسالة التأكيد للعميل');
-            } else {
-              console.warn('[SMS] Background SMS not confirmed for direct sale order:', order.id);
-              toast.error('تعذر إرسال SMS في الخلفية. إذا كنت على رابط Vercel فلن يعمل إلا داخل APK أندرويد.');
+            const smsConfig = await loadSmsSettings(activeBranch?.id);
+            const opConfig = smsConfig.direct_sale;
+            if (!opConfig.enabled || opConfig.mode === 'disabled') return;
+
+            const paymentStatusText = paymentData.paidAmount >= orderTotals.totalAmount
+              ? 'الحالة: مدفوع بالكامل'
+              : paymentData.paidAmount > 0
+                ? `المدفوع: ${paymentData.paidAmount.toLocaleString()} دج\nالمتبقي: ${paymentData.remainingAmount.toLocaleString()} دج`
+                : `الحالة: دين ${orderTotals.totalAmount.toLocaleString()} دج`;
+
+            const message = buildSmsFromTemplate(opConfig.template, {
+              customer: selectedCustomer?.name || '',
+              total: orderTotals.totalAmount.toLocaleString(),
+              order_id: order.id.slice(0, 8),
+              company: companyInfo?.company_name || '',
+              amount: paymentData.paidAmount.toLocaleString(),
+              remaining: paymentData.remainingAmount.toLocaleString(),
+              payment_status: paymentStatusText,
+            });
+
+            if (opConfig.mode === 'automatic') {
+              const sent = await sendSmsDirectly(customerPhone, message);
+              if (sent) toast.success('تم إرسال رسالة التأكيد للعميل');
+            } else if (opConfig.mode === 'semi_automatic') {
+              openSmsApp(customerPhone, message);
             }
           } catch (smsError) {
-            console.error('[SMS] Unexpected direct-sale SMS error:', smsError);
+            console.error('[SMS] Direct sale SMS error:', smsError);
           }
         })();
       }

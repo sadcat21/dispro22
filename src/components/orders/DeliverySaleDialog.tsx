@@ -16,6 +16,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
 import { sendSmsDirectly, buildDeliveryConfirmationSms } from '@/utils/smsHelper';
+import { loadSmsSettings, buildSmsFromTemplate, openSmsApp } from '@/components/settings/SmsSettingsCard';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -788,28 +789,39 @@ const DeliverySaleDialog: React.FC<DeliverySaleDialogProps> = ({ open, onOpenCha
       // Track delivery visit GPS
       trackVisit({ customerId: order.customer_id, operationType: 'delivery', operationId: order.id });
 
-      // إرسال SMS تلقائي عبر تطبيق الرسائل في الهاتف
+      // إرسال SMS حسب الإعدادات
       const customerPhone = order.customer?.phone;
       if (customerPhone) {
-        const smsMessage = buildDeliveryConfirmationSms({
-          customerName: order.customer?.name || '',
-          totalAmount: totals.totalAmount,
-          paidAmount: paymentData.paidAmount,
-          remainingAmount: paymentData.remainingAmount,
-          orderId: order.id,
-        });
-        // إرسال SMS مباشرة بخلفية التطبيق (بدون تأخير إضافي)
         void (async () => {
           try {
-            const sent = await sendSmsDirectly(customerPhone, smsMessage);
-            if (sent) {
-              toast.success('تم إرسال رسالة التأكيد للعميل');
-            } else {
-              console.warn('[SMS] Background SMS not confirmed for delivery order:', order.id);
-              toast.error('تعذر إرسال SMS في الخلفية. إذا كنت على رابط Vercel فلن يعمل إلا داخل APK أندرويد.');
+            const smsConfig = await loadSmsSettings(order.branch_id);
+            const opConfig = smsConfig.delivery;
+            if (!opConfig.enabled || opConfig.mode === 'disabled') return;
+
+            const paymentStatusText = paymentData.paidAmount >= totals.totalAmount
+              ? 'الحالة: مدفوع بالكامل'
+              : paymentData.paidAmount > 0
+                ? `المدفوع: ${paymentData.paidAmount.toLocaleString()} دج\nالمتبقي: ${paymentData.remainingAmount.toLocaleString()} دج`
+                : `الحالة: دين ${totals.totalAmount.toLocaleString()} دج`;
+
+            const message = buildSmsFromTemplate(opConfig.template, {
+              customer: order.customer?.name || '',
+              total: totals.totalAmount.toLocaleString(),
+              order_id: order.id.slice(0, 8),
+              company: '',
+              amount: paymentData.paidAmount.toLocaleString(),
+              remaining: paymentData.remainingAmount.toLocaleString(),
+              payment_status: paymentStatusText,
+            });
+
+            if (opConfig.mode === 'automatic') {
+              const sent = await sendSmsDirectly(customerPhone, message);
+              if (sent) toast.success('تم إرسال رسالة التأكيد للعميل');
+            } else if (opConfig.mode === 'semi_automatic') {
+              openSmsApp(customerPhone, message);
             }
           } catch (smsError) {
-            console.error('[SMS] Unexpected delivery SMS error:', smsError);
+            console.error('[SMS] Delivery SMS error:', smsError);
           }
         })();
       }
