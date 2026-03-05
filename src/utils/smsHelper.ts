@@ -49,67 +49,102 @@ export const sendSmsDirectly = async (phone: string, message: string): Promise<b
       }
     }
 
-    const messageId = Date.now();
-    let resolved = false;
-    let timeoutId: number | null = null;
-    let listenerHandle: { remove: () => Promise<void> } | null = null;
-    let resolveStatus: ((sent: boolean) => void) | null = null;
+    const sendWithSim = async (sim: number): Promise<boolean> => {
+      const messageId = Date.now() + sim;
+      let resolved = false;
+      let timeoutId: number | null = null;
+      let listenerHandle: { remove: () => Promise<void> } | null = null;
+      let resolveStatus: ((sent: boolean) => void) | null = null;
 
-    const statusPromise = new Promise<boolean>((resolve) => {
-      resolveStatus = resolve;
-    });
+      const statusPromise = new Promise<boolean>((resolve) => {
+        resolveStatus = resolve;
+      });
 
-    const finalize = async (sent: boolean) => {
-      if (resolved) return;
-      resolved = true;
-      if (timeoutId) window.clearTimeout(timeoutId);
-      if (listenerHandle) {
-        await listenerHandle.remove();
-        listenerHandle = null;
+      const finalize = (sent: boolean) => {
+        if (resolved) return;
+        resolved = true;
+        if (timeoutId) window.clearTimeout(timeoutId);
+
+        const cleanupAndResolve = async () => {
+          if (listenerHandle) {
+            try {
+              await listenerHandle.remove();
+            } catch (removeError) {
+              console.warn('[SMS] Failed to remove listener:', removeError);
+            }
+            listenerHandle = null;
+          }
+          resolveStatus?.(sent);
+        };
+
+        void cleanupAndResolve();
+      };
+
+      try {
+        listenerHandle = await SmsSender.addListener('smsSenderStatusUpdated', (result: any) => {
+          console.log('[SMS] Status update:', JSON.stringify(result));
+          if (Number(result?.id) !== messageId || resolved) return;
+
+          const status = String(result?.status || '').toUpperCase();
+          if (status === 'SENT' || status === 'DELIVERED') {
+            finalize(true);
+          } else if (status === 'FAILED') {
+            console.warn('[SMS] Send failed, res_status:', result?.res_status, 'sim:', sim);
+            finalize(false);
+          }
+        });
+
+        timeoutId = window.setTimeout(() => {
+          console.warn(`[SMS] No status for sim ${sim} after 6s, assuming queued successfully`);
+          finalize(true);
+        }, 6000);
+      } catch (listenerError) {
+        console.warn('[SMS] Could not attach status listener, using optimistic mode:', listenerError);
       }
-      resolveStatus?.(sent);
+
+      try {
+        console.log('[SMS] Sending to:', cleanPhone, 'id:', messageId, 'sim:', sim);
+        const sendResult = await SmsSender.send({
+          id: messageId,
+          sim,
+          phone: cleanPhone,
+          text: message.trim(),
+        });
+
+        const immediateStatus = String(sendResult?.status || '').toUpperCase();
+        console.log('[SMS] send() resolved:', immediateStatus, 'sim:', sim);
+
+        if (!listenerHandle) {
+          return immediateStatus !== 'FAILED';
+        }
+
+        if (immediateStatus === 'FAILED') {
+          finalize(false);
+        } else if (immediateStatus === 'SENT' || immediateStatus === 'DELIVERED') {
+          finalize(true);
+        }
+
+        return await statusPromise;
+      } catch (sendError) {
+        console.warn('[SMS] send() threw error on sim', sim, sendError);
+        if (listenerHandle) {
+          finalize(false);
+          return await statusPromise;
+        }
+        return false;
+      }
     };
 
-    listenerHandle = await SmsSender.addListener('smsSenderStatusUpdated', (result: any) => {
-      console.log('[SMS] Status update:', JSON.stringify(result));
-      if (Number(result?.id) !== messageId || resolved) return;
-
-      const status = String(result?.status || '').toUpperCase();
-      if (status === 'SENT' || status === 'DELIVERED') {
-        void finalize(true);
-      } else if (status === 'FAILED') {
-        console.warn('[SMS] Send failed, res_status:', result?.res_status);
-        void finalize(false);
+    for (const sim of [0, 1]) {
+      const sent = await sendWithSim(sim);
+      if (sent) {
+        console.log('[SMS] Successfully sent to:', cleanPhone, 'via sim:', sim);
+        return true;
       }
-    });
-
-    // Timeout بعد 15 ثانية
-    timeoutId = window.setTimeout(() => {
-      console.warn('[SMS] Timeout - no status received after 15s');
-      void finalize(false);
-    }, 15000);
-
-    console.log('[SMS] Sending to:', cleanPhone, 'id:', messageId);
-
-    // ملاحظة: sim: 0 هو القيمة الافتراضية في البلجن
-    // إذا لم يعمل، يمكن تجربة sim: 1
-    await SmsSender.send({
-      id: messageId,
-      sim: 0,
-      phone: cleanPhone,
-      text: message.trim(),
-    });
-
-    console.log('[SMS] send() resolved, waiting for status...');
-
-    const sent = await statusPromise;
-    if (!sent) {
-      console.warn('[SMS] Not confirmed as SENT/DELIVERED');
-      return false;
     }
 
-    console.log('[SMS] Successfully sent to:', cleanPhone);
-    return true;
+    console.warn('[SMS] Failed to send on all SIM slots');
+    return false;
   } catch (error) {
     const message = String((error as any)?.message || error || '').toLowerCase();
     if (message.includes('not implemented')) {
