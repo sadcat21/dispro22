@@ -567,6 +567,7 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
           paidAmountBefore={Number(selectedDebt.paid_amount)}
           remainingAmount={Number(selectedDebt.remaining_amount)}
           customerId={selectedDebt.customer_id}
+          customerPhone={(selectedDebt.customer as any)?.phone || null}
           defaultAmount={selectedDebt.collection_amount ? Number(selectedDebt.collection_amount) : undefined}
           collectionType={selectedDebt.collection_type}
           collectionDays={selectedDebt.collection_days}

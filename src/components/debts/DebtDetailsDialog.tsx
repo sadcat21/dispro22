@@ -258,6 +258,7 @@ const DebtDetailsDialog: React.FC<DebtDetailsDialogProps> = ({
           remainingAmount={Number(collectDebt.remaining_amount)}
           customerName={customerName}
           customerId={collectDebt.customer_id}
+          customerPhone={null}
           defaultAmount={collectDebt.collection_amount || undefined}
           collectionType={collectDebt.collection_type}
           collectionDays={collectDebt.collection_days}

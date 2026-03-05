@@ -36,6 +36,8 @@ import ProductPriceBadge from './ProductPriceBadge';
 import { useCompanyInfo } from '@/hooks/useCompanyInfo';
 import { useProductOffers } from '@/hooks/useProductOffers';
 import { cn } from '@/lib/utils';
+import { loadSmsSettings, buildSmsFromTemplate, openSmsApp } from '@/components/settings/SmsSettingsCard';
+import { sendSmsDirectly } from '@/utils/smsHelper';
 
 interface CreateOrderDialogProps {
   open: boolean;
@@ -540,6 +542,36 @@ const CreateOrderDialog: React.FC<CreateOrderDialogProps> = ({ open, onOpenChang
       });
 
       toast.success(t('orders.created_success'));
+
+      // SMS notification for order creation
+      void (async () => {
+        try {
+          const smsConfig = await loadSmsSettings(activeBranch?.id);
+          const opConfig = smsConfig.order_create;
+          if (!opConfig.enabled || opConfig.mode === 'disabled') return;
+          const customerPhone = selectedCustomer?.phone;
+          if (!customerPhone) return;
+
+          const message = buildSmsFromTemplate(opConfig.template, {
+            customer: selectedCustomer?.store_name || selectedCustomer?.name || '',
+            total: orderTotals.totalAmount.toLocaleString(),
+            order_id: order.id.slice(0, 8),
+            company: companyInfo?.company_name || '',
+            amount: orderTotals.totalAmount.toLocaleString(),
+            remaining: '0',
+            payment_status: paymentType === 'with_invoice' ? 'بفاتورة' : 'نقدي',
+          });
+
+          if (opConfig.mode === 'automatic') {
+            const sent = await sendSmsDirectly(customerPhone, message);
+            if (sent) toast.success('تم إرسال رسالة تأكيد الطلبية للعميل');
+          } else if (opConfig.mode === 'semi_automatic') {
+            openSmsApp(customerPhone, message);
+          }
+        } catch (smsErr) {
+          console.error('[SMS] order_create error:', smsErr);
+        }
+      })();
 
       // Track visit GPS
       trackVisit({ customerId: selectedCustomerId, operationType: 'order', operationId: order.id });

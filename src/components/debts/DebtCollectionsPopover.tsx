@@ -240,6 +240,7 @@ const DebtCollectionsPopover: React.FC = () => {
           remainingAmount={remaining}
           customerName={selectedDebt.customer?.name || '—'}
           customerId={selectedDebt.customer_id}
+          customerPhone={selectedDebt.customer?.phone || null}
           defaultAmount={selectedDebt.collection_amount || undefined}
           collectionType={selectedDebt.collection_type}
           collectionDays={selectedDebt.collection_days}
