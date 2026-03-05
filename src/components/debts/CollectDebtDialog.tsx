@@ -16,6 +16,9 @@ import { useWorkerPrintInfo } from '@/hooks/useWorkerPrintInfo';
 import { useUpdateDebtPayment } from '@/hooks/useCustomerDebts';
 import { useTrackVisit } from '@/hooks/useVisitTracking';
 import { toast } from 'sonner';
+import { loadSmsSettings, buildSmsFromTemplate, openSmsApp } from '@/components/settings/SmsSettingsCard';
+import { sendSmsDirectly } from '@/utils/smsHelper';
+import { useCompanyInfo } from '@/hooks/useCompanyInfo';
 
 interface CollectDebtDialogProps {
   open: boolean;
@@ -26,18 +29,20 @@ interface CollectDebtDialogProps {
   remainingAmount: number;
   customerName: string;
   customerId?: string;
+  customerPhone?: string | null;
   defaultAmount?: number;
   collectionType?: string | null;
   collectionDays?: string[] | null;
 }
 
 const CollectDebtDialog: React.FC<CollectDebtDialogProps> = ({
-  open, onOpenChange, debtId, totalDebtAmount, paidAmountBefore, remainingAmount, customerName, customerId,
+  open, onOpenChange, debtId, totalDebtAmount, paidAmountBefore, remainingAmount, customerName, customerId, customerPhone,
   defaultAmount, collectionType, collectionDays,
 }) => {
   const { t, dir } = useLanguage();
-  const { workerId, user } = useAuth();
+  const { workerId, user, activeBranch } = useAuth();
   const { data: workerPrintInfo } = useWorkerPrintInfo(workerId);
+  const { companyInfo } = useCompanyInfo();
   const updatePayment = useUpdateDebtPayment();
   const { trackVisit } = useTrackVisit();
   const [amount, setAmount] = useState(defaultAmount ? String(defaultAmount) : '');
@@ -120,6 +125,37 @@ const CollectDebtDialog: React.FC<CollectDebtDialogProps> = ({
       });
       toast.success(t('debts.payment_success'));
       trackVisit({ operationType: 'debt_collection', operationId: debtId });
+
+      // SMS notification for debt collection
+      void (async () => {
+        try {
+          const smsConfig = await loadSmsSettings(activeBranch?.id);
+          const opConfig = smsConfig.debt_collection;
+          if (!opConfig.enabled || opConfig.mode === 'disabled') return;
+          // We don't have customer phone directly, skip if not available
+          // Could be enhanced later to pass phone from parent
+          const message = buildSmsFromTemplate(opConfig.template, {
+            customer: customerName,
+            total: totalDebtAmount.toLocaleString(),
+            order_id: debtId.slice(0, 8),
+            company: companyInfo?.company_name || '',
+            amount: numAmount.toLocaleString(),
+            remaining: liveRemaining.toLocaleString(),
+            payment_status: isFullPayment ? 'تم السداد الكامل' : `متبقي ${liveRemaining.toLocaleString()} دج`,
+          });
+
+          if (customerPhone) {
+            if (opConfig.mode === 'automatic') {
+              const sent = await sendSmsDirectly(customerPhone, message);
+              if (sent) toast.success('تم إرسال رسالة تأكيد التحصيل للعميل');
+            } else if (opConfig.mode === 'semi_automatic') {
+              openSmsApp(customerPhone, message);
+            }
+          }
+        } catch (smsErr) {
+          console.error('[SMS] debt_collection error:', smsErr);
+        }
+      })();
 
       setReceiptDataState({
         receiptType: 'debt_payment' as ReceiptType,

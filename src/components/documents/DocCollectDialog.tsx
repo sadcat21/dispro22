@@ -5,13 +5,17 @@ import { Textarea } from '@/components/ui/textarea';
 import { Loader2, FileCheck } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCreateDocCollection } from '@/hooks/useDocumentCollections';
+import { useCompanyInfo } from '@/hooks/useCompanyInfo';
 import { toast } from 'sonner';
+import { loadSmsSettings, buildSmsFromTemplate, openSmsApp } from '@/components/settings/SmsSettingsCard';
+import { sendSmsDirectly } from '@/utils/smsHelper';
 
 interface DocCollectDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   orderId: string;
   customerName: string;
+  customerPhone?: string | null;
   documentType: string;
   totalAmount: number;
 }
@@ -26,10 +30,11 @@ const getDocLabel = (type: string) => {
 };
 
 const DocCollectDialog: React.FC<DocCollectDialogProps> = ({
-  open, onOpenChange, orderId, customerName, documentType, totalAmount,
+  open, onOpenChange, orderId, customerName, customerPhone, documentType, totalAmount,
 }) => {
-  const { workerId } = useAuth();
+  const { workerId, activeBranch } = useAuth();
   const createCollection = useCreateDocCollection();
+  const { companyInfo } = useCompanyInfo();
   const [notes, setNotes] = useState('');
 
   useEffect(() => {
@@ -47,6 +52,36 @@ const DocCollectDialog: React.FC<DocCollectDialogProps> = ({
         notes: notes || `تم تحصيل ${getDocLabel(documentType)}`,
       });
       toast.success('تم تسجيل تحصيل المستند بنجاح');
+
+      // SMS notification for document collection
+      void (async () => {
+        try {
+          const smsConfig = await loadSmsSettings(activeBranch?.id);
+          const opConfig = smsConfig.document_collection;
+          if (!opConfig.enabled || opConfig.mode === 'disabled') return;
+          if (!customerPhone) return;
+
+          const message = buildSmsFromTemplate(opConfig.template, {
+            customer: customerName,
+            total: totalAmount.toLocaleString(),
+            order_id: orderId.slice(0, 8),
+            company: companyInfo?.company_name || '',
+            amount: totalAmount.toLocaleString(),
+            remaining: '0',
+            payment_status: `تحصيل ${getDocLabel(documentType)}`,
+          });
+
+          if (opConfig.mode === 'automatic') {
+            const sent = await sendSmsDirectly(customerPhone, message);
+            if (sent) toast.success('تم إرسال رسالة تأكيد تحصيل المستند');
+          } else if (opConfig.mode === 'semi_automatic') {
+            openSmsApp(customerPhone, message);
+          }
+        } catch (smsErr) {
+          console.error('[SMS] document_collection error:', smsErr);
+        }
+      })();
+
       onOpenChange(false);
     } catch (error: any) {
       toast.error(error.message);
