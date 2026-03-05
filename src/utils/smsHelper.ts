@@ -23,8 +23,7 @@ export const sendSmsDirectly = async (phone: string, message: string): Promise<b
     if (permResult?.sms !== 'granted' && permResult?.send !== 'granted') {
       const reqResult = await SmsSender.requestPermissions() as any;
       if (reqResult?.sms !== 'granted' && reqResult?.send !== 'granted') {
-        console.warn('SMS permission denied, falling back to SMS app');
-        openSmsApp(cleanPhone, message);
+        console.warn('SMS permission denied - لم يتم منح صلاحية الرسائل');
         return false;
       }
     }
@@ -40,9 +39,8 @@ export const sendSmsDirectly = async (phone: string, message: string): Promise<b
     console.log('SMS sent directly to:', cleanPhone);
     return true;
   } catch (error) {
-    console.warn('Direct SMS failed, falling back to SMS app:', error);
-    // Fallback: فتح تطبيق الرسائل (للويب أو في حال فشل الإرسال المباشر)
-    openSmsApp(cleanPhone, message);
+    console.warn('Direct SMS failed:', error);
+    // لا نفتح تطبيق الرسائل - الإرسال يجب أن يكون في الخلفية فقط
     return false;
   }
 };
