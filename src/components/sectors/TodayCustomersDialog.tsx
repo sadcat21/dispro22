@@ -2,18 +2,20 @@ import React, { useMemo, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
-import { MapPin, Truck, ShoppingCart, Landmark, User, Phone, Eye, PackageX } from 'lucide-react';
+import { MapPin, Truck, ShoppingCart, Landmark, User, Phone, Eye, EyeOff, CheckCircle, PackageX, PackageCheck, Navigation, Loader2, MapPinOff, Clock, Check, X } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { useDueDebts } from '@/hooks/useDebtCollections';
-import { useLocationCheck } from '@/hooks/useLocationCheck';
+import { useDueDebts, DueDebt } from '@/hooks/useDebtCollections';
 import { useTrackVisit } from '@/hooks/useVisitTracking';
-import { OrderWithDetails, Customer } from '@/types/database';
+import { useLocationThreshold } from '@/hooks/useLocationSettings';
+import { useHasPermission } from '@/hooks/usePermissions';
+import { calculateDistance } from '@/utils/geoUtils';
+import { OrderWithDetails } from '@/types/database';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import { format } from 'date-fns';
 import DeliverySaleDialog from '@/components/orders/DeliverySaleDialog';
 import CreateOrderDialog from '@/components/orders/CreateOrderDialog';
 import VisitNoPaymentDialog from '@/components/debts/VisitNoPaymentDialog';
@@ -37,14 +39,23 @@ interface TodayCustomersDialogProps {
 const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
   open, onOpenChange, targetWorkerId, targetWorkerName,
 }) => {
-  const { workerId: authWorkerId, activeBranch } = useAuth();
+  const { workerId: authWorkerId, activeBranch, role } = useAuth();
   const navigate = useNavigate();
   const effectiveWorkerId = targetWorkerId || authWorkerId;
+  const isAdmin = role === 'admin' || role === 'branch_admin';
   const todayName = JS_DAY_TO_NAME[new Date().getDay()] || '';
+  const { trackVisit } = useTrackVisit();
+  const { data: locationThreshold } = useLocationThreshold();
+  const canBypassLocation = useHasPermission('bypass_location_check');
+
   const todayStart = useMemo(() => {
     const d = new Date();
     d.setHours(0, 0, 0, 0);
     return d.toISOString();
+  }, []);
+  const todayDateStr = useMemo(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   }, []);
 
   // Sub-dialog states
@@ -55,10 +66,10 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
   const [showVisitNoPayment, setShowVisitNoPayment] = useState(false);
   const [selectedDebt, setSelectedDebt] = useState<any>(null);
   const [showCollectDebt, setShowCollectDebt] = useState(false);
+  const [checkingLocationFor, setCheckingLocationFor] = useState<string | null>(null);
+  const [loadingDeliveryFor, setLoadingDeliveryFor] = useState<string | null>(null);
 
-  const { trackVisit } = useTrackVisit();
-
-  // Sectors assigned to this worker
+  // Data queries
   const { data: sectors = [] } = useQuery({
     queryKey: ['today-cust-sectors', effectiveWorkerId, activeBranch?.id],
     queryFn: async () => {
@@ -73,7 +84,7 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
   const { data: customers = [] } = useQuery({
     queryKey: ['today-cust-customers', activeBranch?.id],
     queryFn: async () => {
-      let query = supabase.from('customers').select('id, name, phone, sector_id, store_name, latitude, longitude').not('sector_id', 'is', null);
+      let query = supabase.from('customers').select('id, name, phone, wilaya, sector_id, store_name, latitude, longitude').not('sector_id', 'is', null);
       if (activeBranch) query = query.eq('branch_id', activeBranch.id);
       const { data } = await query;
       return data || [];
@@ -81,129 +92,246 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
     enabled: !!effectiveWorkerId && open,
   });
 
-  // Orders assigned to this worker (pending delivery) - fetch full details
-  // Include orders matching today's delivery sectors OR with delivery scheduled for today
-  const todayDateStr = useMemo(() => {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  }, []);
+  // Today's visits
+  const { data: todayVisits = [] } = useQuery({
+    queryKey: ['today-visits-dialog', effectiveWorkerId, todayStart],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('visit_tracking')
+        .select('customer_id, operation_type')
+        .eq('worker_id', effectiveWorkerId!)
+        .gte('created_at', todayStart);
+      return data || [];
+    },
+    enabled: !!effectiveWorkerId && open,
+    refetchInterval: 10000,
+  });
 
-  const { data: assignedOrders = [] } = useQuery({
-    queryKey: ['today-cust-assigned-orders-full', effectiveWorkerId, todayDateStr],
+  // Today's orders
+  const { data: todayOrders = [] } = useQuery({
+    queryKey: ['today-orders-dialog', effectiveWorkerId, todayStart],
     queryFn: async () => {
       const { data } = await supabase
         .from('orders')
+        .select('customer_id')
+        .eq('created_by', effectiveWorkerId!)
+        .gte('created_at', todayStart)
+        .not('status', 'eq', 'cancelled');
+      return data || [];
+    },
+    enabled: !!effectiveWorkerId && open,
+    refetchInterval: 10000,
+  });
+
+  // Assigned orders (for delivery)
+  const { data: assignedOrders = [] } = useQuery({
+    queryKey: ['today-cust-assigned-orders-full', effectiveWorkerId, todayDateStr],
+    queryFn: async () => {
+      let query = supabase
+        .from('orders')
         .select('*, customer:customers(*), items:order_items(*, product:products(*))')
-        .eq('assigned_worker_id', effectiveWorkerId!)
         .in('status', ['pending', 'assigned', 'in_progress']);
+      if (!isAdmin) {
+        query = query.eq('assigned_worker_id', effectiveWorkerId!);
+      } else if (activeBranch) {
+        query = query.eq('branch_id', activeBranch.id);
+      }
+      const { data } = await query;
       return (data || []) as OrderWithDetails[];
     },
     enabled: !!effectiveWorkerId && open,
   });
 
-  // Today's delivered orders
-  const { data: deliveredOrders = [] } = useQuery({
-    queryKey: ['today-cust-delivered', effectiveWorkerId, todayStart],
+  // Delivered orders today
+  const { data: todayDeliveredOrders = [] } = useQuery({
+    queryKey: ['today-delivered-dialog', effectiveWorkerId, todayStart, isAdmin],
     queryFn: async () => {
-      const { data } = await supabase
+      let query = supabase
         .from('orders')
-        .select('customer_id')
-        .eq('assigned_worker_id', effectiveWorkerId!)
-        .eq('status', 'delivered')
-        .gte('updated_at', todayStart);
+        .select('customer_id, status, assigned_worker_id')
+        .gte('updated_at', todayStart)
+        .eq('status', 'delivered');
+      if (!isAdmin) {
+        query = query.eq('assigned_worker_id', effectiveWorkerId!);
+      }
+      const { data } = await query;
       return data || [];
     },
     enabled: !!effectiveWorkerId && open,
+    refetchInterval: 10000,
   });
 
   // Due debts
   const { data: dueDebts = [] } = useDueDebts(undefined);
+  const { data: allDebts = [] } = useDueDebts('__all__');
 
-  // Filter sectors for this worker
+  // Today's debt collections
+  const { data: todayCollections = [] } = useQuery({
+    queryKey: ['today-debt-collections-dialog', effectiveWorkerId, todayDateStr],
+    queryFn: async () => {
+      let query = supabase
+        .from('debt_collections')
+        .select('debt_id, action, amount_collected, status')
+        .eq('collection_date', todayDateStr);
+      if (!isAdmin) {
+        query = query.eq('worker_id', effectiveWorkerId!);
+      }
+      const { data } = await query;
+      return data || [];
+    },
+    enabled: !!effectiveWorkerId && open,
+    refetchInterval: 10000,
+  });
+
+  // Computed data
   const workerSectors = useMemo(() => {
     if (targetWorkerId) {
       return sectors.filter(s => s.delivery_worker_id === targetWorkerId || s.sales_worker_id === targetWorkerId);
     }
-    return sectors;
-  }, [sectors, targetWorkerId]);
+    if (isAdmin) return sectors;
+    return sectors.filter(s => s.delivery_worker_id === effectiveWorkerId || s.sales_worker_id === effectiveWorkerId);
+  }, [sectors, targetWorkerId, effectiveWorkerId, isAdmin]);
 
-  const salesSectors = useMemo(() =>
-    workerSectors.filter(s => s.visit_day_sales === todayName && (!targetWorkerId || s.sales_worker_id === targetWorkerId)),
-    [workerSectors, todayName, targetWorkerId]
-  );
+  const todaySalesSectors = useMemo(() => {
+    if (isAdmin && !targetWorkerId) return workerSectors.filter(s => s.visit_day_sales === todayName);
+    return workerSectors.filter(s => s.visit_day_sales === todayName && s.sales_worker_id === (targetWorkerId || effectiveWorkerId));
+  }, [workerSectors, todayName, targetWorkerId, effectiveWorkerId, isAdmin]);
 
-  const deliverySectors = useMemo(() =>
-    workerSectors.filter(s => s.visit_day_delivery === todayName && (!targetWorkerId || s.delivery_worker_id === targetWorkerId)),
-    [workerSectors, todayName, targetWorkerId]
-  );
+  const todayDeliverySectors = useMemo(() => {
+    if (isAdmin && !targetWorkerId) return workerSectors.filter(s => s.visit_day_delivery === todayName);
+    return workerSectors.filter(s => s.visit_day_delivery === todayName && s.delivery_worker_id === (targetWorkerId || effectiveWorkerId));
+  }, [workerSectors, todayName, targetWorkerId, effectiveWorkerId, isAdmin]);
 
-  const salesCustomers = useMemo(() => {
-    const sectorIds = new Set(salesSectors.map(s => s.id));
-    return customers.filter(c => c.sector_id && sectorIds.has(c.sector_id));
-  }, [customers, salesSectors]);
-
-  const deliveryCustomerIds = useMemo(() => {
+  // Delivery customers
+  const deliveryCustomerIdsWithOrders = useMemo(() => {
     const ids = new Set<string>();
-    const deliverySectorIds = new Set(deliverySectors.map(s => s.id));
-    
+    const deliverySectorIds = new Set(todayDeliverySectors.map(s => s.id));
     assignedOrders.forEach(o => {
       if (!o.customer_id) return;
       const customer = customers.find(c => c.id === o.customer_id);
-      // Include if: customer's sector matches today's delivery sector, OR order has delivery_date = today
       const matchesSector = customer?.sector_id && deliverySectorIds.has(customer.sector_id);
       const matchesDate = o.delivery_date && o.delivery_date.startsWith(todayDateStr);
-      if (matchesSector || matchesDate) {
-        ids.add(o.customer_id);
-      }
+      if (matchesSector || matchesDate) ids.add(o.customer_id);
     });
-    deliveredOrders.forEach(o => { if (o.customer_id) ids.add(o.customer_id); });
+    todayDeliveredOrders.forEach(o => { if (o.customer_id) ids.add(o.customer_id); });
     return ids;
-  }, [assignedOrders, deliveredOrders, deliverySectors, customers, todayDateStr]);
+  }, [assignedOrders, todayDeliveredOrders, todayDeliverySectors, customers, todayDateStr]);
 
-  const deliveryCustomers = useMemo(() => {
-    return customers.filter(c => deliveryCustomerIds.has(c.id));
-  }, [customers, deliveryCustomerIds]);
+  const deliveryCustomers = useMemo(() => customers.filter(c => deliveryCustomerIdsWithOrders.has(c.id)), [customers, deliveryCustomerIdsWithOrders]);
 
-  const deliveredSet = useMemo(() => new Set(deliveredOrders.map(o => o.customer_id).filter(Boolean)), [deliveredOrders]);
+  // Sales customers
+  const salesCustomers = useMemo(() => {
+    const sectorIds = new Set(todaySalesSectors.map(s => s.id));
+    return customers.filter(c => c.sector_id && sectorIds.has(c.sector_id));
+  }, [customers, todaySalesSectors]);
+
+  // Sub-categorization: Sales
+  const visitedCustomerIds = useMemo(() => new Set(todayVisits.filter(v => v.operation_type === 'visit').map(v => v.customer_id).filter(Boolean)), [todayVisits]);
+  const orderedCustomerIds = useMemo(() => new Set(todayOrders.map(o => o.customer_id).filter(Boolean)), [todayOrders]);
+  const salesNotVisited = useMemo(() => salesCustomers.filter(c => !visitedCustomerIds.has(c.id) && !orderedCustomerIds.has(c.id)), [salesCustomers, visitedCustomerIds, orderedCustomerIds]);
+  const salesVisitedNoOrder = useMemo(() => salesCustomers.filter(c => visitedCustomerIds.has(c.id) && !orderedCustomerIds.has(c.id)), [salesCustomers, visitedCustomerIds, orderedCustomerIds]);
+  const salesWithOrders = useMemo(() => salesCustomers.filter(c => orderedCustomerIds.has(c.id)), [salesCustomers, orderedCustomerIds]);
+
+  // Sub-categorization: Delivery
+  const deliveredCustomerIds = useMemo(() => new Set(todayDeliveredOrders.map(o => o.customer_id).filter(Boolean)), [todayDeliveredOrders]);
+  const deliveryVisitedCustomerIds = useMemo(() => new Set(todayVisits.filter(v => v.operation_type === 'delivery_visit').map(v => v.customer_id).filter(Boolean)), [todayVisits]);
+  const deliveryNotDone = useMemo(() => deliveryCustomers.filter(c => !deliveredCustomerIds.has(c.id) && !deliveryVisitedCustomerIds.has(c.id)), [deliveryCustomers, deliveredCustomerIds, deliveryVisitedCustomerIds]);
+  const deliveryNotReceived = useMemo(() => deliveryCustomers.filter(c => deliveryVisitedCustomerIds.has(c.id) && !deliveredCustomerIds.has(c.id)), [deliveryCustomers, deliveryVisitedCustomerIds, deliveredCustomerIds]);
+  const deliveryReceived = useMemo(() => deliveryCustomers.filter(c => deliveredCustomerIds.has(c.id)), [deliveryCustomers, deliveredCustomerIds]);
+
+  // Sub-categorization: Debts
+  const collectedDebtIds = useMemo(() => new Set(todayCollections.filter(c => c.action !== 'no_payment').map(c => c.debt_id)), [todayCollections]);
+  const noPaymentDebtIds = useMemo(() => new Set(todayCollections.filter(c => c.action === 'no_payment').map(c => c.debt_id)), [todayCollections]);
 
   const debtCustomers = useMemo(() => {
-    if (targetWorkerId) {
-      return dueDebts.filter(d => d.worker_id === targetWorkerId);
-    }
+    if (targetWorkerId) return dueDebts.filter(d => d.worker_id === targetWorkerId);
     return dueDebts;
   }, [dueDebts, targetWorkerId]);
 
-  // Handlers
-  const handleDeliveryCustomerClick = (customerId: string) => {
-    const order = assignedOrders.find(o => o.customer_id === customerId && ['pending', 'assigned', 'in_progress'].includes(o.status));
-    if (order) {
-      setPendingDeliveryOrder(order);
-      setShowDeliveryDialog(true);
-    } else {
-      toast.info('لا توجد طلبية نشطة لهذا العميل');
+  const debtsToCollectToday = useMemo(() => debtCustomers.filter(d => !collectedDebtIds.has(d.id) && !noPaymentDebtIds.has(d.id)), [debtCustomers, collectedDebtIds, noPaymentDebtIds]);
+  const debtsCollectedToday = useMemo(() => debtCustomers.filter(d => collectedDebtIds.has(d.id)), [debtCustomers, collectedDebtIds]);
+  const debtsNoPaymentToday = useMemo(() => debtCustomers.filter(d => noPaymentDebtIds.has(d.id)), [debtCustomers, noPaymentDebtIds]);
+  const allDebtsFiltered = useMemo(() => {
+    if (targetWorkerId) return allDebts.filter(d => d.worker_id === targetWorkerId);
+    return allDebts;
+  }, [allDebts, targetWorkerId]);
+
+  // Location check
+  const checkLocationBeforeAction = async (customer: any): Promise<boolean> => {
+    if (canBypassLocation) return true;
+    if (!customer.latitude || !customer.longitude) return true;
+    const threshold = locationThreshold ?? 100;
+    setCheckingLocationFor(customer.id);
+    try {
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        if (!navigator.geolocation) { reject(); return; }
+        navigator.geolocation.getCurrentPosition(resolve, () => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: false, timeout: 10000, maximumAge: 120000 });
+        }, { enableHighAccuracy: true, timeout: 5000, maximumAge: 30000 });
+      });
+      const distanceKm = calculateDistance(position.coords.latitude, position.coords.longitude, customer.latitude, customer.longitude);
+      const distanceMeters = distanceKm * 1000;
+      if (distanceMeters > threshold) {
+        const formattedDistance = distanceMeters >= 1000 ? `${(distanceMeters / 1000).toFixed(1)} كم` : `${Math.round(distanceMeters)} متر`;
+        toast.error(`📍 أنت بعيد عن العميل بمسافة ${formattedDistance}`, { description: `يجب أن تكون على بُعد ${threshold} متر أو أقل` });
+        return false;
+      }
+      return true;
+    } catch {
+      toast.error('تعذر تحديد موقعك. يرجى تفعيل خدمة الموقع.');
+      return false;
+    } finally {
+      setCheckingLocationFor(null);
     }
   };
 
-  const handleDeliveryVisit = (customer: any) => {
-    trackVisit({
-      customerId: customer.id,
-      operationType: 'delivery_visit',
-      notes: `زيارة بدون تسليم - ${customer.store_name || customer.name}`,
-    });
-    toast.success('تم تسجيل الزيارة بنجاح');
+  // Handlers
+  const handleDeliveryCustomerClick = async (customer: any) => {
+    setLoadingDeliveryFor(customer.id);
+    try {
+      let query = supabase
+        .from('orders')
+        .select('*, customer:customers(*, sector:sectors(id, name, name_fr), zone:sector_zones(id, name, name_fr)), created_by_worker:workers!orders_created_by_fkey(id, full_name, username)')
+        .eq('customer_id', customer.id)
+        .in('status', ['pending', 'assigned', 'in_progress'])
+        .order('created_at', { ascending: false })
+        .limit(1);
+      if (!isAdmin) query = query.eq('assigned_worker_id', effectiveWorkerId!);
+      const { data, error } = await query;
+      if (error) throw error;
+      if (data && data.length > 0) {
+        setPendingDeliveryOrder(data[0] as OrderWithDetails);
+        setShowDeliveryDialog(true);
+      } else {
+        toast.error('لا توجد طلبية معينة لهذا العميل');
+      }
+    } catch {
+      toast.error('خطأ في جلب بيانات الطلبية');
+    } finally {
+      setLoadingDeliveryFor(null);
+    }
   };
 
-  const handleSalesVisit = (customer: any) => {
-    trackVisit({
-      customerId: customer.id,
-      operationType: 'visit',
-      notes: `زيارة بدون طلبية - ${customer.store_name || customer.name}`,
-    });
-    toast.success('تم تسجيل الزيارة بنجاح');
+  const handleDeliveryVisitWithoutDelivery = async (customer: any) => {
+    const allowed = await checkLocationBeforeAction(customer);
+    if (!allowed) return;
+    try {
+      await trackVisit({ customerId: customer.id, operationType: 'delivery_visit', notes: `زيارة توصيل بدون تسليم - ${customer.store_name || customer.name}` });
+      toast.success(`تم تسجيل زيارة بدون تسليم لـ ${customer.store_name || customer.name}`);
+    } catch { toast.error('فشل في تسجيل الزيارة'); }
   };
 
-  const handleSalesCustomerClick = (customerId: string) => {
-    setSelectedCustomerForOrder(customerId);
+  const handleVisitWithoutOrder = async (customer: any) => {
+    const allowed = await checkLocationBeforeAction(customer);
+    if (!allowed) return;
+    try {
+      await trackVisit({ customerId: customer.id, operationType: 'visit', notes: `زيارة بدون طلبية - ${customer.name}` });
+      toast.success(`تم تسجيل زيارة ${customer.name} بنجاح`);
+    } catch { toast.error('فشل في تسجيل الزيارة'); }
+  };
+
+  const handleSalesCustomerClick = (customer: any) => {
+    setSelectedCustomerForOrder(customer.id);
     setShowCreateOrder(true);
   };
 
@@ -232,7 +360,7 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
             </DialogTitle>
           </DialogHeader>
 
-          <Tabs defaultValue="delivery" className="flex flex-col flex-1 min-h-0">
+          <Tabs defaultValue="sales" className="flex flex-col flex-1 min-h-0">
             <TabsList className="w-full rounded-none border-b shrink-0">
               <TabsTrigger value="delivery" className="flex-1 gap-1 text-xs">
                 <Truck className="w-3.5 h-3.5" />
@@ -251,155 +379,111 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
               </TabsTrigger>
             </TabsList>
 
-            {/* Delivery Tab */}
+            {/* Delivery Tab with sub-tabs */}
             <TabsContent value="delivery" className="m-0 flex-1 min-h-0">
-              <ScrollArea className="h-full max-h-[60vh]">
-                {deliveryCustomers.length === 0 ? (
-                  <div className="p-6 text-center text-muted-foreground text-sm">لا توجد توصيلات لليوم</div>
-                ) : (
-                  <div className="divide-y">
-                    {deliveryCustomers.map(c => {
-                      const isDelivered = deliveredSet.has(c.id);
-                      const hasActiveOrder = assignedOrders.some(o => o.customer_id === c.id);
-                      return (
-                        <div
-                          key={c.id}
-                          className="flex items-center gap-2.5 p-3"
-                        >
-                          <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${isDelivered ? 'bg-green-100 text-green-600' : 'bg-orange-100 text-orange-600'}`}>
-                            <User className="w-4 h-4" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium truncate">{c.store_name || c.name}</p>
-                            {c.phone && <p className="text-[11px] text-muted-foreground flex items-center gap-1"><Phone className="w-3 h-3" />{c.phone}</p>}
-                          </div>
-                          {isDelivered ? (
-                            <Badge variant="outline" className="text-[10px] text-green-600 border-green-200">تم ✓</Badge>
-                          ) : (
-                            <div className="flex items-center gap-1 shrink-0">
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="h-7 w-7 p-0 text-muted-foreground hover:text-orange-600"
-                                title="زيارة بدون تسليم"
-                                onClick={() => handleDeliveryVisit(c)}
-                              >
-                                <Eye className="w-3.5 h-3.5" />
-                              </Button>
-                              {hasActiveOrder && (
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  className="h-7 w-7 p-0 text-muted-foreground hover:text-green-600"
-                                  title="تسليم الطلبية"
-                                  onClick={() => handleDeliveryCustomerClick(c.id)}
-                                >
-                                  <Truck className="w-3.5 h-3.5" />
-                                </Button>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </ScrollArea>
+              <Tabs defaultValue="not-delivered" className="flex flex-col h-full min-h-0">
+                <TabsList className="w-full rounded-none border-b shrink-0 h-auto p-0.5 gap-0.5">
+                  <TabsTrigger value="not-delivered" className="flex-1 gap-1 text-[10px] px-1.5 py-1.5 data-[state=active]:bg-orange-100 data-[state=active]:text-orange-700">
+                    <Truck className="w-3 h-3" />
+                    بدون توصيل
+                    {deliveryNotDone.length > 0 && <Badge className="text-[9px] px-1 h-4 bg-orange-500">{deliveryNotDone.length}</Badge>}
+                  </TabsTrigger>
+                  <TabsTrigger value="not-received" className="flex-1 gap-1 text-[10px] px-1.5 py-1.5 data-[state=active]:bg-amber-100 data-[state=active]:text-amber-700">
+                    <PackageX className="w-3 h-3" />
+                    لم يتم الاستلام
+                    {deliveryNotReceived.length > 0 && <Badge className="text-[9px] px-1 h-4 bg-amber-500">{deliveryNotReceived.length}</Badge>}
+                  </TabsTrigger>
+                  <TabsTrigger value="received" className="flex-1 gap-1 text-[10px] px-1.5 py-1.5 data-[state=active]:bg-green-100 data-[state=active]:text-green-700">
+                    <PackageCheck className="w-3 h-3" />
+                    تم الاستلام
+                    {deliveryReceived.length > 0 && <Badge className="text-[9px] px-1 h-4 bg-green-500">{deliveryReceived.length}</Badge>}
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="not-delivered" className="m-0 flex-1 min-h-0" style={{ overflow: 'auto', maxHeight: '55vh' }}>
+                  <CustomerList customers={deliveryNotDone} emptyMessage="تم توصيل جميع العملاء ✓" onCustomerClick={(c) => handleDeliveryCustomerClick(c)} onVisitWithoutOrder={handleDeliveryVisitWithoutDelivery} showVisitButton visitButtonLabel="بدون تسليم" checkingLocationFor={checkingLocationFor} loadingFor={loadingDeliveryFor} />
+                </TabsContent>
+                <TabsContent value="not-received" className="m-0 flex-1 min-h-0" style={{ overflow: 'auto', maxHeight: '55vh' }}>
+                  <CustomerList customers={deliveryNotReceived} emptyMessage="لا توجد زيارات بدون تسليم" onCustomerClick={(c) => handleDeliveryCustomerClick(c)} onVisitWithoutOrder={handleDeliveryVisitWithoutDelivery} showVisitButton={false} checkingLocationFor={checkingLocationFor} loadingFor={loadingDeliveryFor} />
+                </TabsContent>
+                <TabsContent value="received" className="m-0 flex-1 min-h-0" style={{ overflow: 'auto', maxHeight: '55vh' }}>
+                  <CustomerList customers={deliveryReceived} emptyMessage="لا توجد توصيلات بعد" onCustomerClick={(c) => handleDeliveryCustomerClick(c)} onVisitWithoutOrder={handleDeliveryVisitWithoutDelivery} showVisitButton={false} checkingLocationFor={checkingLocationFor} loadingFor={loadingDeliveryFor} />
+                </TabsContent>
+              </Tabs>
             </TabsContent>
 
-            {/* Sales Tab */}
+            {/* Sales Tab with sub-tabs */}
             <TabsContent value="sales" className="m-0 flex-1 min-h-0">
-              <ScrollArea className="h-full max-h-[60vh]">
-                {salesCustomers.length === 0 ? (
-                  <div className="p-6 text-center text-muted-foreground text-sm">لا يوجد عملاء مبيعات لليوم</div>
-                ) : (
-                  <div className="divide-y">
-                    {salesCustomers.map(c => (
-                      <div
-                        key={c.id}
-                        className="flex items-center gap-2.5 p-3"
-                      >
-                        <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
-                          <User className="w-4 h-4" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">{c.store_name || c.name}</p>
-                          {c.phone && <p className="text-[11px] text-muted-foreground flex items-center gap-1"><Phone className="w-3 h-3" />{c.phone}</p>}
-                        </div>
-                        <div className="flex items-center gap-1 shrink-0">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-7 w-7 p-0 text-muted-foreground hover:text-orange-600"
-                            title="زيارة بدون طلبية"
-                            onClick={() => handleSalesVisit(c)}
-                          >
-                            <Eye className="w-3.5 h-3.5" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-7 w-7 p-0 text-muted-foreground hover:text-blue-600"
-                            title="إنشاء طلبية"
-                            onClick={() => handleSalesCustomerClick(c.id)}
-                          >
-                            <ShoppingCart className="w-3.5 h-3.5" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </ScrollArea>
+              <Tabs defaultValue="not-visited" className="flex flex-col h-full min-h-0">
+                <TabsList className="w-full rounded-none border-b shrink-0 h-auto p-0.5 gap-0.5">
+                  <TabsTrigger value="not-visited" className="flex-1 gap-1 text-[10px] px-1.5 py-1.5 data-[state=active]:bg-orange-100 data-[state=active]:text-orange-700">
+                    <EyeOff className="w-3 h-3" />
+                    بدون زيارة
+                    {salesNotVisited.length > 0 && <Badge className="text-[9px] px-1 h-4 bg-orange-500">{salesNotVisited.length}</Badge>}
+                  </TabsTrigger>
+                  <TabsTrigger value="visited-no-order" className="flex-1 gap-1 text-[10px] px-1.5 py-1.5 data-[state=active]:bg-amber-100 data-[state=active]:text-amber-700">
+                    <Eye className="w-3 h-3" />
+                    بدون طلبية
+                    {salesVisitedNoOrder.length > 0 && <Badge className="text-[9px] px-1 h-4 bg-amber-500">{salesVisitedNoOrder.length}</Badge>}
+                  </TabsTrigger>
+                  <TabsTrigger value="with-orders" className="flex-1 gap-1 text-[10px] px-1.5 py-1.5 data-[state=active]:bg-green-100 data-[state=active]:text-green-700">
+                    <CheckCircle className="w-3 h-3" />
+                    بطلبيات
+                    {salesWithOrders.length > 0 && <Badge className="text-[9px] px-1 h-4 bg-green-500">{salesWithOrders.length}</Badge>}
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="not-visited" className="m-0 flex-1 min-h-0" style={{ overflow: 'auto', maxHeight: '55vh' }}>
+                  <CustomerList customers={salesNotVisited} emptyMessage="تمت زيارة جميع العملاء ✓" onCustomerClick={handleSalesCustomerClick} onVisitWithoutOrder={handleVisitWithoutOrder} showVisitButton checkingLocationFor={checkingLocationFor} />
+                </TabsContent>
+                <TabsContent value="visited-no-order" className="m-0 flex-1 min-h-0" style={{ overflow: 'auto', maxHeight: '55vh' }}>
+                  <CustomerList customers={salesVisitedNoOrder} emptyMessage="لا توجد زيارات بدون طلبيات" onCustomerClick={handleSalesCustomerClick} onVisitWithoutOrder={handleVisitWithoutOrder} showVisitButton={false} checkingLocationFor={checkingLocationFor} />
+                </TabsContent>
+                <TabsContent value="with-orders" className="m-0 flex-1 min-h-0" style={{ overflow: 'auto', maxHeight: '55vh' }}>
+                  <CustomerList customers={salesWithOrders} emptyMessage="لا توجد طلبيات بعد" onCustomerClick={handleSalesCustomerClick} onVisitWithoutOrder={handleVisitWithoutOrder} showVisitButton={false} checkingLocationFor={checkingLocationFor} />
+                </TabsContent>
+              </Tabs>
             </TabsContent>
 
-            {/* Debts Tab */}
+            {/* Debts Tab with sub-tabs */}
             <TabsContent value="debts" className="m-0 flex-1 min-h-0">
-              <ScrollArea className="h-full max-h-[60vh]">
-                {debtCustomers.length === 0 ? (
-                  <div className="p-6 text-center text-muted-foreground text-sm">لا توجد ديون مستحقة لليوم</div>
-                ) : (
-                  <div className="divide-y">
-                    {debtCustomers.map(d => {
-                      const customer = d.customer as any;
-                      return (
-                        <div key={d.id} className="flex items-center gap-2.5 p-3">
-                          <div
-                            className="w-8 h-8 rounded-full bg-red-100 text-red-600 flex items-center justify-center shrink-0 cursor-pointer hover:bg-red-200 transition-colors"
-                            onClick={() => handleDebtClick(d)}
-                          >
-                            <Landmark className="w-4 h-4" />
-                          </div>
-                          <div className="flex-1 min-w-0 cursor-pointer" onClick={() => handleDebtClick(d)}>
-                            <p className="text-sm font-medium truncate">{customer?.store_name || customer?.name || '—'}</p>
-                            <p className="text-[11px] text-destructive font-bold">{Number(d.remaining_amount).toLocaleString()} DA</p>
-                          </div>
-                          <div className="flex items-center gap-1 shrink-0">
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-7 w-7 p-0 text-muted-foreground hover:text-orange-600"
-                              title="زيارة بدون تحصيل"
-                              onClick={(e) => { e.stopPropagation(); handleVisitNoPayment(d); }}
-                            >
-                              <Eye className="w-3.5 h-3.5" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-7 w-7 p-0 text-muted-foreground hover:text-green-600"
-                              title="تحصيل"
-                              onClick={(e) => { e.stopPropagation(); handleDebtClick(d); }}
-                            >
-                              <Landmark className="w-3.5 h-3.5" />
-                            </Button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </ScrollArea>
+              <Tabs defaultValue="today-collection" className="flex flex-col h-full min-h-0">
+                <TabsList className="w-full rounded-none border-b shrink-0 h-auto p-0.5 gap-0.5">
+                  <TabsTrigger value="today-collection" className="flex-1 gap-1 text-[10px] px-1 py-1.5 data-[state=active]:bg-orange-100 data-[state=active]:text-orange-700">
+                    <Clock className="w-3 h-3" />
+                    تحصيل اليوم
+                    {debtsToCollectToday.length > 0 && <Badge className="text-[9px] px-1 h-4 bg-orange-500">{debtsToCollectToday.length}</Badge>}
+                  </TabsTrigger>
+                  <TabsTrigger value="collected" className="flex-1 gap-1 text-[10px] px-1 py-1.5 data-[state=active]:bg-green-100 data-[state=active]:text-green-700">
+                    <Check className="w-3 h-3" />
+                    تم التحصيل
+                    {debtsCollectedToday.length > 0 && <Badge className="text-[9px] px-1 h-4 bg-green-500">{debtsCollectedToday.length}</Badge>}
+                  </TabsTrigger>
+                  <TabsTrigger value="no-payment" className="flex-1 gap-1 text-[10px] px-1 py-1.5 data-[state=active]:bg-amber-100 data-[state=active]:text-amber-700">
+                    <X className="w-3 h-3" />
+                    بدون تحصيل
+                    {debtsNoPaymentToday.length > 0 && <Badge className="text-[9px] px-1 h-4 bg-amber-500">{debtsNoPaymentToday.length}</Badge>}
+                  </TabsTrigger>
+                  <TabsTrigger value="all-debts" className="flex-1 gap-1 text-[10px] px-1 py-1.5 data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
+                    <Landmark className="w-3 h-3" />
+                    الكل
+                    {allDebtsFiltered.length > 0 && <Badge variant="secondary" className="text-[9px] px-1 h-4">{allDebtsFiltered.length}</Badge>}
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="today-collection" className="m-0 flex-1 min-h-0" style={{ overflow: 'auto', maxHeight: '55vh' }}>
+                  <DebtList debts={debtsToCollectToday} onCollect={handleDebtClick} onVisitNoPayment={handleVisitNoPayment} emptyMessage="لا توجد ديون مستحقة اليوم ✓" />
+                </TabsContent>
+                <TabsContent value="collected" className="m-0 flex-1 min-h-0" style={{ overflow: 'auto', maxHeight: '55vh' }}>
+                  <DebtList debts={debtsCollectedToday} onCollect={handleDebtClick} onVisitNoPayment={handleVisitNoPayment} emptyMessage="لا توجد تحصيلات بعد" />
+                </TabsContent>
+                <TabsContent value="no-payment" className="m-0 flex-1 min-h-0" style={{ overflow: 'auto', maxHeight: '55vh' }}>
+                  <DebtList debts={debtsNoPaymentToday} onCollect={handleDebtClick} onVisitNoPayment={handleVisitNoPayment} emptyMessage="لا توجد زيارات بدون دفع" />
+                </TabsContent>
+                <TabsContent value="all-debts" className="m-0 flex-1 min-h-0" style={{ overflow: 'auto', maxHeight: '55vh' }}>
+                  <DebtList debts={allDebtsFiltered} onCollect={handleDebtClick} onVisitNoPayment={handleVisitNoPayment} emptyMessage="لا توجد ديون مستحقة" />
+                </TabsContent>
+              </Tabs>
             </TabsContent>
           </Tabs>
         </DialogContent>
@@ -409,10 +493,7 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
       {pendingDeliveryOrder && (
         <DeliverySaleDialog
           open={showDeliveryDialog}
-          onOpenChange={(open) => {
-            setShowDeliveryDialog(open);
-            if (!open) setPendingDeliveryOrder(null);
-          }}
+          onOpenChange={(o) => { setShowDeliveryDialog(o); if (!o) setPendingDeliveryOrder(null); }}
           order={pendingDeliveryOrder}
         />
       )}
@@ -426,10 +507,7 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
       {selectedDebt && (
         <VisitNoPaymentDialog
           open={showVisitNoPayment}
-          onOpenChange={(open) => {
-            setShowVisitNoPayment(open);
-            if (!open) setSelectedDebt(null);
-          }}
+          onOpenChange={(o) => { setShowVisitNoPayment(o); if (!o) setSelectedDebt(null); }}
           debtId={selectedDebt.id}
           customerName={(selectedDebt.customer as any)?.store_name || (selectedDebt.customer as any)?.name || ''}
           collectionType={selectedDebt.collection_type}
@@ -442,10 +520,7 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
       {selectedDebt && (
         <CollectDebtDialog
           open={showCollectDebt}
-          onOpenChange={(open) => {
-            setShowCollectDebt(open);
-            if (!open) setSelectedDebt(null);
-          }}
+          onOpenChange={(o) => { setShowCollectDebt(o); if (!o) setSelectedDebt(null); }}
           debtId={selectedDebt.id}
           customerName={(selectedDebt.customer as any)?.store_name || (selectedDebt.customer as any)?.name || ''}
           totalDebtAmount={Number(selectedDebt.total_amount)}
@@ -458,6 +533,127 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
         />
       )}
     </>
+  );
+};
+
+// Reusable CustomerList component (matches SectorCustomersPopover)
+const CustomerList: React.FC<{
+  customers: any[];
+  emptyMessage: string;
+  onCustomerClick: (c: any) => void;
+  onVisitWithoutOrder: (c: any) => void;
+  showVisitButton: boolean;
+  visitButtonLabel?: string;
+  checkingLocationFor: string | null;
+  loadingFor?: string | null;
+}> = ({ customers, emptyMessage, onCustomerClick, onVisitWithoutOrder, showVisitButton, visitButtonLabel, checkingLocationFor, loadingFor }) => {
+  if (customers.length === 0) {
+    return <div className="p-6 text-center text-sm text-muted-foreground">{emptyMessage}</div>;
+  }
+
+  return (
+    <div className="divide-y">
+      {customers.map(c => (
+        <div key={c.id} className="p-3 hover:bg-muted/50 transition-colors">
+          <button
+            className="w-full flex items-center gap-2 text-start"
+            onClick={() => onCustomerClick(c)}
+            disabled={loadingFor === c.id}
+          >
+            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+              {loadingFor === c.id ? <Loader2 className="w-4 h-4 animate-spin text-primary" /> : <User className="w-4 h-4 text-primary" />}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-bold text-sm truncate">{c.store_name || c.name}</p>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                {c.store_name && <span>{c.name}</span>}
+                {c.phone && <span>• {c.phone}</span>}
+                {c.wilaya && <span>• {c.wilaya}</span>}
+              </div>
+            </div>
+          </button>
+          <div className="flex items-center gap-1 mt-1.5 justify-end">
+            {c.latitude && c.longitude && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 text-[10px] px-1.5 gap-0.5"
+                onClick={() => window.open(`https://www.google.com/maps/dir/?api=1&destination=${c.latitude},${c.longitude}`, '_blank')}
+              >
+                <Navigation className="w-3 h-3" />
+                الموقع
+              </Button>
+            )}
+            {showVisitButton && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 text-[10px] px-1.5 gap-0.5 text-orange-600"
+                onClick={() => onVisitWithoutOrder(c)}
+                disabled={checkingLocationFor === c.id}
+              >
+                {checkingLocationFor === c.id ? (
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                ) : (
+                  <MapPinOff className="w-3 h-3" />
+                )}
+                {visitButtonLabel || 'زيارة بدون طلبية'}
+              </Button>
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+// Reusable DebtList component (matches SectorCustomersPopover)
+const DebtList: React.FC<{ debts: DueDebt[]; onCollect: (d: DueDebt) => void; onVisitNoPayment: (d: DueDebt) => void; emptyMessage: string }> = ({ debts, onCollect, onVisitNoPayment, emptyMessage }) => {
+  if (debts.length === 0) {
+    return <div className="p-6 text-center text-sm text-muted-foreground">{emptyMessage}</div>;
+  }
+
+  return (
+    <div className="divide-y">
+      {debts.map(debt => (
+        <div key={debt.id} className="p-3 hover:bg-muted/50 transition-colors">
+          <button
+            className="w-full text-right"
+            onClick={() => onCollect(debt)}
+          >
+            <div className="flex items-center justify-between">
+              <span className="font-bold text-sm">{(debt.customer as any)?.store_name || (debt.customer as any)?.name || '—'}</span>
+              <span className="text-destructive font-bold">{Number(debt.remaining_amount).toLocaleString()} DA</span>
+            </div>
+            <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+              <Clock className="w-3 h-3" />
+              <span>{debt.due_date ? format(new Date(debt.due_date + 'T00:00:00'), 'dd/MM/yyyy') : '—'}</span>
+              {(debt.customer as any)?.phone && <span>• {(debt.customer as any).phone}</span>}
+            </div>
+          </button>
+          <div className="flex items-center gap-1 mt-1.5 justify-end">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 text-[10px] px-1.5 gap-0.5 text-orange-600"
+              onClick={(e) => { e.stopPropagation(); onVisitNoPayment(debt); }}
+            >
+              <Eye className="w-3 h-3" />
+              زيارة بدون دفع
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 text-[10px] px-1.5 gap-0.5 text-green-600"
+              onClick={(e) => { e.stopPropagation(); onCollect(debt); }}
+            >
+              <Landmark className="w-3 h-3" />
+              تحصيل
+            </Button>
+          </div>
+        </div>
+      ))}
+    </div>
   );
 };
 
