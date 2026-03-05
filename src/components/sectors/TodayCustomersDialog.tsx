@@ -468,6 +468,11 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
   const buildReceiptDataFromOrder = (order: any, isDirectSale: boolean) => {
     const customer = order.customer;
     const items = order.items || [];
+    const totalAmount = Number(order.total_amount || 0);
+    const isOrderRequest = !isDirectSale && !!order._isOrderRequest;
+    const paidAmount = Number(order.paid_amount ?? order.paidAmount ?? (isOrderRequest ? 0 : totalAmount));
+    const remainingAmount = Number(order.remaining_amount ?? order.remainingAmount ?? (isOrderRequest ? totalAmount : 0));
+
     return {
       receiptType: (isDirectSale ? 'direct_sale' : 'delivery') as any,
       orderId: order.id || null,
@@ -490,9 +495,9 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
         pricingUnit: isDirectSale ? (item.pricingUnit || undefined) : (item.pricing_unit || item.product?.pricing_unit || undefined),
         weightPerBox: isDirectSale ? (item.weightPerBox || null) : (item.weight_per_box || item.product?.weight_per_box || null),
       })),
-      totalAmount: Number(order.total_amount || 0),
-      paidAmount: Number(order.paid_amount ?? order.total_amount ?? 0),
-      remainingAmount: Number(order.remaining_amount ?? 0),
+      totalAmount,
+      paidAmount,
+      remainingAmount,
       paymentMethod: order.payment_type || order.paymentMethod || 'cash',
       notes: order.notes || null,
       receiptTitleOverride: !isDirectSale && order._isOrderRequest ? 'BON DE COMMANDE' : undefined,
@@ -893,7 +898,10 @@ const OrderDetailsDialog: React.FC<{ order: any; onClose: () => void }> = ({ ord
   const isDirectSale = order._isDirectSale;
   const items = isDirectSale ? (order.items || []) : (order.items || []);
   const customer = isDirectSale ? order.customer : order.customer;
-  const totalAmount = isDirectSale ? order.total_amount : order.total_amount;
+  const totalAmount = Number(order.total_amount || 0);
+  const isOrderRequest = !isDirectSale && !!order._isOrderRequest;
+  const paidAmount = Number(order.paid_amount ?? order.paidAmount ?? (isOrderRequest ? 0 : totalAmount));
+  const remainingAmount = Number(order.remaining_amount ?? order.remainingAmount ?? (isOrderRequest ? totalAmount : 0));
 
   const handlePrint = () => {
     const receiptItems: ReceiptItem[] = items.map((item: any) => ({
@@ -926,9 +934,9 @@ const OrderDetailsDialog: React.FC<{ order: any; onClose: () => void }> = ({ ord
       totalPrice: isDirectSale ? (item.totalPrice || 0) : (item.total_price || 0),
       giftQuantity: isDirectSale ? (item.giftQuantity || 0) : (item.gift_quantity || 0),
     })),
-    totalAmount: Number(totalAmount || 0),
-    paidAmount: Number(totalAmount || 0),
-    remainingAmount: 0,
+    totalAmount,
+    paidAmount,
+    remainingAmount,
     paymentMethod: order.payment_type || order.paymentMethod || 'cash',
     notes: order.notes || null,
     receiptTitleOverride: !isDirectSale && order._isOrderRequest ? 'BON DE COMMANDE' : undefined,
