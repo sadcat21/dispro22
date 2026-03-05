@@ -21,45 +21,22 @@ const GpsGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       return;
     }
 
-    // Use permissions API if available for instant check
-    if (navigator.permissions) {
-      navigator.permissions.query({ name: 'geolocation' }).then((result) => {
-        if (result.state === 'granted') {
-          setGpsStatus('granted');
-        } else if (result.state === 'denied') {
+    // In Capacitor WebView, navigator.permissions API is unreliable.
+    // Always use getCurrentPosition directly — it triggers the native permission dialog.
+    navigator.geolocation.getCurrentPosition(
+      () => setGpsStatus('granted'),
+      (err) => {
+        console.warn('GPS check failed:', err.code, err.message);
+        // PERMISSION_DENIED = 1, only treat as denied if explicitly denied
+        if (err.code === 1) {
           setGpsStatus('denied');
         } else {
-          // prompt — try to get position
-          navigator.geolocation.getCurrentPosition(
-            () => setGpsStatus('granted'),
-            () => setGpsStatus('denied'),
-            { timeout: 5000, maximumAge: 60000 }
-          );
+          // POSITION_UNAVAILABLE or TIMEOUT — GPS is on but can't get fix yet, treat as granted
+          setGpsStatus('granted');
         }
-
-        // Listen for changes
-        result.onchange = () => {
-          if (result.state === 'denied') {
-            setGpsStatus('denied');
-          } else if (result.state === 'granted') {
-            setGpsStatus('granted');
-          }
-        };
-      }).catch(() => {
-        // Fallback: try getting position directly
-        navigator.geolocation.getCurrentPosition(
-          () => setGpsStatus('granted'),
-          () => setGpsStatus('denied'),
-          { timeout: 5000, maximumAge: 60000 }
-        );
-      });
-    } else {
-      navigator.geolocation.getCurrentPosition(
-        () => setGpsStatus('granted'),
-        () => setGpsStatus('denied'),
-        { timeout: 5000, maximumAge: 60000 }
-      );
-    }
+      },
+      { timeout: 10000, maximumAge: 120000, enableHighAccuracy: false }
+    );
   }, []);
 
   // Initial check + periodic monitoring
