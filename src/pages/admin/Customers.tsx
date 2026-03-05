@@ -42,7 +42,7 @@ import { useIsElementHidden } from '@/hooks/useUIOverrides';
 import { useRealtimeSubscription } from '@/hooks/useRealtimeSubscription';
 import CustomerFieldSettingsDialog from '@/components/customers/CustomerFieldSettingsDialog';
 import { useCustomerFieldSettings } from '@/hooks/useCustomerFieldSettings';
-import { CUSTOMER_FIELD_LABELS } from '@/types/customerFieldSettings';
+import { CUSTOMER_FIELD_LABELS, CustomerActionButtonKey } from '@/types/customerFieldSettings';
 
 // Normalize Arabic text: treat all alef variants and hamza as the same
 const normalizeArabic = (text: string): string =>
@@ -599,68 +599,40 @@ const Customers: React.FC = () => {
                   )}
                 </div>
               )}
-              <div className="flex items-center justify-end gap-0 mt-2 border-t pt-1.5 flex-wrap">
-                {!isViewProfileHidden && (
-                  <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-primary hover:bg-primary/10"
-                    onClick={() => { setProfileCustomer(customer); setIsProfileOpen(true); }} title={t('customers.profile.title')}>
-                    <Eye className="w-3.5 h-3.5" />
-                  </Button>
-                )}
-                {customer.phone && (
-                  <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-primary hover:bg-primary/10"
-                    onClick={() => window.location.href = `tel:${customer.phone}`} title={t('common.phone')}>
-                    <Phone className="w-3.5 h-3.5" />
-                  </Button>
-                )}
-                <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-primary hover:bg-primary/10"
-                  onClick={() => navigate('/orders', { state: { customerId: customer.id, paymentType: customer.default_payment_type } })} title={t('orders.new')}>
-                  <PlusCircle className="w-3.5 h-3.5" />
-                </Button>
-                <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-primary hover:bg-primary/10"
-                  onClick={() => navigate('/customer-debts', { state: { customerId: customer.id } })} title={t('debts.title')}>
-                  <CreditCard className="w-3.5 h-3.5" />
-                </Button>
-                <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-primary hover:bg-primary/10"
-                  onClick={() => navigate('/orders', { state: { customerId: customer.id, action: 'sale' } })} title={t('stock.direct_sale')}>
-                  <Banknote className="w-3.5 h-3.5" />
-                </Button>
-                <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-primary hover:bg-primary/10"
-                  onClick={() => navigate('/orders', { state: { customerId: customer.id, action: 'delivery' } })} title={t('deliveries.title')}>
-                  <Truck className="w-3.5 h-3.5" />
-                </Button>
-                <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-primary hover:bg-primary/10"
-                  onClick={() => openLastOrderDetails(customer)} title={t('customers.last_order')}>
-                  <ShoppingBag className="w-3.5 h-3.5" />
-                </Button>
-                {customer.latitude && customer.longitude && (
-                  <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-primary hover:bg-primary/10"
-                    onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${customer.latitude},${customer.longitude}`, '_blank')} title={t('common.navigation')}>
-                    <Navigation className="w-3.5 h-3.5" />
-                  </Button>
-                )}
-                <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-primary hover:bg-primary/10"
-                  onClick={() => setCustomerForPrices(customer)} title={t('customers.special_prices')}>
-                  <Tag className="w-3.5 h-3.5" />
-                </Button>
-                {isManager && (pendingRequestsMap[customer.id]?.length || 0) > 0 && (
-                  <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
-                    onClick={() => setReviewCustomer(customer)} title="مراجعة طلبات التعديل">
-                    <FileEdit className="w-3.5 h-3.5" />
-                  </Button>
-                )}
-                {!isEditCustomerHidden && (
-                  <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-primary hover:bg-primary/10"
-                    onClick={() => openEditDialog(customer)}>
-                    <Pencil className="w-3.5 h-3.5" />
-                  </Button>
-                )}
-                {!isDeleteCustomerHidden && (
-                  <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
-                    onClick={() => setCustomerToDelete(customer)}>
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </Button>
-                )}
-              </div>
+              {(() => {
+                const ab = customerFieldSettings.actionButtons;
+                const renderBtn = (key: CustomerActionButtonKey, icon: React.ReactNode, onClick: () => void, condition = true, extraClass = 'text-muted-foreground hover:text-primary hover:bg-primary/10') => {
+                  const cfg = ab[key];
+                  if (!cfg?.visible || !condition) return null;
+                  return (
+                    <Button key={key} variant="ghost" size={cfg.showLabel ? 'sm' : 'icon'} className={`h-7 ${cfg.showLabel ? 'px-2 gap-1 text-[10px]' : 'w-7'} ${extraClass}`} onClick={onClick} title={cfg.label}>
+                      {icon}
+                      {cfg.showLabel && <span>{cfg.label}</span>}
+                    </Button>
+                  );
+                };
+                return (
+                  <div className="flex items-center justify-end gap-0 mt-2 border-t pt-1.5 flex-wrap">
+                    {renderBtn('view_profile', <Eye className="w-3.5 h-3.5" />, () => { setProfileCustomer(customer); setIsProfileOpen(true); }, !isViewProfileHidden)}
+                    {renderBtn('call', <Phone className="w-3.5 h-3.5" />, () => window.location.href = `tel:${customer.phone}`, !!customer.phone)}
+                    {renderBtn('new_order', <PlusCircle className="w-3.5 h-3.5" />, () => navigate('/orders', { state: { customerId: customer.id, paymentType: customer.default_payment_type } }))}
+                    {renderBtn('debts', <CreditCard className="w-3.5 h-3.5" />, () => navigate('/customer-debts', { state: { customerId: customer.id } }))}
+                    {renderBtn('direct_sale', <Banknote className="w-3.5 h-3.5" />, () => navigate('/orders', { state: { customerId: customer.id, action: 'sale' } }))}
+                    {renderBtn('delivery', <Truck className="w-3.5 h-3.5" />, () => navigate('/orders', { state: { customerId: customer.id, action: 'delivery' } }))}
+                    {renderBtn('last_order', <ShoppingBag className="w-3.5 h-3.5" />, () => openLastOrderDetails(customer))}
+                    {renderBtn('navigate', <Navigation className="w-3.5 h-3.5" />, () => window.open(`https://www.google.com/maps/search/?api=1&query=${customer.latitude},${customer.longitude}`, '_blank'), !!(customer.latitude && customer.longitude))}
+                    {renderBtn('special_prices', <Tag className="w-3.5 h-3.5" />, () => setCustomerForPrices(customer))}
+                    {isManager && (pendingRequestsMap[customer.id]?.length || 0) > 0 && (
+                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
+                        onClick={() => setReviewCustomer(customer)} title="مراجعة طلبات التعديل">
+                        <FileEdit className="w-3.5 h-3.5" />
+                      </Button>
+                    )}
+                    {renderBtn('edit', <Pencil className="w-3.5 h-3.5" />, () => openEditDialog(customer), !isEditCustomerHidden)}
+                    {renderBtn('delete', <Trash2 className="w-3.5 h-3.5" />, () => setCustomerToDelete(customer), !isDeleteCustomerHidden, 'text-destructive hover:text-destructive hover:bg-destructive/10')}
+                  </div>
+                );
+              })()}
             </CardContent>
            </Card>
            );

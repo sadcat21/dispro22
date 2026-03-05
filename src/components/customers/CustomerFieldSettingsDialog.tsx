@@ -4,13 +4,18 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Loader2, Settings2 } from 'lucide-react';
+import { Loader2, Settings2, Eye, Phone, PlusCircle, CreditCard, Banknote, Truck, ShoppingBag, Navigation, Tag, Pencil, Trash2 } from 'lucide-react';
 import { useCustomerFieldSettings } from '@/hooks/useCustomerFieldSettings';
 import {
   CustomerFieldKey,
   CustomerFieldSettings,
+  CustomerActionButtonKey,
+  ActionButtonConfig,
   CUSTOMER_FIELD_OPTIONS,
+  ACTION_BUTTON_LABELS,
+  ACTION_BUTTON_DEFAULTS,
 } from '@/types/customerFieldSettings';
 
 interface CustomerFieldSettingsDialogProps {
@@ -23,6 +28,24 @@ const TAB_CONFIG = [
   { value: 'completion', label: 'يُحتسب في الاكتمال', key: 'completionFields' as const },
   { value: 'requiredEdit', label: 'إلزامي في التعديل', key: 'requiredOnEdit' as const },
   { value: 'requiredCreate', label: 'إلزامي في الإضافة', key: 'requiredOnCreate' as const },
+];
+
+const ACTION_BUTTON_ICONS: Record<CustomerActionButtonKey, React.ElementType> = {
+  view_profile: Eye,
+  call: Phone,
+  new_order: PlusCircle,
+  debts: CreditCard,
+  direct_sale: Banknote,
+  delivery: Truck,
+  last_order: ShoppingBag,
+  navigate: Navigation,
+  special_prices: Tag,
+  edit: Pencil,
+  delete: Trash2,
+};
+
+const ACTION_BUTTON_ORDER: CustomerActionButtonKey[] = [
+  'delete', 'edit', 'special_prices', 'last_order', 'delivery', 'direct_sale', 'debts', 'new_order', 'call', 'view_profile', 'navigate',
 ];
 
 const CustomerFieldSettingsDialog: React.FC<CustomerFieldSettingsDialogProps> = ({ open, onOpenChange }) => {
@@ -63,6 +86,16 @@ const CustomerFieldSettingsDialog: React.FC<CustomerFieldSettingsDialogProps> = 
     });
   };
 
+  const updateActionButton = (key: CustomerActionButtonKey, partial: Partial<ActionButtonConfig>) => {
+    setDraft((prev) => ({
+      ...prev,
+      actionButtons: {
+        ...prev.actionButtons,
+        [key]: { ...prev.actionButtons[key], ...partial },
+      },
+    }));
+  };
+
   const handleSave = async () => {
     try {
       await saveSettings(draft);
@@ -89,11 +122,12 @@ const CustomerFieldSettingsDialog: React.FC<CustomerFieldSettingsDialogProps> = 
         ) : (
           <>
             <Tabs defaultValue="editable" className="w-full" dir="rtl">
-              <TabsList className="grid w-full grid-cols-4 h-auto">
-                <TabsTrigger value="editable" className="text-[11px] py-2">تعديل ({counts.editable})</TabsTrigger>
-                <TabsTrigger value="completion" className="text-[11px] py-2">اكتمال ({counts.completion})</TabsTrigger>
-                <TabsTrigger value="requiredEdit" className="text-[11px] py-2">إلزامي تعديل ({counts.requiredEdit})</TabsTrigger>
-                <TabsTrigger value="requiredCreate" className="text-[11px] py-2">إلزامي إضافة ({counts.requiredCreate})</TabsTrigger>
+              <TabsList className="grid w-full grid-cols-5 h-auto">
+                <TabsTrigger value="editable" className="text-[10px] py-2">تعديل ({counts.editable})</TabsTrigger>
+                <TabsTrigger value="completion" className="text-[10px] py-2">اكتمال ({counts.completion})</TabsTrigger>
+                <TabsTrigger value="requiredEdit" className="text-[10px] py-2">إلزامي تعديل ({counts.requiredEdit})</TabsTrigger>
+                <TabsTrigger value="requiredCreate" className="text-[10px] py-2">إلزامي إضافة ({counts.requiredCreate})</TabsTrigger>
+                <TabsTrigger value="actionButtons" className="text-[10px] py-2">الأزرار</TabsTrigger>
               </TabsList>
 
               {TAB_CONFIG.map((tab) => (
@@ -119,6 +153,52 @@ const CustomerFieldSettingsDialog: React.FC<CustomerFieldSettingsDialogProps> = 
                   </ScrollArea>
                 </TabsContent>
               ))}
+
+              {/* Action Buttons Tab */}
+              <TabsContent value="actionButtons" className="mt-3">
+                <ScrollArea className="h-[320px] rounded-md border p-3">
+                  <div className="space-y-3">
+                    {ACTION_BUTTON_ORDER.map((btnKey) => {
+                      const config = draft.actionButtons[btnKey] || ACTION_BUTTON_DEFAULTS[btnKey];
+                      const IconComp = ACTION_BUTTON_ICONS[btnKey];
+                      return (
+                        <div key={btnKey} className="rounded-md border p-2.5 space-y-2">
+                          <div className="flex items-center gap-2">
+                            <IconComp className="w-4 h-4 text-muted-foreground shrink-0" />
+                            <span className="text-sm font-medium flex-1">{ACTION_BUTTON_LABELS[btnKey]}</span>
+                            <div className="flex items-center gap-3">
+                              <div className="flex items-center gap-1">
+                                <Label htmlFor={`vis-${btnKey}`} className="text-[10px] text-muted-foreground">إظهار</Label>
+                                <Switch
+                                  id={`vis-${btnKey}`}
+                                  checked={config.visible}
+                                  onCheckedChange={(v) => updateActionButton(btnKey, { visible: v })}
+                                />
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <Label htmlFor={`lbl-${btnKey}`} className="text-[10px] text-muted-foreground">نص</Label>
+                                <Switch
+                                  id={`lbl-${btnKey}`}
+                                  checked={config.showLabel}
+                                  onCheckedChange={(v) => updateActionButton(btnKey, { showLabel: v })}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                          {config.showLabel && (
+                            <Input
+                              value={config.label}
+                              onChange={(e) => updateActionButton(btnKey, { label: e.target.value })}
+                              className="h-7 text-xs"
+                              placeholder={ACTION_BUTTON_LABELS[btnKey]}
+                            />
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </ScrollArea>
+              </TabsContent>
             </Tabs>
 
             <div className="flex items-center justify-end gap-2 pt-2">
