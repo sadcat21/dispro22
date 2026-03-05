@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useFontSize, FontSize } from '@/contexts/FontSizeContext';
 import { useWorkerPermissions } from '@/hooks/usePermissions';
-import { Users, Coffee, LogOut, Info, Globe, Shield, Building2, RefreshCw, Key, Loader2, Type } from 'lucide-react';
+import { Users, Coffee, LogOut, Info, Globe, Shield, Building2, RefreshCw, Key, Loader2, Type, MessageSquare } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import icon from '@/assets/icon.png';
@@ -18,6 +18,7 @@ import LocationSettingsCard from '@/components/settings/LocationSettingsCard';
 import CustomerTypesCard from '@/components/settings/CustomerTypesCard';
 import CompanyInfoCard from '@/components/settings/CompanyInfoCard';
 import VerificationChecklistCard from '@/components/settings/VerificationChecklistCard';
+import SmsSettingsCard from '@/components/settings/SmsSettingsCard';
 
 const Settings: React.FC = () => {
   const { user, logout, role, activeBranch, availableRoles, switchRole, switchBranch, showRoleSelection, showBranchSelection, selectRole, selectBranch } = useAuth();
@@ -216,6 +217,9 @@ const Settings: React.FC = () => {
       )}
       {(role === 'admin' || role === 'branch_admin') && (
         <VerificationChecklistCard />
+      )}
+      {(role === 'admin' || role === 'branch_admin') && (
+        <SmsSettingsCard />
       )}
 
       {/* User Info */}
