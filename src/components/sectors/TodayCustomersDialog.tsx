@@ -42,7 +42,7 @@ interface TodayCustomersDialogProps {
 const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
   open, onOpenChange, targetWorkerId, targetWorkerName,
 }) => {
-  const { workerId: authWorkerId, activeBranch, role } = useAuth();
+  const { workerId: authWorkerId, activeBranch, role, user } = useAuth();
   const navigate = useNavigate();
   const effectiveWorkerId = targetWorkerId || authWorkerId;
   const isAdmin = role === 'admin' || role === 'branch_admin';
@@ -74,6 +74,8 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
   const [orderDetailsDialog, setOrderDetailsDialog] = useState<any>(null);
   const [showDirectSale, setShowDirectSale] = useState(false);
   const [directSaleCustomerId, setDirectSaleCustomerId] = useState<string | null>(null);
+  const [printReceiptData, setPrintReceiptData] = useState<any>(null);
+  const [showPrintReceipt, setShowPrintReceipt] = useState(false);
 
   // Data queries
   const { data: sectors = [] } = useQuery({
@@ -434,6 +436,62 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
     }
   };
 
+  const buildReceiptDataFromOrder = (order: any, isDirectSale: boolean) => {
+    const customer = order.customer;
+    const items = order.items || [];
+    return {
+      receiptType: (isDirectSale ? 'direct_sale' : 'delivery') as any,
+      orderId: order.id || null,
+      customerId: customer?.id || '',
+      customerName: customer?.store_name || customer?.name || order.customer_name || '—',
+      customerPhone: customer?.phone || null,
+      workerId: user?.id || '',
+      workerName: user?.full_name || '',
+      workerPhone: null,
+      branchId: user?.branch_id || null,
+      items: items.map((item: any) => ({
+        productId: isDirectSale ? (item.product_id || '') : (item.product_id || item.product?.id || ''),
+        productName: isDirectSale ? (item.productName || '—') : (item.product?.name || '—'),
+        quantity: item.quantity || 0,
+        unitPrice: isDirectSale ? (item.unitPrice || 0) : (item.unit_price || 0),
+        totalPrice: isDirectSale ? (item.totalPrice || 0) : (item.total_price || 0),
+        giftQuantity: isDirectSale ? (item.giftQuantity || 0) : (item.gift_quantity || 0),
+      })),
+      totalAmount: Number(order.total_amount || 0),
+      paidAmount: Number(order.total_amount || 0),
+      remainingAmount: 0,
+      paymentMethod: order.payment_type || order.paymentMethod || 'cash',
+      notes: order.notes || null,
+    };
+  };
+
+  const handlePrintDeliveredOrder = async (customer: any) => {
+    try {
+      const { data } = await supabase
+        .from('orders')
+        .select('*, customer:customers(*), items:order_items(*, product:products(*))')
+        .eq('customer_id', customer.id)
+        .eq('status', 'delivered')
+        .gte('updated_at', todayStart)
+        .order('updated_at', { ascending: false })
+        .limit(1);
+      if (data && data.length > 0) {
+        setPrintReceiptData(buildReceiptDataFromOrder(data[0], false));
+        setShowPrintReceipt(true);
+      } else {
+        toast.error('لم يتم العثور على الطلبية');
+      }
+    } catch { toast.error('خطأ في جلب البيانات'); }
+  };
+
+  const handlePrintDirectSale = (customer: any) => {
+    const sale = todayDirectSales.find(s => s.customer_id === customer.id);
+    if (sale) {
+      setPrintReceiptData(buildReceiptDataFromOrder({ ...sale, _isDirectSale: true, customer }, true));
+      setShowPrintReceipt(true);
+    }
+  };
+
   const handleDeliveryVisitWithoutDelivery = async (customer: any) => {
     const allowed = await checkLocationBeforeAction(customer);
     if (!allowed) return;
@@ -606,7 +664,7 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
                   <CustomerList customers={deliveryNotReceived} emptyMessage="لا توجد زيارات بدون تسليم" onCustomerClick={handleDeliveryCustomerClick} showActionButtons onClosed={handleCustomerClosed} onUnavailable={handleCustomerUnavailable} checkingLocationFor={checkingLocationFor} loadingFor={loadingDeliveryFor} />
                 </TabsContent>
                 <TabsContent value="received" className="m-0 flex-1 min-h-0" style={{ overflow: 'auto', maxHeight: '55vh' }}>
-                  <CustomerList customers={deliveryReceived} emptyMessage="لا توجد توصيلات بعد" onCustomerClick={handleShowDeliveredOrderDetails} showPrintButton checkingLocationFor={checkingLocationFor} loadingFor={loadingDeliveryFor} />
+                  <CustomerList customers={deliveryReceived} emptyMessage="لا توجد توصيلات بعد" onCustomerClick={handleShowDeliveredOrderDetails} showPrintButton onPrint={handlePrintDeliveredOrder} checkingLocationFor={checkingLocationFor} loadingFor={loadingDeliveryFor} />
                 </TabsContent>
               </Tabs>
             </TabsContent>
@@ -669,7 +727,7 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
                   <CustomerList customers={directSalePending} emptyMessage="لا توجد محلات متاحة للبيع المباشر" onCustomerClick={handleDirectSaleClick} onClosed={handleDirectSaleClosed} onUnavailable={handleDirectSaleUnavailable} onNoSale={handleDirectSaleNoSale} showActionButtons showNoSaleButton checkingLocationFor={checkingLocationFor} />
                 </TabsContent>
                 <TabsContent value="sold" className="m-0 flex-1 min-h-0" style={{ overflow: 'auto', maxHeight: '55vh' }}>
-                  <CustomerList customers={directSaleSold} emptyMessage="لا توجد مبيعات بعد" onCustomerClick={handleShowDirectSaleDetails} showPrintButton checkingLocationFor={checkingLocationFor} />
+                  <CustomerList customers={directSaleSold} emptyMessage="لا توجد مبيعات بعد" onCustomerClick={handleShowDirectSaleDetails} showPrintButton onPrint={handlePrintDirectSale} checkingLocationFor={checkingLocationFor} />
                 </TabsContent>
                 <TabsContent value="no-sale" className="m-0 flex-1 min-h-0" style={{ overflow: 'auto', maxHeight: '55vh' }}>
                   <CustomerList customers={directSaleNoSale} emptyMessage="لا توجد زيارات بدون بيع" onCustomerClick={handleDirectSaleClick} checkingLocationFor={checkingLocationFor} />
@@ -778,6 +836,15 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
           defaultAmount={selectedDebt.collection_amount ? Number(selectedDebt.collection_amount) : undefined}
           collectionType={selectedDebt.collection_type}
           collectionDays={selectedDebt.collection_days}
+        />
+      )}
+
+      {/* Print Receipt Dialog */}
+      {printReceiptData && (
+        <ReceiptDialog
+          open={showPrintReceipt}
+          onOpenChange={(o) => { setShowPrintReceipt(o); if (!o) setPrintReceiptData(null); }}
+          receiptData={printReceiptData}
         />
       )}
     </>
@@ -928,6 +995,7 @@ const CustomerList: React.FC<{
   onClosed?: (c: any) => void;
   onUnavailable?: (c: any) => void;
   onNoSale?: (c: any) => void;
+  onPrint?: (c: any) => void;
   showVisitButton?: boolean;
   visitButtonLabel?: string;
   showActionButtons?: boolean;
@@ -935,7 +1003,7 @@ const CustomerList: React.FC<{
   showNoSaleButton?: boolean;
   checkingLocationFor: string | null;
   loadingFor?: string | null;
-}> = ({ customers, emptyMessage, onCustomerClick, onVisitWithoutOrder, onClosed, onUnavailable, onNoSale, showVisitButton, visitButtonLabel, showActionButtons, showPrintButton, showNoSaleButton, checkingLocationFor, loadingFor }) => {
+}> = ({ customers, emptyMessage, onCustomerClick, onVisitWithoutOrder, onClosed, onUnavailable, onNoSale, onPrint, showVisitButton, visitButtonLabel, showActionButtons, showPrintButton, showNoSaleButton, checkingLocationFor, loadingFor }) => {
   if (customers.length === 0) {
     return <div className="p-6 text-center text-sm text-muted-foreground">{emptyMessage}</div>;
   }
@@ -968,10 +1036,9 @@ const CustomerList: React.FC<{
                 الموقع
               </Button>
             )}
-            {showPrintButton && (
-              <Button variant="ghost" size="sm" className="h-6 text-[10px] px-1.5 gap-0.5 text-blue-600" onClick={() => onCustomerClick(c)}>
-                <Printer className="w-3 h-3" />
-                عرض التفاصيل
+            {showPrintButton && onPrint && (
+              <Button variant="ghost" size="icon" className="h-6 w-6 text-blue-600" onClick={(e) => { e.stopPropagation(); onPrint(c); }}>
+                <Printer className="w-3.5 h-3.5" />
               </Button>
             )}
             {showVisitButton && onVisitWithoutOrder && (
