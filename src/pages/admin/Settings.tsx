@@ -19,6 +19,7 @@ import CustomerTypesCard from '@/components/settings/CustomerTypesCard';
 import CompanyInfoCard from '@/components/settings/CompanyInfoCard';
 import VerificationChecklistCard from '@/components/settings/VerificationChecklistCard';
 import SmsSettingsCard from '@/components/settings/SmsSettingsCard';
+import AppUpdateSettingsCard from '@/components/settings/AppUpdateSettingsCard';
 
 const Settings: React.FC = () => {
   const { user, logout, role, activeBranch, availableRoles, switchRole, switchBranch, showRoleSelection, showBranchSelection, selectRole, selectBranch } = useAuth();
@@ -219,7 +220,11 @@ const Settings: React.FC = () => {
         <VerificationChecklistCard />
       )}
       {(role === 'admin' || role === 'branch_admin') && (
+<<<<<<< Updated upstream
         <SmsSettingsCard />
+=======
+        <AppUpdateSettingsCard />
+>>>>>>> Stashed changes
       )}
 
       {/* User Info */}

@@ -2,7 +2,11 @@ package com.laserfood.app;
 
 import android.Manifest;
 import android.app.Activity;
+import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
 import android.app.PendingIntent;
+import android.app.Service;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -10,12 +14,15 @@ import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Handler;
+import android.os.IBinder;
 import android.os.Looper;
+import android.os.PowerManager;
 import android.telephony.SmsManager;
 import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
-
+import android.telephony.SubscriptionManager;
 import androidx.annotation.Nullable;
+import androidx.core.app.NotificationCompat;
 import androidx.core.content.ContextCompat;
 
 import com.getcapacitor.JSObject;
@@ -140,46 +147,34 @@ public class SafeSmsSenderPlugin extends Plugin {
 
         Runnable sendRunnable = () -> {
             try {
-                SmsManager manager = getSmsManagerForSlot(safeSimSlot);
-                if (manager == null) {
-                    call.reject("Could not get SmsManager instance");
-                    return;
-                }
+                // استخدام Service للإرسال الخلفي لتجنب إغلاق التطبيق
+                Intent serviceIntent = new Intent(getContext(), SmsSendService.class);
+                serviceIntent.putExtra("phone", cleanPhone);
+                serviceIntent.putExtra("text", text);
+                serviceIntent.putExtra("sim", safeSimSlot);
+                serviceIntent.putExtra("id", id);
 
-                int flags = PendingIntent.FLAG_UPDATE_CURRENT;
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                    flags |= PendingIntent.FLAG_IMMUTABLE;
-                }
-
-                ArrayList<String> parts = manager.divideMessage(text);
-                if (parts == null || parts.isEmpty()) {
-                    call.reject("Message body is empty after normalization");
-                    return;
-                }
-
-                if (parts.size() == 1) {
-                    Intent sentIntent = new Intent(smsSentAction).setPackage(getContext().getPackageName());
-                    sentIntent.putExtra("id", id);
-                    PendingIntent sentPI = createSmsPendingIntent(requestCodeSafeAdd(id, 1000), sentIntent, flags);
-
-                    Intent deliveredIntent = new Intent(smsDeliveredAction).setPackage(getContext().getPackageName());
-                    deliveredIntent.putExtra("id", id);
-                    PendingIntent deliveredPI = createSmsPendingIntent(requestCodeSafeAdd(id, 2000), deliveredIntent, flags);
-
-                    manager.sendTextMessage(cleanPhone, null, parts.get(0), sentPI, deliveredPI);
-                } else {
-                    ArrayList<PendingIntent> sentIntents = buildPendingIntents(id, flags, smsSentAction, parts.size(), 1000);
-                    ArrayList<PendingIntent> deliveredIntents = buildPendingIntents(id, flags, smsDeliveredAction, parts.size(), 2000);
-                    manager.sendMultipartTextMessage(cleanPhone, null, parts, sentIntents, deliveredIntents);
+                try {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        getContext().startForegroundService(serviceIntent);
+                    } else {
+                        getContext().startService(serviceIntent);
+                    }
+                } catch (Throwable serviceErr) {
+                    // إذا فشل بدء الخدمة، حاول الإرسال المباشر كاحتياط
+                    SmsManager manager = getSmsManagerForSlot(safeSimSlot);
+                    if (manager != null) {
+                        manager.sendTextMessage(cleanPhone, null, text, null, null);
+                    }
                 }
 
                 JSObject ret = new JSObject();
                 ret.put("id", id);
                 ret.put("status", "PENDING");
-                ret.put("parts", parts.size());
+                ret.put("parts", 1); // افتراضي للرسالة الواحدة
                 call.resolve(ret);
             } catch (Throwable t) {
-                call.reject("sendTextMessage failed: " + t.getClass().getSimpleName() + " - " + t.getMessage());
+                call.reject("Failed to start SMS service: " + t.getClass().getSimpleName() + " - " + t.getMessage());
             }
         };
 
@@ -271,6 +266,160 @@ public class SafeSmsSenderPlugin extends Plugin {
         }
 
         return SmsManager.getDefault();
+    }
+
+    public static class SmsSendService extends Service {
+        private static final String CHANNEL_ID = "sms_send_channel";
+        private static final int NOTIFICATION_ID = 1001;
+        private PowerManager.WakeLock wakeLock;
+
+        @Override
+        public void onCreate() {
+            super.onCreate();
+
+            // إنشاء قناة الإشعارات للإصدارات الحديثة
+            createNotificationChannel();
+
+            // إنشاء إشعار أمامي
+            Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
+                    .setContentTitle("إرسال رسالة")
+                    .setContentText("جاري إرسال الرسالة...")
+                    .setSmallIcon(android.R.drawable.ic_dialog_email)
+                    .setPriority(NotificationCompat.PRIORITY_LOW)
+                    .setOngoing(true)
+                    .build();
+
+            startForeground(NOTIFICATION_ID, notification);
+
+            // الحصول على WakeLock
+            PowerManager powerManager = (PowerManager) getSystemService(POWER_SERVICE);
+            wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "SmsSendService::WakeLock");
+            wakeLock.acquire(30000); // 30 ثانية كحد أقصى
+        }
+
+        private void createNotificationChannel() {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                NotificationChannel channel = new NotificationChannel(
+                        CHANNEL_ID,
+                        "إرسال الرسائل",
+                        NotificationManager.IMPORTANCE_LOW
+                );
+                channel.setDescription("إشعارات إرسال الرسائل النصية");
+                channel.setShowBadge(false);
+                channel.setLockscreenVisibility(Notification.VISIBILITY_PRIVATE);
+
+                NotificationManager manager = getSystemService(NotificationManager.class);
+                if (manager != null) {
+                    manager.createNotificationChannel(channel);
+                }
+            }
+        }
+
+        @Override
+        public int onStartCommand(Intent intent, int flags, int startId) {
+            if (intent != null) {
+                String phone = intent.getStringExtra("phone");
+                String text = intent.getStringExtra("text");
+                int simSlot = intent.getIntExtra("sim", 0);
+                int id = intent.getIntExtra("id", -1);
+
+                if (phone != null && text != null && id != -1) {
+                    sendSmsInBackground(phone, text, simSlot, id);
+                }
+            }
+
+            return START_NOT_STICKY;
+        }
+
+        private void sendSmsInBackground(String phone, String text, int simSlot, int id) {
+            try {
+                SmsManager manager = getSmsManagerForSlot(this, simSlot);
+                if (manager == null) return;
+
+                ArrayList<String> parts = manager.divideMessage(text);
+                if (parts == null || parts.isEmpty()) return;
+
+                int flags = PendingIntent.FLAG_UPDATE_CURRENT;
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    flags |= PendingIntent.FLAG_IMMUTABLE;
+                }
+
+                if (parts.size() == 1) {
+                    manager.sendTextMessage(phone, null, parts.get(0), null, null);
+                } else {
+                    manager.sendMultipartTextMessage(phone, null, parts, null, null);
+                }
+            } catch (Throwable ignored) {
+                // Silent failure in background
+            } finally {
+                if (wakeLock != null && wakeLock.isHeld()) {
+                    wakeLock.release();
+                }
+                stopSelf();
+            }
+        }
+
+        @Nullable
+        private SmsManager getSmsManagerForSlot(Context context, int simSlot) {
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP_MR1) {
+                    SubscriptionManager subManager = context.getSystemService(SubscriptionManager.class);
+                    if (subManager != null) {
+                        List<SubscriptionInfo> subs = subManager.getActiveSubscriptionInfoList();
+                        if (subs != null && !subs.isEmpty()) {
+                            SubscriptionInfo selected = null;
+
+                            for (SubscriptionInfo info : subs) {
+                                if (info != null && info.getSimSlotIndex() == simSlot) {
+                                    selected = info;
+                                    break;
+                                }
+                            }
+
+                            if (selected == null && simSlot >= 0 && simSlot < subs.size()) {
+                                selected = subs.get(simSlot);
+                            }
+
+                            if (selected == null) {
+                                selected = subs.get(0);
+                            }
+
+                            int subId = selected.getSubscriptionId();
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                                SmsManager systemSms = context.getSystemService(SmsManager.class);
+                                if (systemSms != null) {
+                                    return systemSms.createForSubscriptionId(subId);
+                                }
+                            }
+                            return SmsManager.getSmsManagerForSubscriptionId(subId);
+                        }
+                    }
+                }
+            } catch (Throwable ignored) {}
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                SmsManager systemSms = context.getSystemService(SmsManager.class);
+                if (systemSms != null) return systemSms;
+            }
+
+            return SmsManager.getDefault();
+        }
+
+        @Nullable
+        @Override
+        public IBinder onBind(Intent intent) {
+            return null;
+        }
+
+        @Override
+        public void onDestroy() {
+            super.onDestroy();
+            if (wakeLock != null && wakeLock.isHeld()) {
+                wakeLock.release();
+            }
+            // إزالة الإشعار
+            stopForeground(true);
+        }
     }
 }
 
