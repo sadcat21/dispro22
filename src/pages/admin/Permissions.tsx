@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Shield, Trash2, Edit, Save, X, ChevronDown, ChevronUp, Briefcase, User, EyeOff } from 'lucide-react';
+import { Plus, Shield, Trash2, Edit, Save, X, ChevronDown, ChevronUp, Briefcase, User, Users, EyeOff } from 'lucide-react';
 import { useSelectedWorker } from '@/contexts/SelectedWorkerContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
