@@ -207,6 +207,7 @@ const WorkerGiftsSummaryDialog: React.FC<Props> = ({ open, onOpenChange, workerI
             totalGiftPieces: 0,
             totalQuantitySold: 0,
             offerName: offerNamesMap[offerId] || '',
+            offerDetails: offerDetailsMap[offerId] || '',
             customers: [],
           };
         }
