@@ -352,7 +352,14 @@ const AppRoutes = () => {
         </ProtectedRoute>
       } />
 
-      {/* Chat */}
+      {/* Promo Splits */}
+      <Route path="/promo-splits" element={
+        <ProtectedRoute allowedRoles={['admin', 'branch_admin']}>
+          <PromoSplits />
+        </ProtectedRoute>
+      } />
+
+
       <Route path="/chat" element={
         <ProtectedRoute>
           <Chat />
