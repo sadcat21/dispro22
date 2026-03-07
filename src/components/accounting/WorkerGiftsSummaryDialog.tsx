@@ -382,7 +382,7 @@ const WorkerGiftsSummaryDialog: React.FC<Props> = ({ open, onOpenChange, workerI
           totalGiftPieces: extra,
           totalQuantitySold: promoAgg.totalVente,
           offerName: 'عرض ترويجي',
-          offerDetails: ['Promo directe'],
+          offerDetails: ['Directe'],
           customers: promoAgg.customers,
         };
       }
