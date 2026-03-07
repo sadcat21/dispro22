@@ -5,15 +5,16 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Gift, Package, User, Calendar, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Phone, MapPin, Printer, Users } from 'lucide-react';
+import { Gift, Package, User, Calendar, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Phone, MapPin, Printer, Users, ArrowRight } from 'lucide-react';
 import { useRealtimeSubscription } from '@/hooks/useRealtimeSubscription';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBluetoothPrinter } from '@/hooks/useBluetoothPrinter';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { format, startOfMonth, endOfMonth, addMonths, subMonths } from 'date-fns';
+import { format, startOfMonth, endOfMonth, addMonths, subMonths, isSameMonth } from 'date-fns';
 import { ar } from 'date-fns/locale';
+import ThermalPreview, { ThermalLine } from '@/components/stock/ThermalPreview';
 
 interface Props {
   open: boolean;
@@ -78,6 +79,12 @@ const WorkerGiftsSummaryDialog: React.FC<Props> = ({ open, onOpenChange, workerI
   const [allWorkers, setAllWorkers] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [isPrinting, setIsPrinting] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
+
+  // Date range: current month → 1st to today, past month → 1st to last day
+  const periodStartDate = startOfMonth(currentMonth);
+  const periodEndDate = isSameMonth(currentMonth, new Date()) ? new Date() : endOfMonth(currentMonth);
+  const periodDateLabel = `${format(periodStartDate, 'dd/MM/yyyy')} → ${format(periodEndDate, 'dd/MM/yyyy')}`;
 
   const periodStart = format(startOfMonth(currentMonth), 'yyyy-MM-dd');
   const periodEnd = format(endOfMonth(currentMonth), 'yyyy-MM-dd');
@@ -286,6 +293,38 @@ const WorkerGiftsSummaryDialog: React.FC<Props> = ({ open, onOpenChange, workerI
     return ids.size;
   }, [giftsData]);
 
+  // Build thermal preview lines
+  const thermalLines = useMemo((): ThermalLine[] => {
+    if (!giftsData?.items?.length) return [];
+    const lines: ThermalLine[] = [];
+    
+    lines.push({ text: 'RECAPITULATIF CADEAUX', bold: true, center: true, large: true });
+    lines.push({ text: periodDateLabel, center: true });
+    lines.push({ text: !allWorkers && workerName ? transliterate(workerName) : 'Tous les travailleurs', center: true });
+    lines.push({ separator: true });
+    
+    const hdr = 'Produit'.padEnd(14) + 'Qte'.padStart(8) + 'Cli'.padStart(5) + 'Off'.padStart(5);
+    lines.push({ text: hdr, bold: true });
+    lines.push({ separator: true });
+    
+    for (const item of giftsData.items) {
+      const name = transliterate(item.productName).substring(0, 14).padEnd(14);
+      const qty = formatGiftDisplay(item.totalGiftPieces, item.piecesPerBox).padStart(8);
+      const cli = String(item.customers.length).padStart(5);
+      const offer = transliterate(item.offerName || '-').substring(0, 5).padStart(5);
+      lines.push({ text: name + qty + cli + offer });
+    }
+    
+    lines.push({ separator: true });
+    const totalLine = 'TOTAL'.padEnd(14) + String(giftsData.totalGifts).padStart(8) + String(uniqueCustomerCount).padStart(5);
+    lines.push({ text: totalLine, bold: true });
+    lines.push({ separator: true });
+    lines.push({ text: format(new Date(), 'dd/MM/yyyy HH:mm'), center: true });
+    lines.push({ text: 'Laser Food', center: true });
+    
+    return lines;
+  }, [giftsData, allWorkers, workerName, periodDateLabel, uniqueCustomerCount]);
+
   const handleThermalPrint = useCallback(async () => {
     if (!giftsData?.items?.length) return;
     setIsPrinting(true);
@@ -295,7 +334,6 @@ const WorkerGiftsSummaryDialog: React.FC<Props> = ({ open, onOpenChange, workerI
         if (!connected) { setIsPrinting(false); return; }
       }
 
-      // Build thermal lines
       const ESC = 0x1B;
       const GS = 0x1D;
       const LF = 0x0A;
@@ -314,8 +352,7 @@ const WorkerGiftsSummaryDialog: React.FC<Props> = ({ open, onOpenChange, workerI
       const dblH = (on: boolean) => push(cmd(GS, 0x21, on ? 0x01 : 0x00));
       const sep = () => line('-'.repeat(LINE_WIDTH));
 
-      // Init
-      push(cmd(ESC, 0x40)); // reset
+      push(cmd(ESC, 0x40));
       center();
       bold(true);
       dblH(true);
@@ -323,8 +360,7 @@ const WorkerGiftsSummaryDialog: React.FC<Props> = ({ open, onOpenChange, workerI
       dblH(false);
       bold(false);
 
-      const monthLabel = format(currentMonth, 'MMMM yyyy', { locale: ar });
-      line(transliterate(monthLabel));
+      line(periodDateLabel);
       if (!allWorkers && workerName) {
         line(transliterate(workerName));
       } else {
@@ -333,7 +369,6 @@ const WorkerGiftsSummaryDialog: React.FC<Props> = ({ open, onOpenChange, workerI
       sep();
 
       left();
-      // Header
       bold(true);
       const hdr = 'Produit'.padEnd(14) + 'Qte'.padStart(8) + 'Cli'.padStart(5) + 'Off'.padStart(5);
       line(hdr);
@@ -359,29 +394,27 @@ const WorkerGiftsSummaryDialog: React.FC<Props> = ({ open, onOpenChange, workerI
       line(format(new Date(), 'dd/MM/yyyy HH:mm'));
       line('Laser Food');
 
-      // Feed and cut
       push(cmd(LF, LF, LF));
       push(cmd(GS, 0x56, 0x00));
 
-      // Merge chunks
       const totalLen = chunks.reduce((s, c) => s + c.length, 0);
       const merged = new Uint8Array(totalLen);
       let offset = 0;
       for (const c of chunks) { merged.set(c, offset); offset += c.length; }
 
-      // Print raw via bluetooth
       const { bluetoothPrinter } = await import('@/services/bluetoothPrinter');
       await bluetoothPrinter.print(merged);
 
       const { toast } = await import('sonner');
       toast.success('تمت الطباعة بنجاح');
+      setShowPreview(false);
     } catch (err: any) {
       const { toast } = await import('sonner');
       toast.error('فشل الطباعة: ' + (err.message || ''));
     } finally {
       setIsPrinting(false);
     }
-  }, [giftsData, isConnected, scanAndConnect, allWorkers, workerName, currentMonth, uniqueCustomerCount]);
+  }, [giftsData, isConnected, scanAndConnect, allWorkers, workerName, periodDateLabel, uniqueCustomerCount]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -411,11 +444,11 @@ const WorkerGiftsSummaryDialog: React.FC<Props> = ({ open, onOpenChange, workerI
               size="sm"
               variant="outline"
               className="gap-1 text-[10px] h-7"
-              onClick={handleThermalPrint}
-              disabled={isPrinting || !giftsData?.items?.length}
+              onClick={() => setShowPreview(prev => !prev)}
+              disabled={!giftsData?.items?.length}
             >
               <Printer className="w-3 h-3" />
-              طباعة حرارية
+              {showPreview ? 'إخفاء المعاينة' : 'معاينة الطباعة'}
             </Button>
           </div>
 
@@ -447,6 +480,22 @@ const WorkerGiftsSummaryDialog: React.FC<Props> = ({ open, onOpenChange, workerI
             {uniqueCustomerCount} عميل
           </Badge>
         </div>
+
+        {/* Thermal Preview */}
+        {showPreview && thermalLines.length > 0 && (
+          <div className="space-y-2">
+            <ThermalPreview lines={thermalLines} showLegendToggle={false} />
+            <Button
+              size="sm"
+              className="w-full gap-1.5"
+              onClick={handleThermalPrint}
+              disabled={isPrinting}
+            >
+              <Printer className="w-3.5 h-3.5" />
+              {isPrinting ? 'جاري الطباعة...' : 'طباعة حرارية 48mm'}
+            </Button>
+          </div>
+        )}
 
         <ScrollArea className="flex-1 max-h-[55vh]">
           {isLoading ? (

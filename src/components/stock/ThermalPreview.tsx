@@ -8,7 +8,7 @@ interface ThermalPreviewProps {
 }
 
 export interface ThermalLine {
-  text: string;
+  text?: string;
   bold?: boolean;
   center?: boolean;
   large?: boolean;
@@ -86,7 +86,7 @@ const ThermalPreview: React.FC<ThermalPreviewProps> = ({ lines, showLegendToggle
                     overflow: 'hidden',
                   }}
                 >
-                  {line.text}
+                  {line.text || ''}
                 </div>
               );
             })}
