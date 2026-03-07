@@ -12,9 +12,10 @@ import { useSectors } from '@/hooks/useSectors';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Sector } from '@/types/database';
+import { Sector, SectorType } from '@/types/database';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { autoTranslateBeforeSave } from '@/components/translation/TranslatableInput';
+import { Switch } from '@/components/ui/switch';
 
 interface ManageSectorsDialogProps {
   open: boolean;
@@ -49,6 +50,7 @@ const ManageSectorsDialog: React.FC<ManageSectorsDialogProps> = ({ open, onOpenC
   // Form state
   const [name, setName] = useState('');
   const [nameFr, setNameFr] = useState('');
+  const [sectorType, setSectorType] = useState<SectorType>('prevente');
   const [visitDaySales, setVisitDaySales] = useState('');
   const [visitDayDelivery, setVisitDayDelivery] = useState('');
   const [salesWorkerId, setSalesWorkerId] = useState('');
@@ -96,6 +98,7 @@ const ManageSectorsDialog: React.FC<ManageSectorsDialogProps> = ({ open, onOpenC
   const resetForm = () => {
     setName('');
     setNameFr('');
+    setSectorType('prevente');
     setVisitDaySales('');
     setVisitDayDelivery('');
     setSalesWorkerId('');
@@ -111,6 +114,7 @@ const ManageSectorsDialog: React.FC<ManageSectorsDialogProps> = ({ open, onOpenC
     setEditingSector(sector);
     setName(sector.name);
     setNameFr((sector as any).name_fr || '');
+    setSectorType((sector as any).sector_type || 'prevente');
     setVisitDaySales(sector.visit_day_sales || '');
     setVisitDayDelivery(sector.visit_day_delivery || '');
     setSalesWorkerId(sector.sales_worker_id || '');
@@ -175,9 +179,10 @@ const ManageSectorsDialog: React.FC<ManageSectorsDialogProps> = ({ open, onOpenC
         name: name.trim(),
         name_fr: finalNameFr || null,
         branch_id: activeBranch?.id || null,
-        visit_day_sales: visitDaySales || null,
+        sector_type: sectorType,
+        visit_day_sales: sectorType === 'cash_van' ? null : (visitDaySales || null),
         visit_day_delivery: visitDayDelivery || null,
-        sales_worker_id: salesWorkerId || null,
+        sales_worker_id: sectorType === 'cash_van' ? null : (salesWorkerId || null),
         delivery_worker_id: deliveryWorkerId || null,
         created_by: workerId,
       };
@@ -320,6 +325,22 @@ const ManageSectorsDialog: React.FC<ManageSectorsDialogProps> = ({ open, onOpenC
                 </div>
               </div>
 
+              {/* Sector Type Switch */}
+              <div className="flex items-center justify-between border rounded-lg p-3 bg-background">
+                <div className="flex items-center gap-2">
+                  <Label className="text-sm font-medium">
+                    {sectorType === 'prevente' ? 'Prévente' : 'Cash Van'}
+                  </Label>
+                  <Badge variant={sectorType === 'prevente' ? 'default' : 'secondary'} className="text-[10px]">
+                    {sectorType === 'prevente' ? 'طلبات + توصيل' : 'بيع مباشر'}
+                  </Badge>
+                </div>
+                <Switch
+                  checked={sectorType === 'cash_van'}
+                  onCheckedChange={(checked) => setSectorType(checked ? 'cash_van' : 'prevente')}
+                />
+              </div>
+
               {/* Zones inside the form */}
               <div className="space-y-2 border rounded-lg p-3 bg-background">
                 <Label className="text-sm flex items-center gap-1">
@@ -363,51 +384,78 @@ const ManageSectorsDialog: React.FC<ManageSectorsDialogProps> = ({ open, onOpenC
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label className="text-xs flex items-center gap-1"><Calendar className="w-3 h-3" /> يوم زيارة الطلبات</Label>
-                  <Select value={visitDaySales} onValueChange={setVisitDaySales}>
-                    <SelectTrigger className="text-xs h-9"><SelectValue placeholder="اختر اليوم" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">بدون</SelectItem>
-                      {DAYS.map(d => <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs flex items-center gap-1"><Calendar className="w-3 h-3" /> يوم التوصيل</Label>
-                  <Select value={visitDayDelivery} onValueChange={setVisitDayDelivery}>
-                    <SelectTrigger className="text-xs h-9"><SelectValue placeholder="اختر اليوم" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">بدون</SelectItem>
-                      {DAYS.map(d => <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
+              {sectorType === 'prevente' ? (
+                <>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs flex items-center gap-1"><Calendar className="w-3 h-3" /> يوم زيارة الطلبات</Label>
+                      <Select value={visitDaySales} onValueChange={setVisitDaySales}>
+                        <SelectTrigger className="text-xs h-9"><SelectValue placeholder="اختر اليوم" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">بدون</SelectItem>
+                          {DAYS.map(d => <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs flex items-center gap-1"><Calendar className="w-3 h-3" /> يوم التوصيل</Label>
+                      <Select value={visitDayDelivery} onValueChange={setVisitDayDelivery}>
+                        <SelectTrigger className="text-xs h-9"><SelectValue placeholder="اختر اليوم" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">بدون</SelectItem>
+                          {DAYS.map(d => <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label className="text-xs flex items-center gap-1"><UserCheck className="w-3 h-3" /> مندوب المبيعات</Label>
-                  <Select value={salesWorkerId} onValueChange={setSalesWorkerId}>
-                    <SelectTrigger className="text-xs h-9"><SelectValue placeholder="اختر المندوب" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">بدون</SelectItem>
-                      {workers.map(w => <SelectItem key={w.id} value={w.id}>{w.full_name}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs flex items-center gap-1"><Truck className="w-3 h-3" /> مندوب التوصيل</Label>
-                  <Select value={deliveryWorkerId} onValueChange={setDeliveryWorkerId}>
-                    <SelectTrigger className="text-xs h-9"><SelectValue placeholder="اختر المندوب" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">بدون</SelectItem>
-                      {workers.map(w => <SelectItem key={w.id} value={w.id}>{w.full_name}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs flex items-center gap-1"><UserCheck className="w-3 h-3" /> مندوب المبيعات</Label>
+                      <Select value={salesWorkerId} onValueChange={setSalesWorkerId}>
+                        <SelectTrigger className="text-xs h-9"><SelectValue placeholder="اختر المندوب" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">بدون</SelectItem>
+                          {workers.map(w => <SelectItem key={w.id} value={w.id}>{w.full_name}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs flex items-center gap-1"><Truck className="w-3 h-3" /> مندوب التوصيل</Label>
+                      <Select value={deliveryWorkerId} onValueChange={setDeliveryWorkerId}>
+                        <SelectTrigger className="text-xs h-9"><SelectValue placeholder="اختر المندوب" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">بدون</SelectItem>
+                          {workers.map(w => <SelectItem key={w.id} value={w.id}>{w.full_name}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs flex items-center gap-1"><Calendar className="w-3 h-3" /> يوم البيع المباشر</Label>
+                    <Select value={visitDayDelivery} onValueChange={setVisitDayDelivery}>
+                      <SelectTrigger className="text-xs h-9"><SelectValue placeholder="اختر اليوم" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">بدون</SelectItem>
+                        {DAYS.map(d => <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs flex items-center gap-1"><Truck className="w-3 h-3" /> عامل التوصيل / البيع المباشر</Label>
+                    <Select value={deliveryWorkerId} onValueChange={setDeliveryWorkerId}>
+                      <SelectTrigger className="text-xs h-9"><SelectValue placeholder="اختر العامل" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">بدون</SelectItem>
+                        {workers.map(w => <SelectItem key={w.id} value={w.id}>{w.full_name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </>
+              )}
 
               <Button className="w-full" onClick={handleSave} disabled={isSaving}>
                 {isSaving ? <Loader2 className="w-4 h-4 ml-2 animate-spin" /> : <Save className="w-4 h-4 ml-2" />}
@@ -444,6 +492,9 @@ const ManageSectorsDialog: React.FC<ManageSectorsDialogProps> = ({ open, onOpenC
                           {(sector as any).name_fr && (
                             <p className="text-xs text-muted-foreground" dir="ltr">{(sector as any).name_fr}</p>
                           )}
+                          <Badge variant={(sector as any).sector_type === 'cash_van' ? 'secondary' : 'default'} className="text-[10px] w-fit">
+                            {(sector as any).sector_type === 'cash_van' ? 'Cash Van' : 'Prévente'}
+                          </Badge>
                           <div className="flex flex-wrap gap-1.5">
                             {getDayLabel(sector.visit_day_sales) && (
                               <Badge variant="outline" className="text-[10px] px-1.5">

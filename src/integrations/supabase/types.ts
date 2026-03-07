@@ -4194,6 +4194,7 @@ export type Database = {
           name: string
           name_fr: string | null
           sales_worker_id: string | null
+          sector_type: string
           updated_at: string
           visit_day_delivery: string | null
           visit_day_sales: string | null
@@ -4207,6 +4208,7 @@ export type Database = {
           name: string
           name_fr?: string | null
           sales_worker_id?: string | null
+          sector_type?: string
           updated_at?: string
           visit_day_delivery?: string | null
           visit_day_sales?: string | null
@@ -4220,6 +4222,7 @@ export type Database = {
           name?: string
           name_fr?: string | null
           sales_worker_id?: string | null
+          sector_type?: string
           updated_at?: string
           visit_day_delivery?: string | null
           visit_day_sales?: string | null

@@ -55,11 +55,14 @@ export interface Customer {
   updated_at?: string;
 }
 
+export type SectorType = 'prevente' | 'cash_van';
+
 export interface Sector {
   id: string;
   name: string;
   name_fr?: string | null;
   branch_id: string | null;
+  sector_type: SectorType;
   visit_day_sales: string | null;
   visit_day_delivery: string | null;
   sales_worker_id: string | null;
