@@ -228,8 +228,8 @@ const WorkerTrackingMap: React.FC<WorkerTrackingMapProps> = ({ highlightWorkerId
       }
     });
 
-    // Fit bounds only on first data load
-    if (locations.length > 0 && !hasFittedBoundsRef.current) {
+    // Fit bounds only on first data load and if user hasn't interacted
+    if (locations.length > 0 && !hasFittedBoundsRef.current && !userInteractedRef.current) {
       hasFittedBoundsRef.current = true;
       const allPoints: [number, number][] = [
         [WAREHOUSE_LOCATION.lat, WAREHOUSE_LOCATION.lng],
@@ -350,6 +350,14 @@ const WorkerTrackingMap: React.FC<WorkerTrackingMapProps> = ({ highlightWorkerId
       {/* Map */}
       <div className="h-[400px] rounded-lg overflow-hidden border shadow-sm relative">
         <div ref={mapContainerRef} className="h-full w-full" style={{ zIndex: 1 }} />
+        {/* Satellite toggle */}
+        <button
+          onClick={() => setMapStyle(prev => prev === 'street' ? 'satellite' : 'street')}
+          className="absolute top-3 right-3 z-[1000] bg-background/90 backdrop-blur-sm border rounded-lg px-3 py-1.5 text-xs font-medium shadow-md hover:bg-accent transition-colors"
+          style={{ zIndex: 1000 }}
+        >
+          {mapStyle === 'street' ? '🛰️ قمر صناعي' : '🗺️ مخطط'}
+        </button>
       </div>
 
       {/* Worker List */}
