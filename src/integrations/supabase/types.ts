@@ -4067,6 +4067,91 @@ export type Database = {
           },
         ]
       }
+      sector_schedule_overrides: {
+        Row: {
+          branch_id: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          is_permanent: boolean
+          new_day: string
+          original_day: string
+          sector_id: string
+          week_start: string
+          worker_id: string
+          worker_type: string
+        }
+        Insert: {
+          branch_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_permanent?: boolean
+          new_day: string
+          original_day: string
+          sector_id: string
+          week_start: string
+          worker_id: string
+          worker_type: string
+        }
+        Update: {
+          branch_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_permanent?: boolean
+          new_day?: string
+          original_day?: string
+          sector_id?: string
+          week_start?: string
+          worker_id?: string
+          worker_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sector_schedule_overrides_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sector_schedule_overrides_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "workers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sector_schedule_overrides_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "workers_safe"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sector_schedule_overrides_sector_id_fkey"
+            columns: ["sector_id"]
+            isOneToOne: false
+            referencedRelation: "sectors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sector_schedule_overrides_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "workers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sector_schedule_overrides_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "workers_safe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sector_zones: {
         Row: {
           created_at: string
