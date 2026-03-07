@@ -247,18 +247,6 @@ const WorkerHome: React.FC = () => {
         </div>
       </div>
 
-      {/* زر اختبار SMS واضح ومستقل */}
-      <div className="px-4 mt-3">
-        <button
-          onClick={handleSendTestSms}
-          disabled={isSendingTestSms}
-          className="w-full flex items-center justify-center gap-3 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-xl py-3 px-4 font-bold shadow-lg hover:shadow-xl active:scale-[0.97] transition-all disabled:opacity-60"
-        >
-          {isSendingTestSms ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
-          <span>📩 اختبار إرسال SMS بالخلفية (0555636513)</span>
-        </button>
-      </div>
-
 
 
       {/* Content based on permissions */}
