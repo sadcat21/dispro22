@@ -297,7 +297,7 @@ const LoginForm: React.FC = () => {
                   size="sm"
                   className="w-full text-xs justify-start"
                   disabled={isLoading}
-                  onClick={() => doLogin(tw.username, tw.username)}
+                  onClick={() => doLogin(tw.username, tw.username, true)}
                 >
                   {getWorkerEmoji(tw)} {tw.full_name}
                   <span className="text-muted-foreground mr-auto text-[10px]">
