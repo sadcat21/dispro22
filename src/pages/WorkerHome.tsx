@@ -14,9 +14,9 @@ import CreateOrderDialog from '@/components/orders/CreateOrderDialog';
 import CustomerPickerDialog from '@/components/orders/CustomerPickerDialog';
 import { useTrackVisit } from '@/hooks/useVisitTracking';
 import { Customer } from '@/types/database';
-import { sendSmsDirectly } from '@/utils/smsHelper';
 import { toast } from 'sonner';
-import { ShoppingCart, Gift, Loader2, ShoppingBag, Truck, Package, Banknote, Users, Wallet, ClipboardList, MapPin, Trophy, MessageCircle, Send, HardHat } from 'lucide-react';
+import { ShoppingCart, Gift, Loader2, ShoppingBag, Truck, Package, Banknote, Users, Wallet, ClipboardList, MapPin, Trophy, MessageCircle, HardHat, CalendarCheck } from 'lucide-react';
+
 import { useNavigate, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
