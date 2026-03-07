@@ -699,7 +699,7 @@ const WorkerGiftsSummaryDialog: React.FC<Props> = ({ open, onOpenChange, workerI
                 size="sm"
                 variant="outline"
                 className="gap-1 text-[10px] h-7"
-                onClick={handleA4Print}
+                onClick={() => setShowPrintSettings(true)}
                 disabled={!giftsData?.items?.length}
               >
                 <FileText className="w-3 h-3" />
