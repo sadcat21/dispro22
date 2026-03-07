@@ -15,7 +15,7 @@ import { Label } from '@/components/ui/label';
 import { format, startOfMonth, endOfMonth, addMonths, subMonths, isSameMonth } from 'date-fns';
 import { ar } from 'date-fns/locale';
 import ThermalPreview, { ThermalLine } from '@/components/stock/ThermalPreview';
-import GiftsPrintView, { GiftPrintRow } from '@/components/accounting/GiftsPrintView';
+import GiftsPrintView, { GiftPrintRow, SummaryRow } from '@/components/accounting/GiftsPrintView';
 import GiftsPrintSettingsDialog, { GiftPrintSettings } from '@/components/accounting/GiftsPrintSettingsDialog';
 
 interface Props {
