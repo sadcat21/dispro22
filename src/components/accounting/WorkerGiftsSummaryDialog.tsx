@@ -147,7 +147,7 @@ const WorkerGiftsSummaryDialog: React.FC<Props> = ({ open, onOpenChange, workerI
       const giftOfferIds = new Set<string>();
       (items || []).forEach(i => { if (i.gift_offer_id) giftOfferIds.add(i.gift_offer_id); });
       let offerNamesMap: Record<string, string> = {};
-      let offerDetailsMap: Record<string, string> = {};
+      let offerDetailsMap: Record<string, string[]> = {};
       if (giftOfferIds.size > 0) {
         const { data: offers } = await supabase
           .from('product_offers')
@@ -157,7 +157,7 @@ const WorkerGiftsSummaryDialog: React.FC<Props> = ({ open, onOpenChange, workerI
           offerNamesMap[o.id] = o.name;
           const minU = o.min_quantity_unit === 'box' ? 'BOX' : 'PCS';
           const giftU = o.gift_quantity_unit === 'box' ? 'BOX' : 'PCS';
-          offerDetailsMap[o.id] = `${o.min_quantity} ${minU} + ${o.gift_quantity} ${giftU} Promo`;
+          offerDetailsMap[o.id] = [`${o.min_quantity}${minU}+${o.gift_quantity}${giftU} Promo`];
         });
         // Also fetch tiers for multi-tier offers
         const { data: tiers } = await supabase
@@ -176,8 +176,8 @@ const WorkerGiftsSummaryDialog: React.FC<Props> = ({ open, onOpenChange, workerI
               offerDetailsMap[oid] = offerTiers.map(t => {
                 const mU = t.min_quantity_unit === 'box' ? 'BOX' : 'PCS';
                 const gU = t.gift_quantity_unit === 'box' ? 'BOX' : 'PCS';
-                return `${t.min_quantity}${mU}+${t.gift_quantity}${gU}`;
-              }).join(' / ');
+                return `${t.min_quantity}${mU}+${t.gift_quantity}${gU} Promo`;
+              });
             }
           }
         }
