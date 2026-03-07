@@ -298,27 +298,49 @@ const WorkerGiftsSummaryDialog: React.FC<Props> = ({ open, onOpenChange, workerI
     if (!giftsData?.items?.length) return [];
     const lines: ThermalLine[] = [];
     
-    lines.push({ text: 'RECAPITULATIF CADEAUX', bold: true, center: true, large: true });
+    lines.push({ text: 'RECAPITULATIF PROMOS', bold: true, center: true, large: true });
     lines.push({ text: periodDateLabel, center: true });
     lines.push({ text: !allWorkers && workerName ? transliterate(workerName) : 'Tous les travailleurs', center: true });
     lines.push({ separator: true });
     
-    const hdr = 'Produit'.padEnd(14) + 'Qte'.padStart(8) + 'Cli'.padStart(5) + 'Off'.padStart(5);
+    // Assign codes to offers
+    const offerCodes: Record<string, { code: string; name: string; offerId: string }> = {};
+    let codeIndex = 1;
+    for (const item of giftsData.items) {
+      const offerId = item.offerName || item.productName;
+      if (!offerCodes[offerId]) {
+        offerCodes[offerId] = { code: `P${codeIndex}`, name: item.offerName || item.productName, offerId };
+        codeIndex++;
+      }
+    }
+
+    const hdr = 'Produit'.padEnd(12) + 'Qte'.padStart(7) + 'Cli'.padStart(4) + 'Code'.padStart(5);
     lines.push({ text: hdr, bold: true });
     lines.push({ separator: true });
     
     for (const item of giftsData.items) {
-      const name = transliterate(item.productName).substring(0, 14).padEnd(14);
-      const qty = formatGiftDisplay(item.totalGiftPieces, item.piecesPerBox).padStart(8);
-      const cli = String(item.customers.length).padStart(5);
-      const offer = transliterate(item.offerName || '-').substring(0, 5).padStart(5);
-      lines.push({ text: name + qty + cli + offer });
+      const offerId = item.offerName || item.productName;
+      const code = offerCodes[offerId]?.code || '-';
+      const name = transliterate(item.productName).substring(0, 12).padEnd(12);
+      const qty = formatGiftDisplay(item.totalGiftPieces, item.piecesPerBox).padStart(7);
+      const cli = String(item.customers.length).padStart(4);
+      lines.push({ text: name + qty + cli + code.padStart(5) });
     }
     
     lines.push({ separator: true });
-    const totalLine = 'TOTAL'.padEnd(14) + String(giftsData.totalGifts).padStart(8) + String(uniqueCustomerCount).padStart(5);
+    const totalLine = 'TOTAL'.padEnd(12) + String(giftsData.totalGifts).padStart(7) + String(uniqueCustomerCount).padStart(4);
     lines.push({ text: totalLine, bold: true });
     lines.push({ separator: true });
+
+    // Legend section - offer details in French
+    lines.push({ text: 'LEGENDE OFFRES:', bold: true });
+    lines.push({ dotSeparator: true });
+    for (const [, info] of Object.entries(offerCodes)) {
+      const legendLine = `${info.code}: ${transliterate(info.name).substring(0, 26)}`;
+      lines.push({ text: legendLine });
+    }
+    lines.push({ separator: true });
+
     lines.push({ text: format(new Date(), 'dd/MM/yyyy HH:mm'), center: true });
     lines.push({ text: 'Laser Food', center: true });
     
@@ -356,7 +378,7 @@ const WorkerGiftsSummaryDialog: React.FC<Props> = ({ open, onOpenChange, workerI
       center();
       bold(true);
       dblH(true);
-      line('RECAPITULATIF CADEAUX');
+      line('RECAPITULATIF PROMOS');
       dblH(false);
       bold(false);
 
@@ -368,26 +390,48 @@ const WorkerGiftsSummaryDialog: React.FC<Props> = ({ open, onOpenChange, workerI
       }
       sep();
 
+      // Build offer codes
+      const offerCodes: Record<string, { code: string; name: string }> = {};
+      let codeIndex = 1;
+      for (const item of giftsData.items) {
+        const offerId = item.offerName || item.productName;
+        if (!offerCodes[offerId]) {
+          offerCodes[offerId] = { code: `P${codeIndex}`, name: item.offerName || item.productName };
+          codeIndex++;
+        }
+      }
+
       left();
       bold(true);
-      const hdr = 'Produit'.padEnd(14) + 'Qte'.padStart(8) + 'Cli'.padStart(5) + 'Off'.padStart(5);
+      const hdr = 'Produit'.padEnd(12) + 'Qte'.padStart(7) + 'Cli'.padStart(4) + 'Code'.padStart(5);
       line(hdr);
       bold(false);
       sep();
 
       for (const item of giftsData.items) {
-        const name = transliterate(item.productName).substring(0, 14).padEnd(14);
-        const qty = formatGiftDisplay(item.totalGiftPieces, item.piecesPerBox).padStart(8);
-        const cli = String(item.customers.length).padStart(5);
-        const offer = transliterate(item.offerName || '-').substring(0, 5).padStart(5);
-        line(name + qty + cli + offer);
+        const offerId = item.offerName || item.productName;
+        const code = offerCodes[offerId]?.code || '-';
+        const name = transliterate(item.productName).substring(0, 12).padEnd(12);
+        const qty = formatGiftDisplay(item.totalGiftPieces, item.piecesPerBox).padStart(7);
+        const cli = String(item.customers.length).padStart(4);
+        line(name + qty + cli + code.padStart(5));
       }
 
       sep();
       bold(true);
-      const totalLine = 'TOTAL'.padEnd(14) + String(giftsData.totalGifts).padStart(8) + String(uniqueCustomerCount).padStart(5);
+      const totalLine = 'TOTAL'.padEnd(12) + String(giftsData.totalGifts).padStart(7) + String(uniqueCustomerCount).padStart(4);
       line(totalLine);
       bold(false);
+      sep();
+
+      // Legend
+      bold(true);
+      line('LEGENDE OFFRES:');
+      bold(false);
+      line('.'.repeat(LINE_WIDTH));
+      for (const [, info] of Object.entries(offerCodes)) {
+        line(`${info.code}: ${transliterate(info.name).substring(0, 26)}`);
+      }
       sep();
 
       center();
@@ -422,7 +466,7 @@ const WorkerGiftsSummaryDialog: React.FC<Props> = ({ open, onOpenChange, workerI
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Gift className="w-5 h-5 text-purple-600" />
-            {allWorkers ? 'تجميع الهدايا - جميع العمال' : `تجميع الهدايا - ${workerName || ''}`}
+            {allWorkers ? 'تجميع العروض - جميع العمال' : `تجميع العروض - ${workerName || ''}`}
           </DialogTitle>
         </DialogHeader>
 
@@ -474,7 +518,7 @@ const WorkerGiftsSummaryDialog: React.FC<Props> = ({ open, onOpenChange, workerI
             {giftsData?.items?.length || 0} منتج
           </Badge>
           <Badge className="text-xs bg-purple-100 text-purple-700 border-0">
-            🎁 {giftsData?.totalGifts || 0} قطعة هدايا
+            🎁 {giftsData?.totalGifts || 0} قطعة عروض
           </Badge>
           <Badge variant="outline" className="text-xs">
             {uniqueCustomerCount} عميل
@@ -505,7 +549,7 @@ const WorkerGiftsSummaryDialog: React.FC<Props> = ({ open, onOpenChange, workerI
           ) : !giftsData?.items?.length ? (
             <div className="py-10 text-center text-muted-foreground">
               <Gift className="w-10 h-10 mx-auto mb-2 opacity-40" />
-              <p>لا توجد هدايا في هذه الفترة</p>
+              <p>لا توجد عروض في هذه الفترة</p>
             </div>
           ) : (
             <div className="grid grid-cols-3 gap-2 pb-2">
@@ -557,7 +601,7 @@ const WorkerGiftsSummaryDialog: React.FC<Props> = ({ open, onOpenChange, workerI
                         <div className="border-t bg-accent/30 p-2 space-y-1">
                           <div className="grid grid-cols-12 gap-1 text-[9px] text-muted-foreground font-medium px-1 py-1 border-b border-border/50">
                             <span className="col-span-4">العميل</span>
-                            <span className="col-span-2 text-center">الهدية</span>
+                            <span className="col-span-2 text-center">العرض</span>
                             <span className="col-span-3 text-center">الهاتف</span>
                             <span className="col-span-3 text-end">العامل</span>
                           </div>

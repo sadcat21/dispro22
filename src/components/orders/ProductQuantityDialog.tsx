@@ -254,7 +254,7 @@ const ProductQuantityDialog: React.FC<ProductQuantityDialogProps> = ({
                 {(giftPieces > 0 || appliedGiftPieces > 0) && (
                   <>
                     <div className="flex justify-between items-center px-2.5 py-1.5 text-green-700 dark:text-green-400">
-                      <span className="flex items-center gap-1"><Gift className="w-3.5 h-3.5" />{t('common.free') || 'الهدية'}</span>
+                      <span className="flex items-center gap-1"><Gift className="w-3.5 h-3.5" />{t('common.free') || 'العرض'}</span>
                       <span className="font-bold">
                         {giftBoxes > 0 ? `${giftBoxes} ${t('offers.unit_box')}` : ''}
                         {giftBoxes > 0 && giftRemainingPieces > 0 ? ' + ' : ''}
@@ -262,7 +262,7 @@ const ProductQuantityDialog: React.FC<ProductQuantityDialogProps> = ({
                       </span>
                     </div>
                     <div className="flex justify-between items-center px-2.5 py-1.5 text-green-700 dark:text-green-400">
-                      <span className="text-muted-foreground">{t('orders.subtotal') || 'المجموع الفرعي (الهدية)'}</span>
+                      <span className="text-muted-foreground">{t('orders.subtotal') || 'المجموع الفرعي (العرض)'}</span>
                       <span className="font-bold">0 {t('common.currency')}</span>
                     </div>
                     <div className="flex justify-between items-center px-2.5 py-1.5 font-bold">
