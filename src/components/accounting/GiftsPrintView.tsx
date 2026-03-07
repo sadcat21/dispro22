@@ -40,6 +40,7 @@ interface GiftsPrintViewProps {
   visibleColumns?: GiftPrintColumnKey[];
   separateByProduct?: boolean;
   printSummary?: boolean;
+  summaryOnly?: boolean;
 }
 
 const ROWS_PER_PAGE = 16;
