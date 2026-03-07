@@ -215,7 +215,7 @@ const SectorScheduleDialog: React.FC<SectorScheduleDialogProps> = ({
     mode: 'assign' | 'swap' | 'merge',
     conflictInfo?: ConflictInfo,
   ) => {
-    if (!workerId || !currentWorker) return;
+    if (!workerId || !currentWorkerId) return;
     setSaving(true);
 
     try {
@@ -250,7 +250,7 @@ const SectorScheduleDialog: React.FC<SectorScheduleDialogProps> = ({
         new_day: targetDay,
         week_start: weekStart,
         is_permanent: true,
-        created_by: currentWorker.id,
+        created_by: currentWorkerId,
         branch_id: activeBranch?.id || null,
       });
 
@@ -266,7 +266,7 @@ const SectorScheduleDialog: React.FC<SectorScheduleDialogProps> = ({
   };
 
   const handleWeeklySave = async (targetDay: string, sectorId: string, mode: 'assign' | 'swap' | 'merge', conflictInfo?: ConflictInfo) => {
-    if (!workerId || !currentWorker) return;
+    if (!workerId || !currentWorkerId) return;
     setSaving(true);
 
     try {
@@ -283,7 +283,7 @@ const SectorScheduleDialog: React.FC<SectorScheduleDialogProps> = ({
         new_day: targetDay,
         week_start: weekStart,
         is_permanent: false,
-        created_by: currentWorker.id,
+        created_by: currentWorkerId,
         branch_id: activeBranch?.id || null,
       }];
 
@@ -296,7 +296,7 @@ const SectorScheduleDialog: React.FC<SectorScheduleDialogProps> = ({
           new_day: conflictInfo.existingDay,
           week_start: weekStart,
           is_permanent: false,
-          created_by: currentWorker.id,
+          created_by: currentWorkerId,
           branch_id: activeBranch?.id || null,
         });
       }
