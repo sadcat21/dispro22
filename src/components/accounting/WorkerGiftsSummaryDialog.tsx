@@ -43,7 +43,7 @@ interface GiftProductAgg {
   totalGiftPieces: number;
   totalQuantitySold: number;
   offerName: string;
-  offerDetails: string;
+  offerDetails: string[];  // each tier as separate entry
   customers: GiftCustomerDetail[];
 }
 
@@ -147,7 +147,7 @@ const WorkerGiftsSummaryDialog: React.FC<Props> = ({ open, onOpenChange, workerI
       const giftOfferIds = new Set<string>();
       (items || []).forEach(i => { if (i.gift_offer_id) giftOfferIds.add(i.gift_offer_id); });
       let offerNamesMap: Record<string, string> = {};
-      let offerDetailsMap: Record<string, string> = {};
+      let offerDetailsMap: Record<string, string[]> = {};
       if (giftOfferIds.size > 0) {
         const { data: offers } = await supabase
           .from('product_offers')
@@ -157,7 +157,7 @@ const WorkerGiftsSummaryDialog: React.FC<Props> = ({ open, onOpenChange, workerI
           offerNamesMap[o.id] = o.name;
           const minU = o.min_quantity_unit === 'box' ? 'BOX' : 'PCS';
           const giftU = o.gift_quantity_unit === 'box' ? 'BOX' : 'PCS';
-          offerDetailsMap[o.id] = `${o.min_quantity} ${minU} + ${o.gift_quantity} ${giftU} Promo`;
+          offerDetailsMap[o.id] = [`${o.min_quantity}${minU}+${o.gift_quantity}${giftU} Promo`];
         });
         // Also fetch tiers for multi-tier offers
         const { data: tiers } = await supabase
@@ -176,8 +176,8 @@ const WorkerGiftsSummaryDialog: React.FC<Props> = ({ open, onOpenChange, workerI
               offerDetailsMap[oid] = offerTiers.map(t => {
                 const mU = t.min_quantity_unit === 'box' ? 'BOX' : 'PCS';
                 const gU = t.gift_quantity_unit === 'box' ? 'BOX' : 'PCS';
-                return `${t.min_quantity}${mU}+${t.gift_quantity}${gU}`;
-              }).join(' / ');
+                return `${t.min_quantity}${mU}+${t.gift_quantity}${gU} Promo`;
+              });
             }
           }
         }
@@ -207,7 +207,7 @@ const WorkerGiftsSummaryDialog: React.FC<Props> = ({ open, onOpenChange, workerI
             totalGiftPieces: 0,
             totalQuantitySold: 0,
             offerName: offerNamesMap[offerId] || '',
-            offerDetails: offerDetailsMap[offerId] || '',
+            offerDetails: offerDetailsMap[offerId] || [],
             customers: [],
           };
         }
@@ -306,7 +306,7 @@ const WorkerGiftsSummaryDialog: React.FC<Props> = ({ open, onOpenChange, workerI
           totalGiftPieces: extra,
           totalQuantitySold: promoAgg.totalVente,
           offerName: 'عرض ترويجي',
-          offerDetails: 'Promo directe',
+          offerDetails: ['Promo directe'],
           customers: promoAgg.customers,
         };
       }
@@ -337,28 +337,35 @@ const WorkerGiftsSummaryDialog: React.FC<Props> = ({ open, onOpenChange, workerI
     lines.push({ text: !allWorkers && workerName ? transliterate(workerName) : 'Tous les travailleurs', center: true });
     lines.push({ separator: true });
     
-    // Assign codes to offers
-    const offerCodes: Record<string, { code: string; details: string; offerId: string }> = {};
+    // Assign a unique code per tier (each tier gets its own P code)
+    const itemCodeMap: string[][] = []; // per item, list of codes assigned
+    const legendEntries: { code: string; productName: string; detail: string }[] = [];
     let codeIndex = 1;
     for (const item of giftsData.items) {
-      const offerId = item.offerName || item.productName;
-      if (!offerCodes[offerId]) {
-        offerCodes[offerId] = { code: `P${codeIndex}`, details: item.offerDetails || transliterate(item.offerName || item.productName), offerId };
+      const prodName = transliterate(item.productName).substring(0, 16);
+      const tierDetails = item.offerDetails.length > 0 ? item.offerDetails : [transliterate(item.offerName || item.productName)];
+      const codes: string[] = [];
+      for (const detail of tierDetails) {
+        const code = `P${codeIndex}`;
+        legendEntries.push({ code, productName: prodName, detail });
+        codes.push(code);
         codeIndex++;
       }
+      itemCodeMap.push(codes);
     }
 
     const hdr = 'Produit'.padEnd(12) + 'Qte'.padStart(7) + 'Cli'.padStart(4) + 'Code'.padStart(5);
     lines.push({ text: hdr, bold: true });
     lines.push({ separator: true });
     
-    for (const item of giftsData.items) {
-      const offerId = item.offerName || item.productName;
-      const code = offerCodes[offerId]?.code || '-';
+    for (let idx = 0; idx < giftsData.items.length; idx++) {
+      const item = giftsData.items[idx];
+      const codes = itemCodeMap[idx] || [];
+      const codeLabel = codes.join(',');
       const name = transliterate(item.productName).substring(0, 12).padEnd(12);
       const qty = formatGiftDisplay(item.totalGiftPieces, item.piecesPerBox).padStart(7);
       const cli = String(item.customers.length).padStart(4);
-      lines.push({ text: name + qty + cli + code.padStart(5) });
+      lines.push({ text: name + qty + cli + codeLabel.padStart(5) });
     }
     
     lines.push({ separator: true });
@@ -366,12 +373,12 @@ const WorkerGiftsSummaryDialog: React.FC<Props> = ({ open, onOpenChange, workerI
     lines.push({ text: totalLine, bold: true });
     lines.push({ separator: true });
 
-    // Legend section - offer details in French
+    // Legend section - each tier gets its own code with product name + detail
     lines.push({ text: 'LEGENDE OFFRES:', bold: true });
     lines.push({ dotSeparator: true });
-    for (const [, info] of Object.entries(offerCodes)) {
-      const legendLine = `${info.code}: ${info.details.substring(0, 26)}`;
-      lines.push({ text: legendLine });
+    for (const entry of legendEntries) {
+      lines.push({ text: `${entry.code}: ${entry.productName}` });
+      lines.push({ text: `  ${entry.detail.substring(0, 28)}` });
     }
     lines.push({ separator: true });
 
@@ -424,15 +431,21 @@ const WorkerGiftsSummaryDialog: React.FC<Props> = ({ open, onOpenChange, workerI
       }
       sep();
 
-      // Build offer codes
-      const offerCodes: Record<string, { code: string; details: string }> = {};
+      // Build offer codes - each tier gets its own P code
+      const btItemCodeMap: string[][] = [];
+      const btLegendEntries: { code: string; productName: string; detail: string }[] = [];
       let codeIndex = 1;
       for (const item of giftsData.items) {
-        const offerId = item.offerName || item.productName;
-        if (!offerCodes[offerId]) {
-          offerCodes[offerId] = { code: `P${codeIndex}`, details: item.offerDetails || transliterate(item.offerName || item.productName) };
+        const prodName = transliterate(item.productName).substring(0, 16);
+        const tierDetails = item.offerDetails.length > 0 ? item.offerDetails : [transliterate(item.offerName || item.productName)];
+        const codes: string[] = [];
+        for (const detail of tierDetails) {
+          const code = `P${codeIndex}`;
+          btLegendEntries.push({ code, productName: prodName, detail });
+          codes.push(code);
           codeIndex++;
         }
+        btItemCodeMap.push(codes);
       }
 
       left();
@@ -442,13 +455,14 @@ const WorkerGiftsSummaryDialog: React.FC<Props> = ({ open, onOpenChange, workerI
       bold(false);
       sep();
 
-      for (const item of giftsData.items) {
-        const offerId = item.offerName || item.productName;
-        const code = offerCodes[offerId]?.code || '-';
+      for (let idx = 0; idx < giftsData.items.length; idx++) {
+        const item = giftsData.items[idx];
+        const codes = btItemCodeMap[idx] || [];
+        const codeLabel = codes.join(',');
         const name = transliterate(item.productName).substring(0, 12).padEnd(12);
         const qty = formatGiftDisplay(item.totalGiftPieces, item.piecesPerBox).padStart(7);
         const cli = String(item.customers.length).padStart(4);
-        line(name + qty + cli + code.padStart(5));
+        line(name + qty + cli + codeLabel.padStart(5));
       }
 
       sep();
@@ -463,8 +477,9 @@ const WorkerGiftsSummaryDialog: React.FC<Props> = ({ open, onOpenChange, workerI
       line('LEGENDE OFFRES:');
       bold(false);
       line('.'.repeat(LINE_WIDTH));
-      for (const [, info] of Object.entries(offerCodes)) {
-        line(`${info.code}: ${info.details.substring(0, 26)}`);
+      for (const entry of btLegendEntries) {
+        line(`${entry.code}: ${entry.productName}`);
+        line(`  ${entry.detail.substring(0, 28)}`);
       }
       sep();
 
