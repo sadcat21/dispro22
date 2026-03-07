@@ -1,11 +1,11 @@
-import React, { useMemo, useState, useCallback } from 'react';
+import React, { useMemo, useState, useCallback, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Gift, Package, User, Calendar, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Phone, MapPin, Printer, Users, ArrowRight } from 'lucide-react';
+import { Gift, Package, User, Calendar, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Phone, MapPin, Printer, Users, ArrowRight, FileText } from 'lucide-react';
 import { useRealtimeSubscription } from '@/hooks/useRealtimeSubscription';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBluetoothPrinter } from '@/hooks/useBluetoothPrinter';
@@ -15,6 +15,7 @@ import { Label } from '@/components/ui/label';
 import { format, startOfMonth, endOfMonth, addMonths, subMonths, isSameMonth } from 'date-fns';
 import { ar } from 'date-fns/locale';
 import ThermalPreview, { ThermalLine } from '@/components/stock/ThermalPreview';
+import GiftsPrintView, { GiftPrintRow } from '@/components/accounting/GiftsPrintView';
 
 interface Props {
   open: boolean;
@@ -28,6 +29,8 @@ interface GiftCustomerDetail {
   customerName: string;
   storeName: string | null;
   customerPhone: string;
+  customerAddress: string;
+  customerWilaya: string;
   sectorName: string;
   workerName: string;
   giftPieces: number;
@@ -120,6 +123,8 @@ const WorkerGiftsSummaryDialog: React.FC<Props> = ({ open, onOpenChange, workerI
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [isPrinting, setIsPrinting] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  const [showPrintView, setShowPrintView] = useState(false);
+  const printRef = useRef<HTMLDivElement>(null);
 
   // Date range: current month → 1st to today, past month → 1st to last day
   const periodStartDate = startOfMonth(currentMonth);
@@ -158,7 +163,7 @@ const WorkerGiftsSummaryDialog: React.FC<Props> = ({ open, onOpenChange, workerI
       // Fetch delivered orders
       let ordersQuery = supabase
         .from('orders')
-        .select('id, customer_id, assigned_worker_id, created_by, updated_at, notes, customer:customers(name, store_name, phone, sector:sectors(name))')
+        .select('id, customer_id, assigned_worker_id, created_by, updated_at, notes, customer:customers(name, store_name, phone, address, wilaya, sector:sectors(name))')
         .in('status', ['delivered', 'completed', 'confirmed'])
         .gte('updated_at', periodStartTz)
         .lte('updated_at', periodEndTz);
@@ -304,6 +309,8 @@ const WorkerGiftsSummaryDialog: React.FC<Props> = ({ open, onOpenChange, workerI
             customerName: order.customer?.name || '',
             storeName: order.customer?.store_name || null,
             customerPhone: order.customer?.phone || '',
+            customerAddress: (order.customer as any)?.address || '',
+            customerWilaya: (order.customer as any)?.wilaya || '',
             sectorName: order.customer?.sector?.name || '',
             workerName: workersMap[deliveryWorkerId] || '',
             giftPieces,
@@ -360,6 +367,8 @@ const WorkerGiftsSummaryDialog: React.FC<Props> = ({ open, onOpenChange, workerI
           customerName: (promo as any).customer?.name || '',
           storeName: (promo as any).customer?.store_name || null,
           customerPhone: (promo as any).customer?.phone || '',
+          customerAddress: (promo as any).customer?.address || '',
+          customerWilaya: (promo as any).customer?.wilaya || '',
           sectorName: (promo as any).customer?.sector?.name || '',
           workerName: workersMap[(promo as any).worker_id] || '',
           giftPieces: giftInPieces,
@@ -463,6 +472,36 @@ const WorkerGiftsSummaryDialog: React.FC<Props> = ({ open, onOpenChange, workerI
     
     return lines;
   }, [giftsData, allWorkers, workerName, periodDateLabel, uniqueCustomerCount]);
+
+  // Build flat print rows for A4 printing
+  const printRows = useMemo((): GiftPrintRow[] => {
+    if (!giftsData?.items?.length) return [];
+    const rows: GiftPrintRow[] = [];
+    for (const item of giftsData.items) {
+      for (const c of item.customers) {
+        rows.push({
+          customerName: c.storeName || c.customerName || '-',
+          address: c.customerAddress || '',
+          wilaya: c.customerWilaya || '',
+          phone: c.customerPhone || '',
+          productName: item.productName,
+          venteQuantity: Math.round(c.quantitySold),
+          giftQuantity: c.giftPieces,
+          workerName: c.workerName || '-',
+          date: c.date || '',
+        });
+      }
+    }
+    return rows;
+  }, [giftsData]);
+
+  const handleA4Print = useCallback(() => {
+    setShowPrintView(true);
+    setTimeout(() => {
+      window.print();
+      setTimeout(() => setShowPrintView(false), 500);
+    }, 300);
+  }, []);
 
   const handleThermalPrint = useCallback(async () => {
     if (!giftsData?.items?.length) return;
@@ -609,16 +648,28 @@ const WorkerGiftsSummaryDialog: React.FC<Props> = ({ open, onOpenChange, workerI
                 جميع العمال
               </Label>
             </div>
-            <Button
-              size="sm"
-              variant="outline"
-              className="gap-1 text-[10px] h-7"
-              onClick={() => setShowPreview(prev => !prev)}
-              disabled={!giftsData?.items?.length}
-            >
-              <Printer className="w-3 h-3" />
-              {showPreview ? 'إخفاء المعاينة' : 'معاينة الطباعة'}
-            </Button>
+            <div className="flex items-center gap-1">
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-1 text-[10px] h-7"
+                onClick={handleA4Print}
+                disabled={!giftsData?.items?.length}
+              >
+                <FileText className="w-3 h-3" />
+                طباعة A4
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-1 text-[10px] h-7"
+                onClick={() => setShowPreview(prev => !prev)}
+                disabled={!giftsData?.items?.length}
+              >
+                <Printer className="w-3 h-3" />
+                {showPreview ? 'إخفاء' : 'حرارية'}
+              </Button>
+            </div>
           </div>
 
           {/* Month navigation */}
@@ -776,6 +827,13 @@ const WorkerGiftsSummaryDialog: React.FC<Props> = ({ open, onOpenChange, workerI
           )}
         </ScrollArea>
       </DialogContent>
+      <GiftsPrintView
+        ref={printRef}
+        rows={printRows}
+        workerName={allWorkers ? 'جميع العمال' : workerName}
+        dateRange={periodDateLabel}
+        isVisible={showPrintView}
+      />
     </Dialog>
   );
 };
