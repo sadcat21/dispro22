@@ -58,12 +58,29 @@ const AdminHome: React.FC = () => {
   const { activeBranch, role } = useAuth();
   const [invoiceRequestOpen, setInvoiceRequestOpen] = useState(false);
   const [showCreateOrder, setShowCreateOrder] = useState(false);
+  const [giftsOpen, setGiftsOpen] = useState(false);
+  const [giftsWorkerIdx, setGiftsWorkerIdx] = useState(0);
 
   const isAccountingHidden = useIsElementHidden('page', '/accounting');
   const isDebtsHidden = useIsElementHidden('page', '/customer-debts');
   const isGeoHidden = useIsElementHidden('page', '/geo-operations');
   const isWorkerActionsHidden = useIsElementHidden('page', '/worker-actions');
   const showInvoiceButton = role === 'admin' || role === 'branch_admin';
+  const showGiftsButton = role === 'admin' || role === 'branch_admin';
+
+  // Fetch active workers for gifts navigation
+  const { data: activeWorkers = [] } = useQuery({
+    queryKey: ['admin-home-workers', activeBranch?.id],
+    queryFn: async () => {
+      let q = supabase.from('workers').select('id, full_name, username').eq('is_active', true).eq('role', 'worker');
+      if (activeBranch?.id) q = q.eq('branch_id', activeBranch.id);
+      const { data } = await q.order('full_name');
+      return data || [];
+    },
+    enabled: showGiftsButton,
+  });
+
+  const currentGiftsWorker = activeWorkers[giftsWorkerIdx] || null;
 
   const allItems = [...main, ...more].filter(item => item.path !== '/' && item.path !== '/accounting' && item.path !== '/customer-debts' && item.path !== '/geo-operations' && item.path !== '/worker-actions');
 
