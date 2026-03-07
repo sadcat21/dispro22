@@ -481,6 +481,22 @@ const WorkerGiftsSummaryDialog: React.FC<Props> = ({ open, onOpenChange, workerI
           </Badge>
         </div>
 
+        {/* Thermal Preview */}
+        {showPreview && thermalLines.length > 0 && (
+          <div className="space-y-2">
+            <ThermalPreview lines={thermalLines} showLegendToggle={false} />
+            <Button
+              size="sm"
+              className="w-full gap-1.5"
+              onClick={handleThermalPrint}
+              disabled={isPrinting}
+            >
+              <Printer className="w-3.5 h-3.5" />
+              {isPrinting ? 'جاري الطباعة...' : 'طباعة حرارية 48mm'}
+            </Button>
+          </div>
+        )}
+
         <ScrollArea className="flex-1 max-h-[55vh]">
           {isLoading ? (
             <div className="flex justify-center py-8">
