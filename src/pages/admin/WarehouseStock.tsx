@@ -1,12 +1,13 @@
 import React, { useState, useMemo } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useNavigate } from 'react-router-dom';
-import { Package, Users, Loader2, ShoppingBag, Search, BarChart3, ChevronDown, ChevronUp, ClipboardList, Truck } from 'lucide-react';
+import { Package, Users, Loader2, ShoppingBag, Search, BarChart3, ChevronDown, ChevronUp, ClipboardList, Truck, ClipboardCheck } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useWarehouseStock } from '@/hooks/useWarehouseStock';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -15,6 +16,8 @@ import DirectSaleDialog from '@/components/warehouse/DirectSaleDialog';
 import QuickReceiptDialog from '@/components/warehouse/QuickReceiptDialog';
 import QuickLoadWorkerDialog from '@/components/warehouse/QuickLoadWorkerDialog';
 import BranchPalletCard from '@/components/stock/BranchPalletCard';
+import WarehouseReviewDialog from '@/components/warehouse/WarehouseReviewDialog';
+import WarehouseReviewHistory from '@/components/warehouse/WarehouseReviewHistory';
 import { useIsElementHidden } from '@/hooks/useUIOverrides';
 
 interface ProductSummary {
@@ -40,6 +43,8 @@ const WarehouseStock: React.FC = () => {
   const [showSaleDialog, setShowSaleDialog] = useState(false);
   const [showReceiptDialog, setShowReceiptDialog] = useState(false);
   const [showLoadWorkerDialog, setShowLoadWorkerDialog] = useState(false);
+  const [showReviewDialog, setShowReviewDialog] = useState(false);
+  const [activeTab, setActiveTab] = useState('stock');
   const [search, setSearch] = useState('');
   const [expandedWorkers, setExpandedWorkers] = useState(false);
   const [expandedProduct, setExpandedProduct] = useState<string | null>(null);
@@ -237,6 +242,20 @@ const WarehouseStock: React.FC = () => {
     product: s.product,
   }));
 
+  // Fetch pallet quantity for review
+  const { data: palletData } = useQuery({
+    queryKey: ['branch-pallet-qty', branchId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('branch_pallets')
+        .select('quantity')
+        .eq('branch_id', branchId!)
+        .single();
+      return data?.quantity || 0;
+    },
+    enabled: !!branchId,
+  });
+
   return (
     <div className="p-4 space-y-4">
       {/* Header */}
@@ -246,6 +265,10 @@ const WarehouseStock: React.FC = () => {
           {t('stock.warehouse_stock')}
         </h2>
         <div className="flex items-center gap-2 flex-wrap">
+          <Button size="sm" variant="outline" onClick={() => setShowReviewDialog(true)}>
+            <ClipboardCheck className="w-4 h-4 ml-1" />
+            مراجعة
+          </Button>
           <Button size="sm" variant="outline" onClick={() => navigate('/stock-receipts')}>
             <ClipboardList className="w-4 h-4 ml-1" />
             استلام وتسليم
@@ -271,6 +294,20 @@ const WarehouseStock: React.FC = () => {
         </div>
       </div>
 
+      {/* Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="w-full grid grid-cols-2">
+          <TabsTrigger value="stock" className="text-xs gap-1">
+            <Package className="w-3.5 h-3.5" />
+            المخزون
+          </TabsTrigger>
+          <TabsTrigger value="review" className="text-xs gap-1">
+            <ClipboardCheck className="w-3.5 h-3.5" />
+            المراجعات
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="stock" className="space-y-4 mt-3">
       {/* Pallet Balance */}
       {branchId && <BranchPalletCard branchId={branchId} />}
 
@@ -427,6 +464,13 @@ const WarehouseStock: React.FC = () => {
         )}
       </div>
 
+        </TabsContent>
+
+        <TabsContent value="review" className="mt-3">
+          {branchId && <WarehouseReviewHistory branchId={branchId} />}
+        </TabsContent>
+      </Tabs>
+
       <DirectSaleDialog
         open={showSaleDialog}
         onOpenChange={setShowSaleDialog}
@@ -450,6 +494,17 @@ const WarehouseStock: React.FC = () => {
         warehouseStock={warehouseStock}
         loadToWorker={loadToWorker}
       />
+
+      {branchId && (
+        <WarehouseReviewDialog
+          open={showReviewDialog}
+          onOpenChange={setShowReviewDialog}
+          branchId={branchId}
+          products={products}
+          warehouseStock={warehouseStock}
+          palletQuantity={palletData || 0}
+        />
+      )}
     </div>
   );
 };

@@ -5124,6 +5124,124 @@ export type Database = {
           },
         ]
       }
+      warehouse_review_items: {
+        Row: {
+          actual_quantity: number
+          created_at: string
+          difference: number | null
+          expected_quantity: number
+          id: string
+          item_type: string
+          notes: string | null
+          product_id: string | null
+          session_id: string
+          status: string
+        }
+        Insert: {
+          actual_quantity?: number
+          created_at?: string
+          difference?: number | null
+          expected_quantity?: number
+          id?: string
+          item_type?: string
+          notes?: string | null
+          product_id?: string | null
+          session_id: string
+          status?: string
+        }
+        Update: {
+          actual_quantity?: number
+          created_at?: string
+          difference?: number | null
+          expected_quantity?: number
+          id?: string
+          item_type?: string
+          notes?: string | null
+          product_id?: string | null
+          session_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "warehouse_review_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "warehouse_review_items_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "warehouse_review_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      warehouse_review_sessions: {
+        Row: {
+          branch_id: string
+          completed_at: string | null
+          created_at: string
+          id: string
+          include_damaged: boolean | null
+          include_pallets: boolean | null
+          notes: string | null
+          reviewer_id: string
+          status: string
+          total_discrepancies: number | null
+          total_products: number | null
+        }
+        Insert: {
+          branch_id: string
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          include_damaged?: boolean | null
+          include_pallets?: boolean | null
+          notes?: string | null
+          reviewer_id: string
+          status?: string
+          total_discrepancies?: number | null
+          total_products?: number | null
+        }
+        Update: {
+          branch_id?: string
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          include_damaged?: boolean | null
+          include_pallets?: boolean | null
+          notes?: string | null
+          reviewer_id?: string
+          status?: string
+          total_discrepancies?: number | null
+          total_products?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "warehouse_review_sessions_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "warehouse_review_sessions_reviewer_id_fkey"
+            columns: ["reviewer_id"]
+            isOneToOne: false
+            referencedRelation: "workers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "warehouse_review_sessions_reviewer_id_fkey"
+            columns: ["reviewer_id"]
+            isOneToOne: false
+            referencedRelation: "workers_safe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       warehouse_stock: {
         Row: {
           branch_id: string
