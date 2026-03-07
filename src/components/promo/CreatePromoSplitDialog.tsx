@@ -70,14 +70,41 @@ const CreatePromoSplitDialog: React.FC<Props> = ({ open, onOpenChange, editSplit
       setAdjustedGift(editSplit.adjusted_gift_quantity != null ? String(editSplit.adjusted_gift_quantity) : '');
       setGiftProductId(editSplit.gift_product_id || 'none');
       setNotes(editSplit.notes || '');
-      setSelectedTierIndex('0');
+      setSelectedTierIndex('custom');
     } else {
-      setName(''); setSplitType('quantity_accumulation'); setOfferId('none');
-      setProductId(''); setTargetQty(''); setTargetUnit('box');
-      setGiftQty(''); setGiftUnit('box'); setAdjustedGift('');
-      setGiftProductId('none'); setNotes(''); setSelectedTierIndex('0');
+      setName('');
+      setSplitType('quantity_accumulation');
+      setOfferId('none');
+      setProductId('');
+      setTargetQty('');
+      setTargetUnit('box');
+      setGiftQty('');
+      setGiftUnit('box');
+      setAdjustedGift('');
+      setGiftProductId('none');
+      setNotes('');
+      setSelectedTierIndex('0');
     }
   }, [editSplit, open]);
+
+  // In edit mode, detect which tier matches persisted split values instead of forcing first tier
+  useEffect(() => {
+    if (!open || !editSplit || !selectedOffer || offerTiers.length === 0) return;
+
+    const matchedIndex = offerTiers.findIndex((tier) => {
+      const tierGiftProduct = tier.gift_product_id || 'none';
+      const splitGiftProduct = editSplit.gift_product_id || 'none';
+      return (
+        Number(tier.min_quantity) === Number(editSplit.target_quantity) &&
+        (tier.min_quantity_unit || 'box') === (editSplit.target_quantity_unit || 'box') &&
+        Number(tier.gift_quantity) === Number(editSplit.gift_quantity) &&
+        (tier.gift_quantity_unit || 'box') === (editSplit.gift_quantity_unit || 'box') &&
+        tierGiftProduct === splitGiftProduct
+      );
+    });
+
+    setSelectedTierIndex(matchedIndex >= 0 ? String(matchedIndex) : 'custom');
+  }, [open, editSplit, selectedOffer, offerTiers]);
 
   // Auto-fill from selected offer/tier
   useEffect(() => {
@@ -87,28 +114,28 @@ const CreatePromoSplitDialog: React.FC<Props> = ({ open, onOpenChange, editSplit
 
     setProductId(offer.product_id);
 
-    // If offer has tiers, use the selected tier
-    if (offer.tiers?.length) {
-      const tierIdx = parseInt(selectedTierIndex) || 0;
-      const tier = offer.tiers[tierIdx];
+    // If offer has tiers, use selected tier (unless values are custom in edit mode)
+    if (offer.tiers?.length && selectedTierIndex !== 'custom') {
+      const tierIdx = parseInt(selectedTierIndex, 10);
+      const tier = Number.isNaN(tierIdx) ? null : offer.tiers[tierIdx];
       if (tier) {
         setTargetQty(String(tier.min_quantity));
         setTargetUnit(tier.min_quantity_unit || 'box');
         setGiftQty(String(tier.gift_quantity));
         setGiftUnit(tier.gift_quantity_unit || 'box');
-        if (tier.gift_product_id) setGiftProductId(tier.gift_product_id);
+        setGiftProductId(tier.gift_product_id || 'none');
       }
-    } else {
+    } else if (!offer.tiers?.length) {
       // Fallback to offer-level values
       setTargetQty(String(offer.min_quantity));
       setTargetUnit(offer.min_quantity_unit || 'box');
       setGiftQty(String(offer.gift_quantity));
       setGiftUnit(offer.gift_quantity_unit || 'box');
-      if (offer.gift_product_id) setGiftProductId(offer.gift_product_id);
+      setGiftProductId(offer.gift_product_id || 'none');
     }
 
     if (!name) setName(`تجزئة: ${offer.name}`);
-  }, [offerId, selectedTierIndex]);
+  }, [offerId, selectedTierIndex, activeOffers, name]);
 
   const handleSave = async () => {
     if (!name || !productId || !targetQty || !giftQty) return;
