@@ -287,8 +287,10 @@ const WorkerTrackingMap: React.FC<WorkerTrackingMapProps> = ({ highlightWorkerId
           dashArray: '10, 8',
         }).addTo(mapRef.current);
 
-        // Fit bounds to show full route
-        mapRef.current.fitBounds(routeLayerRef.current.getBounds(), { padding: [50, 50] });
+        // Fit bounds to show full route only if user hasn't manually zoomed
+        if (!userInteractedRef.current) {
+          mapRef.current.fitBounds(routeLayerRef.current.getBounds(), { padding: [50, 50] });
+        }
 
         setRouteInfo({
           distance: route.distance,
