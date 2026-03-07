@@ -337,15 +337,14 @@ const WorkerGiftsSummaryDialog: React.FC<Props> = ({ open, onOpenChange, workerI
     lines.push({ text: !allWorkers && workerName ? transliterate(workerName) : 'Tous les travailleurs', center: true });
     lines.push({ separator: true });
     
-    // Assign codes to offers
-    const offerCodes: Record<string, { code: string; details: string; offerId: string }> = {};
+    // Assign a unique code per item (each product+offer combo gets its own code)
+    const offerCodes: { code: string; productName: string; details: string }[] = [];
     let codeIndex = 1;
     for (const item of giftsData.items) {
-      const offerId = item.offerName || item.productName;
-      if (!offerCodes[offerId]) {
-        offerCodes[offerId] = { code: `P${codeIndex}`, details: item.offerDetails || transliterate(item.offerName || item.productName), offerId };
-        codeIndex++;
-      }
+      const prodName = transliterate(item.productName).substring(0, 16);
+      const details = item.offerDetails || transliterate(item.offerName || item.productName);
+      offerCodes.push({ code: `P${codeIndex}`, productName: prodName, details });
+      codeIndex++;
     }
 
     const hdr = 'Produit'.padEnd(12) + 'Qte'.padStart(7) + 'Cli'.padStart(4) + 'Code'.padStart(5);
