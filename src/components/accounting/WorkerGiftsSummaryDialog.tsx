@@ -338,12 +338,12 @@ const WorkerGiftsSummaryDialog: React.FC<Props> = ({ open, onOpenChange, workerI
     lines.push({ separator: true });
     
     // Assign codes to offers
-    const offerCodes: Record<string, { code: string; name: string; offerId: string }> = {};
+    const offerCodes: Record<string, { code: string; details: string; offerId: string }> = {};
     let codeIndex = 1;
     for (const item of giftsData.items) {
       const offerId = item.offerName || item.productName;
       if (!offerCodes[offerId]) {
-        offerCodes[offerId] = { code: `P${codeIndex}`, name: item.offerName || item.productName, offerId };
+        offerCodes[offerId] = { code: `P${codeIndex}`, details: item.offerDetails || transliterate(item.offerName || item.productName), offerId };
         codeIndex++;
       }
     }
