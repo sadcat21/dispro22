@@ -1,12 +1,13 @@
 import React, { useState, useMemo } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useNavigate } from 'react-router-dom';
-import { Package, Users, Loader2, ShoppingBag, Search, BarChart3, ChevronDown, ChevronUp, ClipboardList, Truck } from 'lucide-react';
+import { Package, Users, Loader2, ShoppingBag, Search, BarChart3, ChevronDown, ChevronUp, ClipboardList, Truck, ClipboardCheck } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useWarehouseStock } from '@/hooks/useWarehouseStock';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -15,6 +16,8 @@ import DirectSaleDialog from '@/components/warehouse/DirectSaleDialog';
 import QuickReceiptDialog from '@/components/warehouse/QuickReceiptDialog';
 import QuickLoadWorkerDialog from '@/components/warehouse/QuickLoadWorkerDialog';
 import BranchPalletCard from '@/components/stock/BranchPalletCard';
+import WarehouseReviewDialog from '@/components/warehouse/WarehouseReviewDialog';
+import WarehouseReviewHistory from '@/components/warehouse/WarehouseReviewHistory';
 import { useIsElementHidden } from '@/hooks/useUIOverrides';
 
 interface ProductSummary {
