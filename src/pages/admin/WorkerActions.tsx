@@ -407,20 +407,43 @@ const WorkerActions: React.FC = () => {
       )}
 
       {!selectedWorker ? (
-        <div className="grid grid-cols-3 gap-3">
-          {workers.map((worker) => (
-            <div
-              key={worker.id}
-              className="flex flex-col items-center justify-center p-4 gap-2 rounded-xl border border-border bg-card cursor-pointer active:scale-95 transition-all hover:shadow-md"
-              onClick={() => handleSelectWorker(worker)}
-            >
-              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                <HardHat className="w-6 h-6 text-primary" />
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          {workers.map((worker, index) => {
+            const colorSet = WORKER_CARD_COLORS[index % WORKER_CARD_COLORS.length];
+            const todaySectors = workerTodaySectors[worker.id];
+            const roleLabel = workerRoleLabels[worker.id] || (worker.role === 'worker' ? t('nav.workers') : worker.role);
+
+            return (
+              <div
+                key={worker.id}
+                className={`flex flex-col items-center justify-center p-3 gap-1.5 rounded-xl border-2 cursor-pointer active:scale-95 transition-all hover:shadow-lg ${colorSet.bg} ${colorSet.border}`}
+                onClick={() => handleSelectWorker(worker)}
+              >
+                <div className={`w-12 h-12 rounded-full flex items-center justify-center ${colorSet.icon}`}>
+                  <HardHat className="w-6 h-6" />
+                </div>
+                <span className="text-xs font-bold text-center leading-tight text-foreground">{worker.full_name}</span>
+                <span className={`text-[10px] font-medium ${colorSet.accent}`}>{roleLabel}</span>
+
+                {todaySectors && (todaySectors.delivery.length > 0 || todaySectors.sales.length > 0) && (
+                  <div className="w-full mt-1 space-y-0.5">
+                    {todaySectors.delivery.length > 0 && (
+                      <div className="flex items-center gap-1 text-[9px] text-muted-foreground bg-background/60 rounded px-1.5 py-0.5">
+                        <Truck className="w-3 h-3 shrink-0" />
+                        <span className="truncate">توصيل: {todaySectors.delivery.join('، ')}</span>
+                      </div>
+                    )}
+                    {todaySectors.sales.length > 0 && (
+                      <div className="flex items-center gap-1 text-[9px] text-muted-foreground bg-background/60 rounded px-1.5 py-0.5">
+                        <ShoppingCart className="w-3 h-3 shrink-0" />
+                        <span className="truncate">طلبيات: {todaySectors.sales.join('، ')}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
-              <span className="text-xs font-medium text-center leading-tight">{worker.full_name}</span>
-              <span className="text-[10px] text-muted-foreground">{worker.role === 'worker' ? t('nav.workers') : worker.role}</span>
-            </div>
-          ))}
+            );
+          })}
         </div>
       ) : (
         <div
