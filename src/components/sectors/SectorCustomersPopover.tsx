@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { MapPin, User, Truck, ShoppingCart, MapPinOff, Navigation, Loader2, Eye, EyeOff, CheckCircle, PackageX, PackageCheck, Landmark, Banknote, Clock, Check, X, DoorClosed, UserX, ShoppingBag, Printer, XCircle, Phone } from 'lucide-react';
+import { MapPin, User, Truck, ShoppingCart, MapPinOff, Navigation, Loader2, Eye, EyeOff, CheckCircle, PackageX, PackageCheck, Landmark, Banknote, Clock, Check, X, DoorClosed, UserX, ShoppingBag, Printer, XCircle, Phone, Search } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQuery } from '@tanstack/react-query';
@@ -9,6 +9,8 @@ import {
 } from '@/components/ui/popover';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useNavigate } from 'react-router-dom';
@@ -46,8 +48,26 @@ const SectorCustomersPopover: React.FC = () => {
   const todayName = JS_DAY_TO_NAME[new Date().getDay()] || '';
   const [isOpen, setIsOpen] = useState(false);
   const [checkingLocationFor, setCheckingLocationFor] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const isAdmin = role === 'admin' || role === 'branch_admin';
+
+  // Admin worker picker
+  const [selectedAdminWorkerId, setSelectedAdminWorkerId] = useState<string | null>(null);
+  const { data: workersList = [] } = useQuery({
+    queryKey: ['popover-workers-list', activeBranch?.id],
+    queryFn: async () => {
+      let query = supabase.from('workers').select('id, full_name, username').eq('is_active', true);
+      if (activeBranch && role === 'branch_admin') query = query.eq('branch_id', activeBranch.id);
+      const { data } = await query.order('full_name');
+      return data || [];
+    },
+    enabled: isAdmin && isOpen,
+  });
+
+  const effectiveWorkerId = isAdmin && selectedAdminWorkerId ? selectedAdminWorkerId : workerId;
+  const hasSpecificWorker = !!selectedAdminWorkerId;
+
   const { data: dueDebts = [] } = useDueDebts(undefined);
   const { data: allDebts = [] } = useDueDebts('__all__');
   const { data: pendingCollections = [] } = usePendingCollections();
@@ -65,7 +85,7 @@ const SectorCustomersPopover: React.FC = () => {
   const [showPrintReceipt, setShowPrintReceipt] = useState(false);
 
   const { data: sectors = [] } = useQuery({
-    queryKey: ['sectors-with-customers', workerId, activeBranch?.id],
+    queryKey: ['sectors-with-customers', effectiveWorkerId, activeBranch?.id],
     queryFn: async () => {
       let query = supabase.from('sectors').select('*');
       if (activeBranch) query = query.eq('branch_id', activeBranch.id);
@@ -73,7 +93,7 @@ const SectorCustomersPopover: React.FC = () => {
       if (error) throw error;
       return data || [];
     },
-    enabled: !!workerId,
+    enabled: !!effectiveWorkerId,
   });
 
   const { data: customers = [] } = useQuery({
@@ -95,64 +115,68 @@ const SectorCustomersPopover: React.FC = () => {
   }, []);
 
   const { data: todayVisits = [] } = useQuery({
-    queryKey: ['today-visits', workerId, todayStart],
+    queryKey: ['today-visits-pop', effectiveWorkerId, todayStart],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('visit_tracking')
         .select('customer_id, operation_type')
-        .eq('worker_id', workerId!)
+        .eq('worker_id', effectiveWorkerId!)
         .gte('created_at', todayStart);
       if (error) throw error;
       return data || [];
     },
-    enabled: !!workerId && isOpen,
+    enabled: !!effectiveWorkerId && isOpen,
     refetchInterval: 10000,
   });
 
   const { data: todayOrders = [] } = useQuery({
-    queryKey: ['today-orders-customers', workerId, todayStart],
+    queryKey: ['today-orders-customers-pop', effectiveWorkerId, todayStart],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('orders')
         .select('customer_id')
-        .eq('created_by', workerId!)
+        .eq('created_by', effectiveWorkerId!)
         .gte('created_at', todayStart)
         .not('status', 'eq', 'cancelled');
       if (error) throw error;
       return data || [];
     },
-    enabled: !!workerId && isOpen,
+    enabled: !!effectiveWorkerId && isOpen,
     refetchInterval: 10000,
   });
 
   const { data: todayDeliveredOrders = [] } = useQuery({
-    queryKey: ['today-delivered-orders', workerId, todayStart, isAdmin],
+    queryKey: ['today-delivered-orders-pop', effectiveWorkerId, todayStart, hasSpecificWorker],
     queryFn: async () => {
       let query = supabase
         .from('orders')
         .select('customer_id, status, assigned_worker_id')
         .gte('updated_at', todayStart)
         .eq('status', 'delivered');
-      if (!isAdmin) {
-        query = query.eq('assigned_worker_id', workerId!);
+      if (hasSpecificWorker) {
+        query = query.eq('assigned_worker_id', effectiveWorkerId!);
+      } else if (!isAdmin) {
+        query = query.eq('assigned_worker_id', effectiveWorkerId!);
       }
       const { data, error } = await query;
       if (error) throw error;
       return data || [];
     },
-    enabled: !!workerId && isOpen,
+    enabled: !!effectiveWorkerId && isOpen,
     refetchInterval: 10000,
   });
 
   const { data: assignedOrderCustomerIds = [] } = useQuery({
-    queryKey: ['assigned-order-customers', workerId, isAdmin, activeBranch?.id],
+    queryKey: ['assigned-order-customers-pop', effectiveWorkerId, hasSpecificWorker, activeBranch?.id],
     queryFn: async () => {
       let query = supabase
         .from('orders')
         .select('customer_id')
         .in('status', ['pending', 'assigned', 'in_progress']);
-      if (!isAdmin) {
-        query = query.eq('assigned_worker_id', workerId!);
+      if (hasSpecificWorker) {
+        query = query.eq('assigned_worker_id', effectiveWorkerId!);
+      } else if (!isAdmin) {
+        query = query.eq('assigned_worker_id', effectiveWorkerId!);
       } else if (activeBranch) {
         query = query.eq('branch_id', activeBranch.id);
       }
@@ -160,27 +184,29 @@ const SectorCustomersPopover: React.FC = () => {
       if (error) throw error;
       return data || [];
     },
-    enabled: !!workerId && isOpen,
+    enabled: !!effectiveWorkerId && isOpen,
     refetchInterval: 10000,
   });
 
   const todayStart2 = useMemo(() => new Date().toISOString().split('T')[0], []);
 
   const { data: todayCollections = [] } = useQuery({
-    queryKey: ['today-debt-collections', workerId, todayStart2],
+    queryKey: ['today-debt-collections-pop', effectiveWorkerId, todayStart2, hasSpecificWorker],
     queryFn: async () => {
       let query = supabase
         .from('debt_collections')
         .select('debt_id, action, amount_collected, status')
         .eq('collection_date', todayStart2);
-      if (!isAdmin) {
-        query = query.eq('worker_id', workerId!);
+      if (hasSpecificWorker) {
+        query = query.eq('worker_id', effectiveWorkerId!);
+      } else if (!isAdmin) {
+        query = query.eq('worker_id', effectiveWorkerId!);
       }
       const { data, error } = await query;
       if (error) throw error;
       return data || [];
     },
-    enabled: !!workerId && isOpen,
+    enabled: !!effectiveWorkerId && isOpen,
     refetchInterval: 10000,
   });
 
@@ -192,7 +218,7 @@ const SectorCustomersPopover: React.FC = () => {
   }, []);
 
   const { data: recentNegativeVisits = [] } = useQuery({
-    queryKey: ['recent-negative-visits-popover', workerId, sevenDaysAgo],
+    queryKey: ['recent-negative-visits-popover', effectiveWorkerId, sevenDaysAgo],
     queryFn: async () => {
       const { data } = await supabase
         .from('visit_tracking')
@@ -201,73 +227,76 @@ const SectorCustomersPopover: React.FC = () => {
         .or('notes.ilike.%مغلق%,notes.ilike.%غير متاح%,notes.ilike.%بدون طلبية%');
       return data || [];
     },
-    enabled: !!workerId && isOpen,
+    enabled: !!effectiveWorkerId && isOpen,
   });
 
   // Worker stock for direct sale
   const { data: workerStock = [] } = useQuery({
-    queryKey: ['my-worker-stock-popover', workerId],
+    queryKey: ['my-worker-stock-popover', effectiveWorkerId],
     queryFn: async () => {
       const { data } = await supabase
         .from('worker_stock')
         .select('id, product_id, quantity, product:products(*)')
-        .eq('worker_id', workerId!)
+        .eq('worker_id', effectiveWorkerId!)
         .gt('quantity', 0);
       return data || [];
     },
-    enabled: !!workerId && isOpen,
+    enabled: !!effectiveWorkerId && isOpen,
   });
 
   // Today's direct sales
   const { data: todayDirectSales = [] } = useQuery({
-    queryKey: ['today-direct-sales-popover', workerId, todayStart],
+    queryKey: ['today-direct-sales-popover', effectiveWorkerId, todayStart, hasSpecificWorker],
     queryFn: async () => {
       let query = supabase
         .from('receipts')
         .select('customer_id, items, total_amount, customer_name, created_at')
         .eq('receipt_type', 'direct_sale')
         .gte('created_at', todayStart);
-      if (!isAdmin) {
-        query = query.eq('worker_id', workerId!);
+      if (hasSpecificWorker) {
+        query = query.eq('worker_id', effectiveWorkerId!);
+      } else if (!isAdmin) {
+        query = query.eq('worker_id', effectiveWorkerId!);
       }
       const { data } = await query;
       return data || [];
     },
-    enabled: !!workerId && isOpen,
+    enabled: !!effectiveWorkerId && isOpen,
     refetchInterval: 10000,
   });
 
   // Today's direct sale visits (بدون بيع)
   const { data: todayDirectSaleVisits = [] } = useQuery({
-    queryKey: ['today-direct-sale-visits-popover', workerId, todayStart],
+    queryKey: ['today-direct-sale-visits-popover', effectiveWorkerId, todayStart],
     queryFn: async () => {
       const { data } = await supabase
         .from('visit_tracking')
         .select('customer_id, notes')
-        .eq('worker_id', workerId!)
+        .eq('worker_id', effectiveWorkerId!)
         .gte('created_at', todayStart)
         .or('notes.ilike.%بدون بيع%,notes.ilike.%مغلق (بيع مباشر)%,notes.ilike.%غير متاح (بيع مباشر)%');
       return data || [];
     },
-    enabled: !!workerId && isOpen,
+    enabled: !!effectiveWorkerId && isOpen,
     refetchInterval: 10000,
   });
 
   // Computed
   const mySectors = useMemo(() => {
+    if (hasSpecificWorker) return sectors.filter(s => s.delivery_worker_id === effectiveWorkerId || s.sales_worker_id === effectiveWorkerId);
     if (isAdmin) return sectors;
-    return sectors.filter(s => s.delivery_worker_id === workerId || s.sales_worker_id === workerId);
-  }, [sectors, workerId, isAdmin]);
+    return sectors.filter(s => s.delivery_worker_id === effectiveWorkerId || s.sales_worker_id === effectiveWorkerId);
+  }, [sectors, effectiveWorkerId, isAdmin, hasSpecificWorker]);
 
   const todayDeliverySectors = useMemo(() => {
-    if (isAdmin) return mySectors.filter(s => s.visit_day_delivery === todayName);
-    return mySectors.filter(s => s.visit_day_delivery === todayName && s.delivery_worker_id === workerId);
-  }, [mySectors, todayName, workerId, isAdmin]);
+    if (isAdmin && !hasSpecificWorker) return mySectors.filter(s => s.visit_day_delivery === todayName);
+    return mySectors.filter(s => s.visit_day_delivery === todayName && s.delivery_worker_id === effectiveWorkerId);
+  }, [mySectors, todayName, effectiveWorkerId, isAdmin, hasSpecificWorker]);
 
   const todaySalesSectors = useMemo(() => {
-    if (isAdmin) return mySectors.filter(s => s.visit_day_sales === todayName);
-    return mySectors.filter(s => s.visit_day_sales === todayName && s.sales_worker_id === workerId);
-  }, [mySectors, todayName, workerId, isAdmin]);
+    if (isAdmin && !hasSpecificWorker) return mySectors.filter(s => s.visit_day_sales === todayName);
+    return mySectors.filter(s => s.visit_day_sales === todayName && s.sales_worker_id === effectiveWorkerId);
+  }, [mySectors, todayName, effectiveWorkerId, isAdmin, hasSpecificWorker]);
 
   const deliveryCustomerIdsWithOrders = useMemo(() => {
     const ids = new Set<string>();
@@ -296,9 +325,13 @@ const SectorCustomersPopover: React.FC = () => {
 
   const collectedDebtIds = useMemo(() => new Set(todayCollections.filter(c => c.action !== 'no_payment').map(c => c.debt_id)), [todayCollections]);
   const noPaymentDebtIds = useMemo(() => new Set(todayCollections.filter(c => c.action === 'no_payment').map(c => c.debt_id)), [todayCollections]);
-  const debtsToCollectToday = useMemo(() => dueDebts.filter(d => !collectedDebtIds.has(d.id) && !noPaymentDebtIds.has(d.id)), [dueDebts, collectedDebtIds, noPaymentDebtIds]);
-  const debtsCollectedToday = useMemo(() => dueDebts.filter(d => collectedDebtIds.has(d.id)), [dueDebts, collectedDebtIds]);
-  const debtsNoPaymentToday = useMemo(() => dueDebts.filter(d => noPaymentDebtIds.has(d.id)), [dueDebts, noPaymentDebtIds]);
+  const filteredDueDebts = useMemo(() => {
+    if (hasSpecificWorker) return dueDebts.filter(d => d.worker_id === effectiveWorkerId);
+    return dueDebts;
+  }, [dueDebts, effectiveWorkerId, hasSpecificWorker]);
+  const debtsToCollectToday = useMemo(() => filteredDueDebts.filter(d => !collectedDebtIds.has(d.id) && !noPaymentDebtIds.has(d.id)), [filteredDueDebts, collectedDebtIds, noPaymentDebtIds]);
+  const debtsCollectedToday = useMemo(() => filteredDueDebts.filter(d => collectedDebtIds.has(d.id)), [filteredDueDebts, collectedDebtIds]);
+  const debtsNoPaymentToday = useMemo(() => filteredDueDebts.filter(d => noPaymentDebtIds.has(d.id)), [filteredDueDebts, noPaymentDebtIds]);
 
   // Direct sale
   const directSaleCustomers = useMemo(() => {
@@ -315,7 +348,7 @@ const SectorCustomersPopover: React.FC = () => {
   const directSaleNoSale = useMemo(() => directSaleCustomers.filter(c => directNoSaleCustomerIds.has(c.id) && !directSoldCustomerIds.has(c.id)), [directSaleCustomers, directNoSaleCustomerIds, directSoldCustomerIds]);
 
   const totalCount = deliveryCustomers.length + salesCustomers.length;
-  const debtBadgeCount = dueDebts.length;
+  const debtBadgeCount = filteredDueDebts.length;
 
   if (mySectors.length === 0 && dueDebts.length === 0 && allDebts.length === 0) return null;
 
@@ -641,10 +674,52 @@ const SectorCustomersPopover: React.FC = () => {
           )}
         </button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-[340px] p-0 max-h-[75vh] flex flex-col">
+      <PopoverContent align="end" className="w-[360px] p-0 max-h-[80vh] flex flex-col" dir="rtl">
         <div className="p-3 border-b font-bold text-sm flex items-center gap-2">
-          <MapPin className="w-4 h-4 text-blue-500" />
-          عملاء اليوم — {DAY_NAMES[todayName] || todayName}
+          <MapPin className="w-4 h-4 text-primary" />
+          عملاء اليوم — {selectedAdminWorkerId ? workersList.find(w => w.id === selectedAdminWorkerId)?.full_name || '' : DAY_NAMES[todayName] || todayName}
+        </div>
+
+        {/* Admin worker picker strip */}
+        {isAdmin && workersList.length > 0 && (
+          <div className="border-b px-2 py-1.5 shrink-0">
+            <ScrollArea className="w-full" dir="rtl">
+              <div className="flex gap-1.5 pb-1">
+                {workersList.map(w => {
+                  const isSelected = w.id === selectedAdminWorkerId;
+                  return (
+                    <button
+                      key={w.id}
+                      onClick={() => setSelectedAdminWorkerId(isSelected ? null : w.id)}
+                      className={`flex items-center gap-1 px-2.5 py-1 rounded-full border text-[11px] font-medium whitespace-nowrap transition-colors shrink-0
+                        ${isSelected
+                          ? 'bg-primary text-primary-foreground border-primary'
+                          : 'bg-background border-border hover:bg-accent text-foreground'}
+                      `}
+                    >
+                      <User className="w-3 h-3" />
+                      {w.full_name}
+                    </button>
+                  );
+                })}
+              </div>
+              <ScrollBar orientation="horizontal" />
+            </ScrollArea>
+          </div>
+        )}
+
+        {/* Search bar */}
+        <div className="px-2 pt-1.5 pb-1 shrink-0">
+          <div className="relative">
+            <Search className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+            <Input
+              placeholder="بحث بالاسم أو الهاتف..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="h-7 text-xs pr-7"
+              dir="rtl"
+            />
+          </div>
         </div>
 
         <Tabs defaultValue="sales" className="flex flex-col flex-1 min-h-0">
@@ -693,13 +768,13 @@ const SectorCustomersPopover: React.FC = () => {
               </TabsList>
 
               <TabsContent value="not-delivered" className="m-0 flex-1 min-h-0" style={{ overflow: 'auto', maxHeight: '45vh' }}>
-                <CustomerList customers={deliveryNotDone} emptyMessage="تم توصيل جميع العملاء ✓" onCustomerClick={(c) => handleCustomerClick(c, 'delivery')} onVisitWithoutOrder={handleDeliveryVisitWithoutDelivery} onClosed={handleCustomerClosed} onUnavailable={handleCustomerUnavailable} showVisitButton visitButtonLabel="بدون تسليم" showActionButtons checkingLocationFor={checkingLocationFor} loadingFor={loadingDeliveryFor} />
+                <CustomerList customers={deliveryNotDone} emptyMessage="تم توصيل جميع العملاء ✓" onCustomerClick={(c) => handleCustomerClick(c, 'delivery')} onVisitWithoutOrder={handleDeliveryVisitWithoutDelivery} onClosed={handleCustomerClosed} onUnavailable={handleCustomerUnavailable} showVisitButton visitButtonLabel="بدون تسليم" showActionButtons checkingLocationFor={checkingLocationFor} loadingFor={loadingDeliveryFor} searchQuery={searchQuery} />
               </TabsContent>
               <TabsContent value="not-received" className="m-0 flex-1 min-h-0" style={{ overflow: 'auto', maxHeight: '45vh' }}>
-                <CustomerList customers={deliveryNotReceived} emptyMessage="لا توجد زيارات بدون تسليم" onCustomerClick={(c) => handleCustomerClick(c, 'delivery')} showActionButtons onClosed={handleCustomerClosed} onUnavailable={handleCustomerUnavailable} checkingLocationFor={checkingLocationFor} loadingFor={loadingDeliveryFor} />
+                <CustomerList customers={deliveryNotReceived} emptyMessage="لا توجد زيارات بدون تسليم" onCustomerClick={(c) => handleCustomerClick(c, 'delivery')} showActionButtons onClosed={handleCustomerClosed} onUnavailable={handleCustomerUnavailable} checkingLocationFor={checkingLocationFor} loadingFor={loadingDeliveryFor} searchQuery={searchQuery} />
               </TabsContent>
               <TabsContent value="received" className="m-0 flex-1 min-h-0" style={{ overflow: 'auto', maxHeight: '45vh' }}>
-                <CustomerList customers={deliveryReceived} emptyMessage="لا توجد توصيلات بعد" onCustomerClick={handleShowDeliveredOrderDetails} showPrintButton onPrint={handlePrintDeliveredOrder} checkingLocationFor={checkingLocationFor} loadingFor={loadingDeliveryFor} />
+                <CustomerList customers={deliveryReceived} emptyMessage="لا توجد توصيلات بعد" onCustomerClick={handleShowDeliveredOrderDetails} showPrintButton onPrint={handlePrintDeliveredOrder} checkingLocationFor={checkingLocationFor} loadingFor={loadingDeliveryFor} searchQuery={searchQuery} />
               </TabsContent>
             </Tabs>
           </TabsContent>
@@ -726,13 +801,13 @@ const SectorCustomersPopover: React.FC = () => {
               </TabsList>
 
               <TabsContent value="not-visited" className="m-0 flex-1 min-h-0" style={{ overflow: 'auto', maxHeight: '45vh' }}>
-                <CustomerList customers={salesNotVisited} emptyMessage="تمت زيارة جميع العملاء ✓" onCustomerClick={(c) => handleCustomerClick(c, 'sales')} onVisitWithoutOrder={handleVisitWithoutOrder} onClosed={handleCustomerClosed} onUnavailable={handleCustomerUnavailable} showVisitButton showActionButtons checkingLocationFor={checkingLocationFor} />
+                <CustomerList customers={salesNotVisited} emptyMessage="تمت زيارة جميع العملاء ✓" onCustomerClick={(c) => handleCustomerClick(c, 'sales')} onVisitWithoutOrder={handleVisitWithoutOrder} onClosed={handleCustomerClosed} onUnavailable={handleCustomerUnavailable} showVisitButton showActionButtons checkingLocationFor={checkingLocationFor} searchQuery={searchQuery} />
               </TabsContent>
               <TabsContent value="visited-no-order" className="m-0 flex-1 min-h-0" style={{ overflow: 'auto', maxHeight: '45vh' }}>
-                <CustomerList customers={salesVisitedNoOrder} emptyMessage="لا توجد زيارات بدون طلبيات" onCustomerClick={(c) => handleCustomerClick(c, 'sales')} showActionButtons onClosed={handleCustomerClosed} onUnavailable={handleCustomerUnavailable} checkingLocationFor={checkingLocationFor} />
+                <CustomerList customers={salesVisitedNoOrder} emptyMessage="لا توجد زيارات بدون طلبيات" onCustomerClick={(c) => handleCustomerClick(c, 'sales')} showActionButtons onClosed={handleCustomerClosed} onUnavailable={handleCustomerUnavailable} checkingLocationFor={checkingLocationFor} searchQuery={searchQuery} />
               </TabsContent>
               <TabsContent value="with-orders" className="m-0 flex-1 min-h-0" style={{ overflow: 'auto', maxHeight: '45vh' }}>
-                <CustomerList customers={salesWithOrders} emptyMessage="لا توجد طلبيات بعد" onCustomerClick={handleShowOrderDetails} checkingLocationFor={checkingLocationFor} />
+                <CustomerList customers={salesWithOrders} emptyMessage="لا توجد طلبيات بعد" onCustomerClick={handleShowOrderDetails} checkingLocationFor={checkingLocationFor} searchQuery={searchQuery} />
               </TabsContent>
             </Tabs>
           </TabsContent>
@@ -759,13 +834,13 @@ const SectorCustomersPopover: React.FC = () => {
               </TabsList>
 
               <TabsContent value="pending" className="m-0 flex-1 min-h-0" style={{ overflow: 'auto', maxHeight: '45vh' }}>
-                <CustomerList customers={directSalePending} emptyMessage="لا توجد محلات متاحة للبيع المباشر" onCustomerClick={handleDirectSaleClick} onClosed={handleDirectSaleClosed} onUnavailable={handleDirectSaleUnavailable} onNoSale={handleDirectSaleNoSale} showActionButtons showNoSaleButton checkingLocationFor={checkingLocationFor} />
+                <CustomerList customers={directSalePending} emptyMessage="لا توجد محلات متاحة للبيع المباشر" onCustomerClick={handleDirectSaleClick} onClosed={handleDirectSaleClosed} onUnavailable={handleDirectSaleUnavailable} onNoSale={handleDirectSaleNoSale} showActionButtons showNoSaleButton checkingLocationFor={checkingLocationFor} searchQuery={searchQuery} />
               </TabsContent>
               <TabsContent value="sold" className="m-0 flex-1 min-h-0" style={{ overflow: 'auto', maxHeight: '45vh' }}>
-                <CustomerList customers={directSaleSold} emptyMessage="لا توجد مبيعات بعد" onCustomerClick={handleShowDirectSaleDetails} showPrintButton onPrint={handlePrintDirectSale} checkingLocationFor={checkingLocationFor} />
+                <CustomerList customers={directSaleSold} emptyMessage="لا توجد مبيعات بعد" onCustomerClick={handleShowDirectSaleDetails} showPrintButton onPrint={handlePrintDirectSale} checkingLocationFor={checkingLocationFor} searchQuery={searchQuery} />
               </TabsContent>
               <TabsContent value="no-sale" className="m-0 flex-1 min-h-0" style={{ overflow: 'auto', maxHeight: '45vh' }}>
-                <CustomerList customers={directSaleNoSale} emptyMessage="لا توجد زيارات بدون بيع" onCustomerClick={handleDirectSaleClick} checkingLocationFor={checkingLocationFor} />
+                <CustomerList customers={directSaleNoSale} emptyMessage="لا توجد زيارات بدون بيع" onCustomerClick={handleDirectSaleClick} checkingLocationFor={checkingLocationFor} searchQuery={searchQuery} />
               </TabsContent>
             </Tabs>
           </TabsContent>
@@ -797,16 +872,16 @@ const SectorCustomersPopover: React.FC = () => {
               </TabsList>
 
               <TabsContent value="today-collection" className="m-0 flex-1 min-h-0" style={{ overflow: 'auto', maxHeight: '45vh' }}>
-                <DebtList debts={debtsToCollectToday} onSelect={setSelectedDebt} onClosed={handleDebtCustomerClosed} onUnavailable={handleDebtCustomerUnavailable} emptyMessage="لا توجد ديون مستحقة اليوم ✓" />
+                <DebtList debts={debtsToCollectToday} onSelect={setSelectedDebt} onClosed={handleDebtCustomerClosed} onUnavailable={handleDebtCustomerUnavailable} emptyMessage="لا توجد ديون مستحقة اليوم ✓" searchQuery={searchQuery} />
               </TabsContent>
               <TabsContent value="collected" className="m-0 flex-1 min-h-0" style={{ overflow: 'auto', maxHeight: '45vh' }}>
-                <DebtList debts={debtsCollectedToday} onSelect={setSelectedDebt} onClosed={handleDebtCustomerClosed} onUnavailable={handleDebtCustomerUnavailable} emptyMessage="لا توجد تحصيلات بعد" />
+                <DebtList debts={debtsCollectedToday} onSelect={setSelectedDebt} onClosed={handleDebtCustomerClosed} onUnavailable={handleDebtCustomerUnavailable} emptyMessage="لا توجد تحصيلات بعد" searchQuery={searchQuery} />
               </TabsContent>
               <TabsContent value="no-payment" className="m-0 flex-1 min-h-0" style={{ overflow: 'auto', maxHeight: '45vh' }}>
-                <DebtList debts={debtsNoPaymentToday} onSelect={setSelectedDebt} onClosed={handleDebtCustomerClosed} onUnavailable={handleDebtCustomerUnavailable} emptyMessage="لا توجد زيارات بدون دفع" />
+                <DebtList debts={debtsNoPaymentToday} onSelect={setSelectedDebt} onClosed={handleDebtCustomerClosed} onUnavailable={handleDebtCustomerUnavailable} emptyMessage="لا توجد زيارات بدون دفع" searchQuery={searchQuery} />
               </TabsContent>
               <TabsContent value="all-debts" className="m-0 flex-1 min-h-0" style={{ overflow: 'auto', maxHeight: '45vh' }}>
-                <DebtList debts={allDebts} onSelect={setSelectedDebt} onClosed={handleDebtCustomerClosed} onUnavailable={handleDebtCustomerUnavailable} emptyMessage="لا توجد ديون مستحقة" />
+                <DebtList debts={allDebts} onSelect={setSelectedDebt} onClosed={handleDebtCustomerClosed} onUnavailable={handleDebtCustomerUnavailable} emptyMessage="لا توجد ديون مستحقة" searchQuery={searchQuery} />
               </TabsContent>
             </Tabs>
           </TabsContent>
@@ -1051,14 +1126,25 @@ const CustomerList: React.FC<{
   showNoSaleButton?: boolean;
   checkingLocationFor: string | null;
   loadingFor?: string | null;
-}> = ({ customers, emptyMessage, onCustomerClick, onVisitWithoutOrder, onClosed, onUnavailable, onNoSale, onPrint, showVisitButton, visitButtonLabel, showActionButtons, showPrintButton, showNoSaleButton, checkingLocationFor, loadingFor }) => {
-  if (customers.length === 0) {
-    return <div className="p-6 text-center text-sm text-muted-foreground">{emptyMessage}</div>;
+  searchQuery?: string;
+}> = ({ customers, emptyMessage, onCustomerClick, onVisitWithoutOrder, onClosed, onUnavailable, onNoSale, onPrint, showVisitButton, visitButtonLabel, showActionButtons, showPrintButton, showNoSaleButton, checkingLocationFor, loadingFor, searchQuery }) => {
+  const filtered = useMemo(() => {
+    if (!searchQuery?.trim()) return customers;
+    const q = searchQuery.trim().toLowerCase();
+    return customers.filter(c =>
+      (c.name || '').toLowerCase().includes(q) ||
+      (c.store_name || '').toLowerCase().includes(q) ||
+      (c.phone || '').includes(q)
+    );
+  }, [customers, searchQuery]);
+
+  if (filtered.length === 0) {
+    return <div className="p-6 text-center text-sm text-muted-foreground">{searchQuery?.trim() ? 'لا توجد نتائج' : emptyMessage}</div>;
   }
 
   return (
     <div className="divide-y">
-      {customers.map(c => (
+      {filtered.map(c => (
         <div key={c.id} className="p-3 hover:bg-muted/50 transition-colors">
           <button className="w-full flex items-center gap-2 text-start" onClick={() => onCustomerClick(c)} disabled={loadingFor === c.id}>
             <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
@@ -1081,7 +1167,7 @@ const CustomerList: React.FC<{
               </Button>
             )}
             {showPrintButton && onPrint && (
-              <Button variant="ghost" size="icon" className="h-6 w-6 text-blue-600" onClick={(e) => { e.stopPropagation(); onPrint(c); }}>
+              <Button variant="ghost" size="icon" className="h-6 w-6 text-primary" onClick={(e) => { e.stopPropagation(); onPrint(c); }}>
                 <Printer className="w-3.5 h-3.5" />
               </Button>
             )}
@@ -1098,13 +1184,13 @@ const CustomerList: React.FC<{
               </Button>
             )}
             {showActionButtons && onClosed && (
-              <Button variant="ghost" size="sm" className="h-6 text-[10px] px-1.5 gap-0.5 text-red-600" onClick={() => onClosed(c)} disabled={checkingLocationFor === c.id}>
+              <Button variant="ghost" size="sm" className="h-6 text-[10px] px-1.5 gap-0.5 text-destructive" onClick={() => onClosed(c)} disabled={checkingLocationFor === c.id}>
                 <DoorClosed className="w-3 h-3" />
                 مغلق
               </Button>
             )}
             {showActionButtons && onUnavailable && (
-              <Button variant="ghost" size="sm" className="h-6 text-[10px] px-1.5 gap-0.5 text-gray-600" onClick={() => onUnavailable(c)} disabled={checkingLocationFor === c.id}>
+              <Button variant="ghost" size="sm" className="h-6 text-[10px] px-1.5 gap-0.5 text-muted-foreground" onClick={() => onUnavailable(c)} disabled={checkingLocationFor === c.id}>
                 <UserX className="w-3 h-3" />
                 غير متاح
               </Button>
@@ -1116,14 +1202,25 @@ const CustomerList: React.FC<{
   );
 };
 
-const DebtList: React.FC<{ debts: DueDebt[]; onSelect: (d: DueDebt) => void; onClosed: (d: DueDebt) => void; onUnavailable: (d: DueDebt) => void; emptyMessage: string }> = ({ debts, onSelect, onClosed, onUnavailable, emptyMessage }) => {
-  if (debts.length === 0) {
-    return <div className="p-6 text-center text-sm text-muted-foreground">{emptyMessage}</div>;
+const DebtList: React.FC<{ debts: DueDebt[]; onSelect: (d: DueDebt) => void; onClosed: (d: DueDebt) => void; onUnavailable: (d: DueDebt) => void; emptyMessage: string; searchQuery?: string }> = ({ debts, onSelect, onClosed, onUnavailable, emptyMessage, searchQuery }) => {
+  const filtered = useMemo(() => {
+    if (!searchQuery?.trim()) return debts;
+    const q = searchQuery.trim().toLowerCase();
+    return debts.filter(d => {
+      const cust = d.customer as any;
+      return (cust?.name || '').toLowerCase().includes(q) ||
+        (cust?.store_name || '').toLowerCase().includes(q) ||
+        (cust?.phone || '').includes(q);
+    });
+  }, [debts, searchQuery]);
+
+  if (filtered.length === 0) {
+    return <div className="p-6 text-center text-sm text-muted-foreground">{searchQuery?.trim() ? 'لا توجد نتائج' : emptyMessage}</div>;
   }
 
   return (
     <div className="divide-y">
-      {debts.map(debt => (
+      {filtered.map(debt => (
         <div key={debt.id} className="p-3 hover:bg-muted/50 transition-colors">
           <button className="w-full text-right" onClick={() => onSelect(debt)}>
             <div className="flex items-center justify-between">
