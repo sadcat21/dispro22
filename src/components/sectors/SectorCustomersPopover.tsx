@@ -48,8 +48,26 @@ const SectorCustomersPopover: React.FC = () => {
   const todayName = JS_DAY_TO_NAME[new Date().getDay()] || '';
   const [isOpen, setIsOpen] = useState(false);
   const [checkingLocationFor, setCheckingLocationFor] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const isAdmin = role === 'admin' || role === 'branch_admin';
+
+  // Admin worker picker
+  const [selectedAdminWorkerId, setSelectedAdminWorkerId] = useState<string | null>(null);
+  const { data: workersList = [] } = useQuery({
+    queryKey: ['popover-workers-list', activeBranch?.id],
+    queryFn: async () => {
+      let query = supabase.from('workers').select('id, full_name, username').eq('is_active', true);
+      if (activeBranch && role === 'branch_admin') query = query.eq('branch_id', activeBranch.id);
+      const { data } = await query.order('full_name');
+      return data || [];
+    },
+    enabled: isAdmin && isOpen,
+  });
+
+  const effectiveWorkerId = isAdmin && selectedAdminWorkerId ? selectedAdminWorkerId : workerId;
+  const hasSpecificWorker = !!selectedAdminWorkerId;
+
   const { data: dueDebts = [] } = useDueDebts(undefined);
   const { data: allDebts = [] } = useDueDebts('__all__');
   const { data: pendingCollections = [] } = usePendingCollections();
