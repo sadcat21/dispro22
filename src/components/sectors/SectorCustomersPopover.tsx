@@ -115,64 +115,68 @@ const SectorCustomersPopover: React.FC = () => {
   }, []);
 
   const { data: todayVisits = [] } = useQuery({
-    queryKey: ['today-visits', workerId, todayStart],
+    queryKey: ['today-visits-pop', effectiveWorkerId, todayStart],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('visit_tracking')
         .select('customer_id, operation_type')
-        .eq('worker_id', workerId!)
+        .eq('worker_id', effectiveWorkerId!)
         .gte('created_at', todayStart);
       if (error) throw error;
       return data || [];
     },
-    enabled: !!workerId && isOpen,
+    enabled: !!effectiveWorkerId && isOpen,
     refetchInterval: 10000,
   });
 
   const { data: todayOrders = [] } = useQuery({
-    queryKey: ['today-orders-customers', workerId, todayStart],
+    queryKey: ['today-orders-customers-pop', effectiveWorkerId, todayStart],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('orders')
         .select('customer_id')
-        .eq('created_by', workerId!)
+        .eq('created_by', effectiveWorkerId!)
         .gte('created_at', todayStart)
         .not('status', 'eq', 'cancelled');
       if (error) throw error;
       return data || [];
     },
-    enabled: !!workerId && isOpen,
+    enabled: !!effectiveWorkerId && isOpen,
     refetchInterval: 10000,
   });
 
   const { data: todayDeliveredOrders = [] } = useQuery({
-    queryKey: ['today-delivered-orders', workerId, todayStart, isAdmin],
+    queryKey: ['today-delivered-orders-pop', effectiveWorkerId, todayStart, hasSpecificWorker],
     queryFn: async () => {
       let query = supabase
         .from('orders')
         .select('customer_id, status, assigned_worker_id')
         .gte('updated_at', todayStart)
         .eq('status', 'delivered');
-      if (!isAdmin) {
-        query = query.eq('assigned_worker_id', workerId!);
+      if (hasSpecificWorker) {
+        query = query.eq('assigned_worker_id', effectiveWorkerId!);
+      } else if (!isAdmin) {
+        query = query.eq('assigned_worker_id', effectiveWorkerId!);
       }
       const { data, error } = await query;
       if (error) throw error;
       return data || [];
     },
-    enabled: !!workerId && isOpen,
+    enabled: !!effectiveWorkerId && isOpen,
     refetchInterval: 10000,
   });
 
   const { data: assignedOrderCustomerIds = [] } = useQuery({
-    queryKey: ['assigned-order-customers', workerId, isAdmin, activeBranch?.id],
+    queryKey: ['assigned-order-customers-pop', effectiveWorkerId, hasSpecificWorker, activeBranch?.id],
     queryFn: async () => {
       let query = supabase
         .from('orders')
         .select('customer_id')
         .in('status', ['pending', 'assigned', 'in_progress']);
-      if (!isAdmin) {
-        query = query.eq('assigned_worker_id', workerId!);
+      if (hasSpecificWorker) {
+        query = query.eq('assigned_worker_id', effectiveWorkerId!);
+      } else if (!isAdmin) {
+        query = query.eq('assigned_worker_id', effectiveWorkerId!);
       } else if (activeBranch) {
         query = query.eq('branch_id', activeBranch.id);
       }
@@ -180,27 +184,29 @@ const SectorCustomersPopover: React.FC = () => {
       if (error) throw error;
       return data || [];
     },
-    enabled: !!workerId && isOpen,
+    enabled: !!effectiveWorkerId && isOpen,
     refetchInterval: 10000,
   });
 
   const todayStart2 = useMemo(() => new Date().toISOString().split('T')[0], []);
 
   const { data: todayCollections = [] } = useQuery({
-    queryKey: ['today-debt-collections', workerId, todayStart2],
+    queryKey: ['today-debt-collections-pop', effectiveWorkerId, todayStart2, hasSpecificWorker],
     queryFn: async () => {
       let query = supabase
         .from('debt_collections')
         .select('debt_id, action, amount_collected, status')
         .eq('collection_date', todayStart2);
-      if (!isAdmin) {
-        query = query.eq('worker_id', workerId!);
+      if (hasSpecificWorker) {
+        query = query.eq('worker_id', effectiveWorkerId!);
+      } else if (!isAdmin) {
+        query = query.eq('worker_id', effectiveWorkerId!);
       }
       const { data, error } = await query;
       if (error) throw error;
       return data || [];
     },
-    enabled: !!workerId && isOpen,
+    enabled: !!effectiveWorkerId && isOpen,
     refetchInterval: 10000,
   });
 
@@ -212,7 +218,7 @@ const SectorCustomersPopover: React.FC = () => {
   }, []);
 
   const { data: recentNegativeVisits = [] } = useQuery({
-    queryKey: ['recent-negative-visits-popover', workerId, sevenDaysAgo],
+    queryKey: ['recent-negative-visits-popover', effectiveWorkerId, sevenDaysAgo],
     queryFn: async () => {
       const { data } = await supabase
         .from('visit_tracking')
@@ -221,55 +227,57 @@ const SectorCustomersPopover: React.FC = () => {
         .or('notes.ilike.%مغلق%,notes.ilike.%غير متاح%,notes.ilike.%بدون طلبية%');
       return data || [];
     },
-    enabled: !!workerId && isOpen,
+    enabled: !!effectiveWorkerId && isOpen,
   });
 
   // Worker stock for direct sale
   const { data: workerStock = [] } = useQuery({
-    queryKey: ['my-worker-stock-popover', workerId],
+    queryKey: ['my-worker-stock-popover', effectiveWorkerId],
     queryFn: async () => {
       const { data } = await supabase
         .from('worker_stock')
         .select('id, product_id, quantity, product:products(*)')
-        .eq('worker_id', workerId!)
+        .eq('worker_id', effectiveWorkerId!)
         .gt('quantity', 0);
       return data || [];
     },
-    enabled: !!workerId && isOpen,
+    enabled: !!effectiveWorkerId && isOpen,
   });
 
   // Today's direct sales
   const { data: todayDirectSales = [] } = useQuery({
-    queryKey: ['today-direct-sales-popover', workerId, todayStart],
+    queryKey: ['today-direct-sales-popover', effectiveWorkerId, todayStart, hasSpecificWorker],
     queryFn: async () => {
       let query = supabase
         .from('receipts')
         .select('customer_id, items, total_amount, customer_name, created_at')
         .eq('receipt_type', 'direct_sale')
         .gte('created_at', todayStart);
-      if (!isAdmin) {
-        query = query.eq('worker_id', workerId!);
+      if (hasSpecificWorker) {
+        query = query.eq('worker_id', effectiveWorkerId!);
+      } else if (!isAdmin) {
+        query = query.eq('worker_id', effectiveWorkerId!);
       }
       const { data } = await query;
       return data || [];
     },
-    enabled: !!workerId && isOpen,
+    enabled: !!effectiveWorkerId && isOpen,
     refetchInterval: 10000,
   });
 
   // Today's direct sale visits (بدون بيع)
   const { data: todayDirectSaleVisits = [] } = useQuery({
-    queryKey: ['today-direct-sale-visits-popover', workerId, todayStart],
+    queryKey: ['today-direct-sale-visits-popover', effectiveWorkerId, todayStart],
     queryFn: async () => {
       const { data } = await supabase
         .from('visit_tracking')
         .select('customer_id, notes')
-        .eq('worker_id', workerId!)
+        .eq('worker_id', effectiveWorkerId!)
         .gte('created_at', todayStart)
         .or('notes.ilike.%بدون بيع%,notes.ilike.%مغلق (بيع مباشر)%,notes.ilike.%غير متاح (بيع مباشر)%');
       return data || [];
     },
-    enabled: !!workerId && isOpen,
+    enabled: !!effectiveWorkerId && isOpen,
     refetchInterval: 10000,
   });
 
