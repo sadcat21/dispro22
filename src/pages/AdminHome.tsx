@@ -3,13 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import { useNavigation } from '@/hooks/useNavigation';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useFontSize } from '@/contexts/FontSizeContext';
-import { Calculator, Banknote, ArrowLeft, Navigation, Users, Receipt, ShoppingCart, Scale, Trophy, CalendarDays } from 'lucide-react';
+import { Calculator, Banknote, ArrowLeft, Navigation, Users, Receipt, ShoppingCart, Scale, Trophy, CalendarDays, Gift } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useIsElementHidden } from '@/hooks/useUIOverrides';
 import InvoiceRequestDialog from '@/components/treasury/InvoiceRequestDialog';
 import CreateOrderDialog from '@/components/orders/CreateOrderDialog';
+import WorkerGiftsSummaryDialog from '@/components/accounting/WorkerGiftsSummaryDialog';
 
 // Color mapping by path for semantic meaning
 const pathColors: Record<string, { bg: string; icon: string; border: string }> = {
