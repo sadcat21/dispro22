@@ -338,6 +338,7 @@ const WorkerHome: React.FC = () => {
             expenses: { bg: 'bg-gradient-to-br from-fuchsia-500 to-pink-600', iconBg: 'bg-white/20', iconColor: 'text-white', text: 'text-white', border: '' },
             'today-customers': { bg: 'bg-gradient-to-br from-sky-400 to-blue-500', iconBg: 'bg-white/20', iconColor: 'text-white', text: 'text-white', border: '' },
             'rewards': { bg: 'bg-gradient-to-br from-yellow-400 to-amber-500', iconBg: 'bg-white/20', iconColor: 'text-white', text: 'text-white', border: '' },
+            'worker-actions': { bg: 'bg-gradient-to-br from-indigo-500 to-indigo-700', iconBg: 'bg-white/20', iconColor: 'text-white', text: 'text-white', border: '' },
           };
 
           const gridCols = quickActions.length === 1 ? 'grid-cols-1' : quickActions.length === 2 ? 'grid-cols-2' : 'grid-cols-3';
