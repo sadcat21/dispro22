@@ -325,9 +325,13 @@ const SectorCustomersPopover: React.FC = () => {
 
   const collectedDebtIds = useMemo(() => new Set(todayCollections.filter(c => c.action !== 'no_payment').map(c => c.debt_id)), [todayCollections]);
   const noPaymentDebtIds = useMemo(() => new Set(todayCollections.filter(c => c.action === 'no_payment').map(c => c.debt_id)), [todayCollections]);
-  const debtsToCollectToday = useMemo(() => dueDebts.filter(d => !collectedDebtIds.has(d.id) && !noPaymentDebtIds.has(d.id)), [dueDebts, collectedDebtIds, noPaymentDebtIds]);
-  const debtsCollectedToday = useMemo(() => dueDebts.filter(d => collectedDebtIds.has(d.id)), [dueDebts, collectedDebtIds]);
-  const debtsNoPaymentToday = useMemo(() => dueDebts.filter(d => noPaymentDebtIds.has(d.id)), [dueDebts, noPaymentDebtIds]);
+  const filteredDueDebts = useMemo(() => {
+    if (hasSpecificWorker) return dueDebts.filter(d => d.worker_id === effectiveWorkerId);
+    return dueDebts;
+  }, [dueDebts, effectiveWorkerId, hasSpecificWorker]);
+  const debtsToCollectToday = useMemo(() => filteredDueDebts.filter(d => !collectedDebtIds.has(d.id) && !noPaymentDebtIds.has(d.id)), [filteredDueDebts, collectedDebtIds, noPaymentDebtIds]);
+  const debtsCollectedToday = useMemo(() => filteredDueDebts.filter(d => collectedDebtIds.has(d.id)), [filteredDueDebts, collectedDebtIds]);
+  const debtsNoPaymentToday = useMemo(() => filteredDueDebts.filter(d => noPaymentDebtIds.has(d.id)), [filteredDueDebts, noPaymentDebtIds]);
 
   // Direct sale
   const directSaleCustomers = useMemo(() => {
