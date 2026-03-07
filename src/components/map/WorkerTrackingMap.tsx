@@ -97,11 +97,21 @@ const WorkerTrackingMap: React.FC<WorkerTrackingMapProps> = ({ highlightWorkerId
       scrollWheelZoom: true,
     });
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OSM',
+    const tile = L.tileLayer(TILE_LAYERS.street.url, {
+      attribution: TILE_LAYERS.street.attribution,
     }).addTo(map);
+    tileLayerRef.current = tile;
 
     mapRef.current = map;
+
+    // Track user interaction to prevent auto-zoom override
+    map.on('zoomstart', (e: any) => {
+      // Only mark as user-interacted if not programmatic
+      if (!e.flyTo) userInteractedRef.current = true;
+    });
+    map.on('dragstart', () => {
+      userInteractedRef.current = true;
+    });
 
     // ResizeObserver for dynamic resizing
     const observer = new ResizeObserver(() => {
