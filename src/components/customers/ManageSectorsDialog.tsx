@@ -84,6 +84,22 @@ const ManageSectorsDialog: React.FC<ManageSectorsDialogProps> = ({ open, onOpenC
     if (filterWorker !== 'all' && s.sales_worker_id !== filterWorker && s.delivery_worker_id !== filterWorker) return false;
     return true;
   });
+
+  // Sort sectors by earliest day (delivery or sales)
+  const getSectorDayOrder = (s: Sector) => {
+    const salesOrder = s.visit_day_sales ? DAY_ORDER[s.visit_day_sales] ?? 99 : 99;
+    const deliveryOrder = s.visit_day_delivery ? DAY_ORDER[s.visit_day_delivery] ?? 99 : 99;
+    return Math.min(salesOrder, deliveryOrder);
+  };
+
+  const sortedFilteredSectors = [...filteredSectors].sort((a, b) => getSectorDayOrder(a) - getSectorDayOrder(b));
+
+  // Group by day when no filters active
+  const isFiltered = filterType !== 'all' || filterDay !== 'all' || filterWorker !== 'all';
+  const groupedByDay = !isFiltered ? DAYS.map(day => ({
+    day,
+    sectors: filteredSectors.filter(s => s.visit_day_sales === day.value || s.visit_day_delivery === day.value),
+  })).filter(g => g.sectors.length > 0) : null;
   useEffect(() => {
     if (open) {
       fetchWorkers();
