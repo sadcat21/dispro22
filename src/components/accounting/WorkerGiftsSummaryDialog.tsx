@@ -910,12 +910,15 @@ const WorkerGiftsSummaryDialog: React.FC<Props> = ({ open, onOpenChange, workerI
       <GiftsPrintView
         ref={printRef}
         rows={printRows}
+        summaryRows={summaryRows}
+        workerNames={summaryWorkerNames}
         workerName={allWorkers ? 'Tous les employés' : workerName}
         dateRange={periodDateLabel}
         productFilter={printProductLabel}
         isVisible={showPrintView}
         visibleColumns={printSettings?.columns}
         separateByProduct={printSettings?.separateByProduct ?? true}
+        printSummary={printSettings?.printSummary ?? false}
       />
       <GiftsPrintSettingsDialog
         open={showPrintSettings}
