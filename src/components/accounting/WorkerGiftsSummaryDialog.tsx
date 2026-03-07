@@ -111,9 +111,10 @@ const resolveAppliedOfferDetail = ({
 
   return (matchingRules.length > 0 ? matchingRules[matchingRules.length - 1] : rules[0]).detail;
 };
+
+const WorkerGiftsSummaryDialog: React.FC<Props> = ({ open, onOpenChange, workerId, workerName }) => {
   const { activeBranch } = useAuth();
   const { isConnected, scanAndConnect, printReceipt } = useBluetoothPrinter();
-  const [expandedProduct, setExpandedProduct] = useState<string | null>(null);
   const [allWorkers, setAllWorkers] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [isPrinting, setIsPrinting] = useState(false);
