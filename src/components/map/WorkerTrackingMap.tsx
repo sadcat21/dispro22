@@ -360,6 +360,36 @@ const WorkerTrackingMap: React.FC<WorkerTrackingMapProps> = ({ highlightWorkerId
     fetchRoute();
   }, [locations, highlightWorkerId, showOnlyHighlighted]);
 
+  // Reverse geocode highlighted worker's location
+  useEffect(() => {
+    if (!highlightWorkerId || !locations) {
+      setWorkerAddress(null);
+      return;
+    }
+
+    const loc = locations.find(l => l.worker_id === highlightWorkerId);
+    if (!loc || loc.has_location === false) {
+      setWorkerAddress(null);
+      return;
+    }
+
+    let cancelled = false;
+    setIsLoadingAddress(true);
+    setWorkerAddress(null);
+
+    reverseGeocode(loc.latitude, loc.longitude)
+      .then(address => {
+        if (!cancelled) setWorkerAddress(address);
+      })
+      .catch(() => {
+        if (!cancelled) setWorkerAddress(null);
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoadingAddress(false);
+      });
+
+    return () => { cancelled = true; };
+  }, [highlightWorkerId, locations]);
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-20">
