@@ -20,6 +20,7 @@ L.Icon.Default.mergeOptions({
 
 interface WorkerTrackingMapProps {
   highlightWorkerId?: string;
+  showOnlyHighlighted?: boolean;
 }
 
 const WorkerTrackingMap: React.FC<WorkerTrackingMapProps> = ({ highlightWorkerId }) => {
