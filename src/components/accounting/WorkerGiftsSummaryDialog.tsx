@@ -293,6 +293,38 @@ const WorkerGiftsSummaryDialog: React.FC<Props> = ({ open, onOpenChange, workerI
     return ids.size;
   }, [giftsData]);
 
+  // Build thermal preview lines
+  const thermalLines = useMemo((): ThermalLine[] => {
+    if (!giftsData?.items?.length) return [];
+    const lines: ThermalLine[] = [];
+    
+    lines.push({ text: 'RECAPITULATIF CADEAUX', bold: true, center: true, large: true });
+    lines.push({ text: periodDateLabel, center: true });
+    lines.push({ text: !allWorkers && workerName ? transliterate(workerName) : 'Tous les travailleurs', center: true });
+    lines.push({ separator: true });
+    
+    const hdr = 'Produit'.padEnd(14) + 'Qte'.padStart(8) + 'Cli'.padStart(5) + 'Off'.padStart(5);
+    lines.push({ text: hdr, bold: true });
+    lines.push({ separator: true });
+    
+    for (const item of giftsData.items) {
+      const name = transliterate(item.productName).substring(0, 14).padEnd(14);
+      const qty = formatGiftDisplay(item.totalGiftPieces, item.piecesPerBox).padStart(8);
+      const cli = String(item.customers.length).padStart(5);
+      const offer = transliterate(item.offerName || '-').substring(0, 5).padStart(5);
+      lines.push({ text: name + qty + cli + offer });
+    }
+    
+    lines.push({ separator: true });
+    const totalLine = 'TOTAL'.padEnd(14) + String(giftsData.totalGifts).padStart(8) + String(uniqueCustomerCount).padStart(5);
+    lines.push({ text: totalLine, bold: true });
+    lines.push({ separator: true });
+    lines.push({ text: format(new Date(), 'dd/MM/yyyy HH:mm'), center: true });
+    lines.push({ text: 'Laser Food', center: true });
+    
+    return lines;
+  }, [giftsData, allWorkers, workerName, periodDateLabel, uniqueCustomerCount]);
+
   const handleThermalPrint = useCallback(async () => {
     if (!giftsData?.items?.length) return;
     setIsPrinting(true);
@@ -302,7 +334,6 @@ const WorkerGiftsSummaryDialog: React.FC<Props> = ({ open, onOpenChange, workerI
         if (!connected) { setIsPrinting(false); return; }
       }
 
-      // Build thermal lines
       const ESC = 0x1B;
       const GS = 0x1D;
       const LF = 0x0A;
@@ -321,8 +352,7 @@ const WorkerGiftsSummaryDialog: React.FC<Props> = ({ open, onOpenChange, workerI
       const dblH = (on: boolean) => push(cmd(GS, 0x21, on ? 0x01 : 0x00));
       const sep = () => line('-'.repeat(LINE_WIDTH));
 
-      // Init
-      push(cmd(ESC, 0x40)); // reset
+      push(cmd(ESC, 0x40));
       center();
       bold(true);
       dblH(true);
@@ -330,8 +360,7 @@ const WorkerGiftsSummaryDialog: React.FC<Props> = ({ open, onOpenChange, workerI
       dblH(false);
       bold(false);
 
-      const monthLabel = format(currentMonth, 'MMMM yyyy', { locale: ar });
-      line(transliterate(monthLabel));
+      line(periodDateLabel);
       if (!allWorkers && workerName) {
         line(transliterate(workerName));
       } else {
@@ -340,7 +369,6 @@ const WorkerGiftsSummaryDialog: React.FC<Props> = ({ open, onOpenChange, workerI
       sep();
 
       left();
-      // Header
       bold(true);
       const hdr = 'Produit'.padEnd(14) + 'Qte'.padStart(8) + 'Cli'.padStart(5) + 'Off'.padStart(5);
       line(hdr);
@@ -366,29 +394,27 @@ const WorkerGiftsSummaryDialog: React.FC<Props> = ({ open, onOpenChange, workerI
       line(format(new Date(), 'dd/MM/yyyy HH:mm'));
       line('Laser Food');
 
-      // Feed and cut
       push(cmd(LF, LF, LF));
       push(cmd(GS, 0x56, 0x00));
 
-      // Merge chunks
       const totalLen = chunks.reduce((s, c) => s + c.length, 0);
       const merged = new Uint8Array(totalLen);
       let offset = 0;
       for (const c of chunks) { merged.set(c, offset); offset += c.length; }
 
-      // Print raw via bluetooth
       const { bluetoothPrinter } = await import('@/services/bluetoothPrinter');
       await bluetoothPrinter.print(merged);
 
       const { toast } = await import('sonner');
       toast.success('تمت الطباعة بنجاح');
+      setShowPreview(false);
     } catch (err: any) {
       const { toast } = await import('sonner');
       toast.error('فشل الطباعة: ' + (err.message || ''));
     } finally {
       setIsPrinting(false);
     }
-  }, [giftsData, isConnected, scanAndConnect, allWorkers, workerName, currentMonth, uniqueCustomerCount]);
+  }, [giftsData, isConnected, scanAndConnect, allWorkers, workerName, periodDateLabel, uniqueCustomerCount]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
