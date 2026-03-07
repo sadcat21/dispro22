@@ -223,9 +223,23 @@ const WorkerHome: React.FC = () => {
         </div>
       </div>
 
+      {/* Today's Customers Notification for Supervisors */}
+      {isSupervisor && (
+        <div className="px-4 mt-3">
+          <div
+            onClick={() => setShowTodayCustomers(true)}
+            className="relative overflow-hidden rounded-xl border-2 border-sky-300 bg-gradient-to-br from-sky-50 to-blue-100 p-4 cursor-pointer active:scale-[0.97] transition-all hover:shadow-lg flex items-center gap-3"
+          >
+            <CalendarCheck className="w-8 h-8 text-sky-600 shrink-0" />
+            <div>
+              <p className="font-bold text-sm text-sky-900">عملاء اليوم</p>
+              <p className="text-xs text-sky-700">عرض جدول العملاء والتوصيلات المجدولة لليوم</p>
+            </div>
+          </div>
+        </div>
+      )}
 
 
-      {/* Content based on permissions */}
       {hasPromoAccess ? (
         <>
           {/* Products Section for Promo */}
