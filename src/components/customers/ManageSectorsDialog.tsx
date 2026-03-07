@@ -467,6 +467,8 @@ const ManageSectorsDialog: React.FC<ManageSectorsDialogProps> = ({ open, onOpenC
               <Plus className="w-4 h-4 ml-2" />
               إضافة سكتور جديد
             </Button>
+          )}
+
           {/* Sectors List */}
           <div className="space-y-2 mt-2">
             {isLoading ? (
@@ -493,7 +495,6 @@ const ManageSectorsDialog: React.FC<ManageSectorsDialogProps> = ({ open, onOpenC
                           <Badge variant={(sector as any).sector_type === 'cash_van' ? 'secondary' : 'default'} className="text-[10px] w-fit">
                             {(sector as any).sector_type === 'cash_van' ? 'Cash Van' : 'Prévente'}
                           </Badge>
-                          )}
                           <div className="flex flex-wrap gap-1.5">
                             {getDayLabel(sector.visit_day_sales) && (
                               <Badge variant="outline" className="text-[10px] px-1.5">
