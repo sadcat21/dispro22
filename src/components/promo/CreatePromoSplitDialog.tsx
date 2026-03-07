@@ -87,7 +87,7 @@ const CreatePromoSplitDialog: React.FC<Props> = ({ open, onOpenChange, editSplit
       const payload: any = {
         name,
         split_type: splitType,
-        offer_id: offerId || null,
+        offer_id: offerId && offerId !== 'none' ? offerId : null,
         product_id: productId,
         target_quantity: Number(targetQty),
         target_quantity_unit: targetUnit,
