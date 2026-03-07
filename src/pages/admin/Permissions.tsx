@@ -187,6 +187,10 @@ const Permissions: React.FC = () => {
             <EyeOff className="w-4 h-4" />
             إخفاء العناصر
           </TabsTrigger>
+          <TabsTrigger value="supervisor-workers" className="flex-1 gap-1.5">
+            <Users className="w-4 h-4" />
+            تعيين المشرفين
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="roles" className="space-y-6 mt-4">
@@ -314,6 +318,11 @@ const Permissions: React.FC = () => {
         <TabsContent value="ui-overrides" className="mt-4">
           <WorkerUIOverridesSection initialWorkerId={contextWorkerId} />
         </TabsContent>
+
+        <TabsContent value="supervisor-workers" className="mt-4">
+          <SupervisorWorkersSection />
+        </TabsContent>
+
       </Tabs>
 
       {/* Delete Confirmation Dialog */}
