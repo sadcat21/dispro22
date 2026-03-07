@@ -43,7 +43,7 @@ const WorkerHome: React.FC = () => {
   const [showHandoverPreview, setShowHandoverPreview] = useState(false);
   const [showTodayCustomers, setShowTodayCustomers] = useState(false);
   const [showPalletCalculator, setShowPalletCalculator] = useState(false);
-  const [isSendingTestSms, setIsSendingTestSms] = useState(false);
+  
 
   const { trackVisit } = useTrackVisit();
   const isDirectSaleHidden = useIsElementHidden('button', 'home_direct_sale');
@@ -159,31 +159,7 @@ const WorkerHome: React.FC = () => {
     return t('common.welcome');
   };
 
-  const handleSendTestSms = async () => {
-    if (isSendingTestSms) return;
 
-    if (!Capacitor.isNativePlatform() || Capacitor.getPlatform() !== 'android') {
-      toast.error('اختبار SMS يعمل فقط داخل تطبيق Android APK وليس نسخة Vercel.');
-      return;
-    }
-
-    setIsSendingTestSms(true);
-    try {
-      const targetPhone = '0555636513';
-      const testMessage = `رسالة اختبار من هاتف العمل - ${new Date().toLocaleString('fr-DZ')}`;
-      const sent = await sendSmsDirectly(targetPhone, testMessage);
-      if (sent) {
-        toast.success(`تم إرسال الرسالة التجريبية إلى ${targetPhone}`);
-      } else {
-        toast.error('فشل الإرسال: تأكد من صلاحيات SMS وبناء APK جديد بعد npx cap sync android');
-      }
-    } catch (error) {
-      console.error('[SMS] Test send failed:', error);
-      toast.error('حدث خطأ أثناء إرسال الرسالة التجريبية');
-    } finally {
-      setIsSendingTestSms(false);
-    }
-  };
 
   // Loading skeleton for permissions
   if (permissionsLoading) {
