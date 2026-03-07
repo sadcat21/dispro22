@@ -370,7 +370,7 @@ const WorkerGiftsSummaryDialog: React.FC<Props> = ({ open, onOpenChange, workerI
     lines.push({ text: 'LEGENDE OFFRES:', bold: true });
     lines.push({ dotSeparator: true });
     for (const [, info] of Object.entries(offerCodes)) {
-      const legendLine = `${info.code}: ${transliterate(info.name).substring(0, 26)}`;
+      const legendLine = `${info.code}: ${info.details.substring(0, 26)}`;
       lines.push({ text: legendLine });
     }
     lines.push({ separator: true });
