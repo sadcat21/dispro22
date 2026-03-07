@@ -30,13 +30,17 @@ interface SectorZone {
 }
 
 const DAYS = [
-  { value: 'saturday', label: 'السبت' },
-  { value: 'sunday', label: 'الأحد' },
-  { value: 'monday', label: 'الاثنين' },
-  { value: 'tuesday', label: 'الثلاثاء' },
-  { value: 'wednesday', label: 'الأربعاء' },
-  { value: 'thursday', label: 'الخميس' },
+  { value: 'saturday', label: 'السبت', order: 0 },
+  { value: 'sunday', label: 'الأحد', order: 1 },
+  { value: 'monday', label: 'الاثنين', order: 2 },
+  { value: 'tuesday', label: 'الثلاثاء', order: 3 },
+  { value: 'wednesday', label: 'الأربعاء', order: 4 },
+  { value: 'thursday', label: 'الخميس', order: 5 },
 ];
+
+const DAY_ORDER: Record<string, number> = {
+  saturday: 0, sunday: 1, monday: 2, tuesday: 3, wednesday: 4, thursday: 5,
+};
 
 const ManageSectorsDialog: React.FC<ManageSectorsDialogProps> = ({ open, onOpenChange }) => {
   const { workerId, activeBranch } = useAuth();
