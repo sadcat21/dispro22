@@ -1,12 +1,19 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Gift, Package, User, Calendar, ChevronDown, ChevronUp } from 'lucide-react';
+import { Gift, Package, User, Calendar, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Phone, MapPin, Printer, Users } from 'lucide-react';
 import { useRealtimeSubscription } from '@/hooks/useRealtimeSubscription';
+import { useAuth } from '@/contexts/AuthContext';
+import { useBluetoothPrinter } from '@/hooks/useBluetoothPrinter';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { format, startOfMonth, endOfMonth, addMonths, subMonths } from 'date-fns';
+import { ar } from 'date-fns/locale';
 
 interface Props {
   open: boolean;
@@ -19,7 +26,9 @@ interface GiftCustomerDetail {
   customerId: string;
   customerName: string;
   storeName: string | null;
+  customerPhone: string;
   sectorName: string;
+  workerName: string;
   giftPieces: number;
   quantitySold: number;
   date: string;
@@ -43,48 +52,75 @@ const formatGiftDisplay = (giftPieces: number, piecesPerBox: number): string => 
   return `${boxes}.${String(remainingPieces).padStart(2, '0')}`;
 };
 
+const ARABIC_TO_LATIN: Record<string, string> = {
+  'ا': 'a', 'أ': 'a', 'إ': 'i', 'آ': 'a', 'ب': 'b', 'ت': 't', 'ث': 'th',
+  'ج': 'dj', 'ح': 'h', 'خ': 'kh', 'د': 'd', 'ذ': 'dh', 'ر': 'r', 'ز': 'z',
+  'س': 's', 'ش': 'ch', 'ص': 's', 'ض': 'd', 'ط': 't', 'ظ': 'dh', 'ع': 'a',
+  'غ': 'gh', 'ف': 'f', 'ق': 'q', 'ك': 'k', 'ل': 'l', 'م': 'm', 'ن': 'n',
+  'ه': 'h', 'و': 'ou', 'ي': 'i', 'ى': 'a', 'ة': 'a', 'ئ': 'i', 'ؤ': 'ou',
+  'ء': '', '\u064B': '', '\u064C': '', '\u064D': '', '\u064E': '', '\u064F': '',
+  '\u0650': '', '\u0651': '', '\u0652': '',
+};
+
+function transliterate(text: string): string {
+  let result = '';
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    result += ARABIC_TO_LATIN[ch] ?? ch;
+  }
+  return result.replace(/\s+/g, ' ').trim().substring(0, 20);
+}
+
 const WorkerGiftsSummaryDialog: React.FC<Props> = ({ open, onOpenChange, workerId, workerName }) => {
+  const { activeBranch } = useAuth();
+  const { isConnected, scanAndConnect, printReceipt } = useBluetoothPrinter();
   const [expandedProduct, setExpandedProduct] = useState<string | null>(null);
+  const [allWorkers, setAllWorkers] = useState(false);
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [isPrinting, setIsPrinting] = useState(false);
+
+  const periodStart = format(startOfMonth(currentMonth), 'yyyy-MM-dd');
+  const periodEnd = format(endOfMonth(currentMonth), 'yyyy-MM-dd');
+  const periodStartTz = periodStart + 'T00:00:00+01:00';
+  const periodEndTz = periodEnd + 'T23:59:59+01:00';
+
+  const effectiveWorkerId = allWorkers ? null : workerId;
 
   useRealtimeSubscription(
-    `worker-gifts-realtime-${workerId}`,
-    [
-      { table: 'orders' },
-      { table: 'order_items' },
-      { table: 'promos' },
-    ],
-    [['worker-gifts-summary', workerId], ['worker-last-accounting-gifts', workerId]],
-    open && !!workerId
+    `worker-gifts-realtime-${effectiveWorkerId || 'all'}`,
+    [{ table: 'orders' }, { table: 'order_items' }, { table: 'promos' }],
+    [['worker-gifts-summary', effectiveWorkerId, periodStart, periodEnd]],
+    open
   );
 
-  const { data: lastAccounting } = useQuery({
-    queryKey: ['worker-last-accounting-gifts', workerId],
+  // Fetch workers for names
+  const { data: workersMap = {} } = useQuery({
+    queryKey: ['workers-names-map', activeBranch?.id],
     queryFn: async () => {
-      const { data } = await supabase
-        .from('accounting_sessions')
-        .select('completed_at')
-        .eq('worker_id', workerId!)
-        .eq('status', 'completed')
-        .order('completed_at', { ascending: false })
-        .limit(1)
-        .single();
-      return data?.completed_at || null;
+      const { data } = await supabase.from('workers').select('id, full_name').eq('is_active', true);
+      const map: Record<string, string> = {};
+      (data || []).forEach(w => { map[w.id] = w.full_name; });
+      return map;
     },
-    enabled: open && !!workerId,
+    enabled: open,
   });
 
   const { data: giftsData, isLoading } = useQuery({
-    queryKey: ['worker-gifts-summary', workerId, lastAccounting],
+    queryKey: ['worker-gifts-summary', effectiveWorkerId, periodStart, periodEnd, allWorkers],
     queryFn: async () => {
       // Fetch delivered orders
       let ordersQuery = supabase
         .from('orders')
-        .select('id, customer_id, updated_at, notes, customer:customers(name, store_name, sector:sectors(name))')
+        .select('id, customer_id, assigned_worker_id, created_by, updated_at, notes, customer:customers(name, store_name, phone, sector:sectors(name))')
         .in('status', ['delivered', 'completed', 'confirmed'])
-        .or(`assigned_worker_id.eq.${workerId!},created_by.eq.${workerId!}`);
+        .gte('updated_at', periodStartTz)
+        .lte('updated_at', periodEndTz);
 
-      if (lastAccounting) {
-        ordersQuery = ordersQuery.gte('updated_at', lastAccounting);
+      if (effectiveWorkerId) {
+        ordersQuery = ordersQuery.or(`assigned_worker_id.eq.${effectiveWorkerId},created_by.eq.${effectiveWorkerId}`);
+      }
+      if (activeBranch?.id) {
+        ordersQuery = ordersQuery.eq('branch_id', activeBranch.id);
       }
 
       const { data: orders } = await ordersQuery;
@@ -109,8 +145,6 @@ const WorkerGiftsSummaryDialog: React.FC<Props> = ({ open, onOpenChange, workerI
       }
 
       const orderMap = new Map(orders.map(o => [o.id, o]));
-
-      // Aggregate by product + offer
       const agg: Record<string, GiftProductAgg> = {};
 
       for (const item of (items || [])) {
@@ -142,7 +176,9 @@ const WorkerGiftsSummaryDialog: React.FC<Props> = ({ open, onOpenChange, workerI
         agg[key].totalGiftPieces += giftPieces;
         agg[key].totalQuantitySold += soldQty;
 
-        const existing = agg[key].customers.find(c => c.customerId === order.customer_id);
+        const deliveryWorkerId = order.assigned_worker_id || order.created_by;
+
+        const existing = agg[key].customers.find(c => c.customerId === order.customer_id && c.workerName === (workersMap[deliveryWorkerId] || ''));
         if (existing) {
           existing.giftPieces += giftPieces;
           existing.quantitySold += soldQty;
@@ -151,7 +187,9 @@ const WorkerGiftsSummaryDialog: React.FC<Props> = ({ open, onOpenChange, workerI
             customerId: order.customer_id || '',
             customerName: order.customer?.name || '',
             storeName: order.customer?.store_name || null,
+            customerPhone: order.customer?.phone || '',
             sectorName: order.customer?.sector?.name || '',
+            workerName: workersMap[deliveryWorkerId] || '',
             giftPieces,
             quantitySold: soldQty,
             date: order.updated_at || '',
@@ -162,15 +200,15 @@ const WorkerGiftsSummaryDialog: React.FC<Props> = ({ open, onOpenChange, workerI
       // Also check promos table
       let promosQuery = supabase
         .from('promos')
-        .select('product_id, vente_quantity, gratuite_quantity, notes, promo_date, customer_id, customer:customers(name, store_name, sector:sectors(name)), product:products(name, pieces_per_box, image_url)')
-        .eq('worker_id', workerId!)
-        .gt('gratuite_quantity', 0);
-      if (lastAccounting) {
-        promosQuery = promosQuery.gte('promo_date', lastAccounting);
+        .select('product_id, worker_id, vente_quantity, gratuite_quantity, notes, promo_date, customer_id, customer:customers(name, store_name, phone, sector:sectors(name)), product:products(name, pieces_per_box, image_url)')
+        .gt('gratuite_quantity', 0)
+        .gte('promo_date', periodStartTz)
+        .lte('promo_date', periodEndTz);
+      if (effectiveWorkerId) {
+        promosQuery = promosQuery.eq('worker_id', effectiveWorkerId);
       }
       const { data: promosData } = await promosQuery;
 
-      // Get offer units for promo products
       const promoProductIds = [...new Set((promosData || []).map(p => p.product_id))];
       let offerUnitMap: Record<string, string> = {};
       if (promoProductIds.length > 0) {
@@ -182,13 +220,11 @@ const WorkerGiftsSummaryDialog: React.FC<Props> = ({ open, onOpenChange, workerI
         (productOffers || []).forEach(o => { offerUnitMap[o.product_id] = o.gift_quantity_unit || 'piece'; });
       }
 
-      // Track order_items gifts by product to avoid double counting
       const orderGiftsByProduct: Record<string, number> = {};
       Object.values(agg).forEach(p => {
         orderGiftsByProduct[p.productId] = (orderGiftsByProduct[p.productId] || 0) + p.totalGiftPieces;
       });
 
-      // Aggregate promos by product
       const promosByProduct: Record<string, { totalGiftPieces: number; totalVente: number; product: any; customers: GiftCustomerDetail[] }> = {};
       for (const promo of (promosData || [])) {
         const giftQty = Number(promo.gratuite_quantity || 0);
@@ -207,14 +243,15 @@ const WorkerGiftsSummaryDialog: React.FC<Props> = ({ open, onOpenChange, workerI
           customerId: (promo as any).customer_id || '',
           customerName: (promo as any).customer?.name || '',
           storeName: (promo as any).customer?.store_name || null,
+          customerPhone: (promo as any).customer?.phone || '',
           sectorName: (promo as any).customer?.sector?.name || '',
+          workerName: workersMap[(promo as any).worker_id] || '',
           giftPieces: giftInPieces,
           quantitySold: Number(promo.vente_quantity || 0),
           date: (promo as any).promo_date || '',
         });
       }
 
-      // Add promos not covered by order_items
       for (const [productId, promoAgg] of Object.entries(promosByProduct)) {
         const alreadyTracked = orderGiftsByProduct[productId] || 0;
         const extra = promoAgg.totalGiftPieces - alreadyTracked;
@@ -238,27 +275,166 @@ const WorkerGiftsSummaryDialog: React.FC<Props> = ({ open, onOpenChange, workerI
 
       return { items: sorted, totalGifts };
     },
-    enabled: open && !!workerId,
+    enabled: open,
     refetchInterval: open ? 15000 : false,
   });
 
-  const todayDate = new Date().toLocaleDateString('ar-DZ', { year: 'numeric', month: 'long', day: 'numeric' });
+  const uniqueCustomerCount = useMemo(() => {
+    if (!giftsData?.items) return 0;
+    const ids = new Set<string>();
+    giftsData.items.forEach(item => item.customers.forEach(c => ids.add(c.customerId)));
+    return ids.size;
+  }, [giftsData]);
+
+  const handleThermalPrint = useCallback(async () => {
+    if (!giftsData?.items?.length) return;
+    setIsPrinting(true);
+    try {
+      if (!isConnected) {
+        const connected = await scanAndConnect();
+        if (!connected) { setIsPrinting(false); return; }
+      }
+
+      // Build thermal lines
+      const ESC = 0x1B;
+      const GS = 0x1D;
+      const LF = 0x0A;
+      const LINE_WIDTH = 32;
+
+      const encoder = new TextEncoder();
+      const chunks: Uint8Array[] = [];
+
+      const push = (...arrs: Uint8Array[]) => arrs.forEach(a => chunks.push(a));
+      const cmd = (...bytes: number[]) => new Uint8Array(bytes);
+      const text = (s: string) => encoder.encode(s);
+      const line = (s: string) => { push(text(s), cmd(LF)); };
+      const center = () => push(cmd(ESC, 0x61, 1));
+      const left = () => push(cmd(ESC, 0x61, 0));
+      const bold = (on: boolean) => push(cmd(ESC, 0x45, on ? 1 : 0));
+      const dblH = (on: boolean) => push(cmd(GS, 0x21, on ? 0x01 : 0x00));
+      const sep = () => line('-'.repeat(LINE_WIDTH));
+
+      // Init
+      push(cmd(ESC, 0x40)); // reset
+      center();
+      bold(true);
+      dblH(true);
+      line('RECAPITULATIF CADEAUX');
+      dblH(false);
+      bold(false);
+
+      const monthLabel = format(currentMonth, 'MMMM yyyy', { locale: ar });
+      line(transliterate(monthLabel));
+      if (!allWorkers && workerName) {
+        line(transliterate(workerName));
+      } else {
+        line('Tous les travailleurs');
+      }
+      sep();
+
+      left();
+      // Header
+      bold(true);
+      const hdr = 'Produit'.padEnd(14) + 'Qte'.padStart(8) + 'Cli'.padStart(5) + 'Off'.padStart(5);
+      line(hdr);
+      bold(false);
+      sep();
+
+      for (const item of giftsData.items) {
+        const name = transliterate(item.productName).substring(0, 14).padEnd(14);
+        const qty = formatGiftDisplay(item.totalGiftPieces, item.piecesPerBox).padStart(8);
+        const cli = String(item.customers.length).padStart(5);
+        const offer = transliterate(item.offerName || '-').substring(0, 5).padStart(5);
+        line(name + qty + cli + offer);
+      }
+
+      sep();
+      bold(true);
+      const totalLine = 'TOTAL'.padEnd(14) + String(giftsData.totalGifts).padStart(8) + String(uniqueCustomerCount).padStart(5);
+      line(totalLine);
+      bold(false);
+      sep();
+
+      center();
+      line(format(new Date(), 'dd/MM/yyyy HH:mm'));
+      line('Laser Food');
+
+      // Feed and cut
+      push(cmd(LF, LF, LF));
+      push(cmd(GS, 0x56, 0x00));
+
+      // Merge chunks
+      const totalLen = chunks.reduce((s, c) => s + c.length, 0);
+      const merged = new Uint8Array(totalLen);
+      let offset = 0;
+      for (const c of chunks) { merged.set(c, offset); offset += c.length; }
+
+      // Print raw via bluetooth
+      const { bluetoothPrinter } = await import('@/services/bluetoothPrinter');
+      await bluetoothPrinter.print(merged);
+
+      const { toast } = await import('sonner');
+      toast.success('تمت الطباعة بنجاح');
+    } catch (err: any) {
+      const { toast } = await import('sonner');
+      toast.error('فشل الطباعة: ' + (err.message || ''));
+    } finally {
+      setIsPrinting(false);
+    }
+  }, [giftsData, isConnected, scanAndConnect, allWorkers, workerName, currentMonth, uniqueCustomerCount]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md max-h-[85vh] overflow-hidden flex flex-col" dir="rtl">
+      <DialogContent className="max-w-md max-h-[90vh] overflow-hidden flex flex-col" dir="rtl">
         <DialogHeader>
-          <DialogTitle className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Gift className="w-5 h-5 text-purple-600" />
-              تجميع الهدايا - {workerName}
-            </div>
-            <div className="flex items-center gap-1 text-xs font-normal text-muted-foreground">
-              <Calendar className="w-3.5 h-3.5" />
-              <span>{todayDate}</span>
-            </div>
+          <DialogTitle className="flex items-center gap-2">
+            <Gift className="w-5 h-5 text-purple-600" />
+            {allWorkers ? 'تجميع الهدايا - جميع العمال' : `تجميع الهدايا - ${workerName || ''}`}
           </DialogTitle>
         </DialogHeader>
+
+        {/* Controls: all workers toggle + month navigation */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Switch
+                id="all-workers"
+                checked={allWorkers}
+                onCheckedChange={setAllWorkers}
+              />
+              <Label htmlFor="all-workers" className="text-xs cursor-pointer flex items-center gap-1">
+                <Users className="w-3.5 h-3.5" />
+                جميع العمال
+              </Label>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-1 text-[10px] h-7"
+              onClick={handleThermalPrint}
+              disabled={isPrinting || !giftsData?.items?.length}
+            >
+              <Printer className="w-3 h-3" />
+              طباعة حرارية
+            </Button>
+          </div>
+
+          {/* Month navigation */}
+          <div className="flex items-center justify-center gap-2 bg-muted/30 rounded-lg p-1.5">
+            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setCurrentMonth(m => addMonths(m, 1))}>
+              <ChevronRight className="w-4 h-4" />
+            </Button>
+            <div className="flex items-center gap-1.5 min-w-[140px] justify-center">
+              <Calendar className="w-3.5 h-3.5 text-muted-foreground" />
+              <span className="text-sm font-medium">
+                {format(currentMonth, 'MMMM yyyy', { locale: ar })}
+              </span>
+            </div>
+            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setCurrentMonth(m => subMonths(m, 1))}>
+              <ChevronLeft className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
 
         <div className="flex flex-wrap gap-1.5 items-center text-xs">
           <Badge variant="secondary" className="text-xs">
@@ -267,14 +443,12 @@ const WorkerGiftsSummaryDialog: React.FC<Props> = ({ open, onOpenChange, workerI
           <Badge className="text-xs bg-purple-100 text-purple-700 border-0">
             🎁 {giftsData?.totalGifts || 0} قطعة هدايا
           </Badge>
-          {lastAccounting && (
-            <Badge variant="outline" className="text-[10px] text-muted-foreground">
-              منذ آخر محاسبة
-            </Badge>
-          )}
+          <Badge variant="outline" className="text-xs">
+            {uniqueCustomerCount} عميل
+          </Badge>
         </div>
 
-        <ScrollArea className="flex-1 max-h-[60vh]">
+        <ScrollArea className="flex-1 max-h-[55vh]">
           {isLoading ? (
             <div className="flex justify-center py-8">
               <div className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
@@ -287,8 +461,8 @@ const WorkerGiftsSummaryDialog: React.FC<Props> = ({ open, onOpenChange, workerI
           ) : (
             <div className="grid grid-cols-3 gap-2 pb-2">
               {giftsData.items.map((item) => {
-                const isExpanded = expandedProduct === item.productId + '_' + item.offerName;
                 const toggleKey = item.productId + '_' + item.offerName;
+                const isExpanded = expandedProduct === toggleKey;
 
                 return (
                   <Collapsible
@@ -300,7 +474,6 @@ const WorkerGiftsSummaryDialog: React.FC<Props> = ({ open, onOpenChange, workerI
                     <div className="flex flex-col rounded-2xl overflow-hidden shadow-lg border-2 border-border hover:border-purple-400/50 transition-all">
                       <CollapsibleTrigger className="w-full text-start">
                         <div className="flex items-center gap-3 p-3">
-                          {/* Product image */}
                           <div className="w-14 h-14 rounded-xl overflow-hidden bg-muted shrink-0">
                             {item.imageUrl ? (
                               <img src={item.imageUrl} alt={item.productName} className="w-full h-full object-cover" loading="lazy" />
@@ -310,8 +483,6 @@ const WorkerGiftsSummaryDialog: React.FC<Props> = ({ open, onOpenChange, workerI
                               </div>
                             )}
                           </div>
-
-                          {/* Info */}
                           <div className="flex-1 min-w-0">
                             <p className="font-bold text-sm truncate">{item.productName}</p>
                             {item.offerName && (
@@ -329,36 +500,32 @@ const WorkerGiftsSummaryDialog: React.FC<Props> = ({ open, onOpenChange, workerI
                               </span>
                             </div>
                           </div>
-
-                          {isExpanded ? (
-                            <ChevronUp className="w-4 h-4 text-muted-foreground shrink-0" />
-                          ) : (
-                            <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />
-                          )}
+                          {isExpanded ? <ChevronUp className="w-4 h-4 text-muted-foreground shrink-0" /> : <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />}
                         </div>
                       </CollapsibleTrigger>
 
                       <CollapsibleContent>
                         <div className="border-t bg-accent/30 p-2 space-y-1">
                           <div className="grid grid-cols-12 gap-1 text-[9px] text-muted-foreground font-medium px-1 py-1 border-b border-border/50">
-                            <span className="col-span-5">العميل</span>
-                            <span className="col-span-2 text-center">المبيعات</span>
-                            <span className="col-span-3 text-center">الهدية</span>
-                            <span className="col-span-2 text-end">التاريخ</span>
+                            <span className="col-span-4">العميل</span>
+                            <span className="col-span-2 text-center">الهدية</span>
+                            <span className="col-span-3 text-center">الهاتف</span>
+                            <span className="col-span-3 text-end">العامل</span>
                           </div>
                           {item.customers.map((c, idx) => (
                             <div key={idx} className="grid grid-cols-12 gap-1 text-[11px] px-1 py-1.5 border-b border-dashed border-border/30 last:border-0 items-center">
-                              <div className="col-span-5 flex items-center gap-1 min-w-0">
+                              <div className="col-span-4 flex items-center gap-1 min-w-0">
                                 <User className="w-3 h-3 text-muted-foreground shrink-0" />
                                 <div className="truncate">
                                   {c.sectorName && (
-                                    <span className="text-[9px] text-primary font-medium block">{c.sectorName}</span>
+                                    <span className="text-[9px] text-primary font-medium block">
+                                      <MapPin className="w-2.5 h-2.5 inline" /> {c.sectorName}
+                                    </span>
                                   )}
                                   <span className="font-bold text-[11px]">{c.storeName || c.customerName || '-'}</span>
                                 </div>
                               </div>
-                              <span className="col-span-2 text-center font-semibold">{Math.round(c.quantitySold * 100) / 100}</span>
-                              <div className="col-span-3 text-center">
+                              <div className="col-span-2 text-center">
                                 <span className="font-semibold text-purple-600">
                                   {formatGiftDisplay(c.giftPieces, item.piecesPerBox)}
                                 </span>
@@ -366,8 +533,18 @@ const WorkerGiftsSummaryDialog: React.FC<Props> = ({ open, onOpenChange, workerI
                                   {c.giftPieces} قطعة
                                 </div>
                               </div>
-                              <div className="col-span-2 text-end text-[9px] text-muted-foreground">
-                                {c.date ? new Date(c.date).toLocaleDateString('ar-DZ', { month: 'short', day: 'numeric' }) : '-'}
+                              <div className="col-span-3 text-center">
+                                {c.customerPhone ? (
+                                  <a href={`tel:${c.customerPhone}`} className="text-[10px] text-blue-600 flex items-center justify-center gap-0.5">
+                                    <Phone className="w-2.5 h-2.5" />
+                                    {c.customerPhone}
+                                  </a>
+                                ) : (
+                                  <span className="text-[10px] text-muted-foreground">-</span>
+                                )}
+                              </div>
+                              <div className="col-span-3 text-end text-[9px] text-muted-foreground truncate">
+                                {c.workerName || '-'}
                               </div>
                             </div>
                           ))}
