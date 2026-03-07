@@ -104,6 +104,7 @@ const WorkerTrackingMap: React.FC<WorkerTrackingMapProps> = ({ highlightWorkerId
 
     const tile = L.tileLayer(TILE_LAYERS.satellite.url, {
       attribution: TILE_LAYERS.satellite.attribution,
+      maxZoom: 19,
     }).addTo(map);
     tileLayerRef.current = tile;
 
@@ -111,6 +112,7 @@ const WorkerTrackingMap: React.FC<WorkerTrackingMapProps> = ({ highlightWorkerId
     const labels = L.tileLayer(LABELS_LAYER_URL, {
       attribution: '© CARTO',
       pane: 'overlayPane',
+      maxZoom: 19,
     }).addTo(map);
     labelsLayerRef.current = labels;
 
