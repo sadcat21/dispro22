@@ -277,7 +277,7 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
   });
 
   // Computed data
-  const hasSpecificWorker = !!(targetWorkerId || selectedAdminWorkerId);
+  // Computed data
   const workerSectors = useMemo(() => {
     if (hasSpecificWorker) return sectors.filter(s => s.delivery_worker_id === effectiveWorkerId || s.sales_worker_id === effectiveWorkerId);
     if (isAdmin) return sectors;
