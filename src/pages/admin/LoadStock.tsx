@@ -1166,7 +1166,17 @@ const LoadStock: React.FC = () => {
           <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
             <Truck className="w-5 h-5 text-primary" />
           </div>
-          <h2 className="text-lg font-bold">{t('stock.load_to_worker')}</h2>
+          <h2 className="text-lg font-bold flex-1">{t('stock.load_to_worker')}</h2>
+          {selectedWorker && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9 rounded-xl hover:bg-muted"
+              onClick={() => setShowSessionHistory(true)}
+            >
+              <History className="w-5 h-5 text-muted-foreground" />
+            </Button>
+          )}
         </div>
 
         {/* Worker Selection */}
