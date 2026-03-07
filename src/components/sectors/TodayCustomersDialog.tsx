@@ -658,8 +658,10 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
     setShowVisitNoPayment(true);
   };
 
-  const title = targetWorkerName
-    ? `عملاء اليوم — ${targetWorkerName}`
+  const title = effectiveWorkerName
+    ? `عملاء اليوم — ${effectiveWorkerName}`
+    : selectedAdminWorkerId && isAdmin
+    ? `عملاء اليوم — ${workersList.find(w => w.id === selectedAdminWorkerId)?.full_name || ''}`
     : `عملاء اليوم — ${DAY_NAMES[todayName] || todayName}`;
 
   return (
