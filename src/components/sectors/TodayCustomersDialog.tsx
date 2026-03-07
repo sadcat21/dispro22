@@ -1112,14 +1112,28 @@ const CustomerList: React.FC<{
   showNoSaleButton?: boolean;
   checkingLocationFor: string | null;
   loadingFor?: string | null;
-}> = ({ customers, emptyMessage, onCustomerClick, onVisitWithoutOrder, onClosed, onUnavailable, onNoSale, onPrint, showVisitButton, visitButtonLabel, showActionButtons, showPrintButton, showNoSaleButton, checkingLocationFor, loadingFor }) => {
-  if (customers.length === 0) {
-    return <div className="p-6 text-center text-sm text-muted-foreground">{emptyMessage}</div>;
+  searchQuery?: string;
+  sectors?: any[];
+}> = ({ customers, emptyMessage, onCustomerClick, onVisitWithoutOrder, onClosed, onUnavailable, onNoSale, onPrint, showVisitButton, visitButtonLabel, showActionButtons, showPrintButton, showNoSaleButton, checkingLocationFor, loadingFor, searchQuery, sectors }) => {
+  const filtered = useMemo(() => {
+    if (!searchQuery?.trim()) return customers;
+    const q = searchQuery.trim().toLowerCase();
+    return customers.filter(c =>
+      (c.name || '').toLowerCase().includes(q) ||
+      (c.store_name || '').toLowerCase().includes(q) ||
+      (c.phone || '').includes(q)
+    );
+  }, [customers, searchQuery]);
+
+  if (filtered.length === 0) {
+    return <div className="p-6 text-center text-sm text-muted-foreground">{searchQuery?.trim() ? 'لا توجد نتائج' : emptyMessage}</div>;
   }
 
   return (
     <div className="divide-y">
-      {customers.map(c => (
+      {filtered.map(c => {
+        const sector = sectors?.find(s => s.id === c.sector_id);
+        return (
         <div key={c.id} className="p-3 hover:bg-muted/50 transition-colors">
           <button
             className="w-full flex items-center gap-2 text-start"
@@ -1136,6 +1150,16 @@ const CustomerList: React.FC<{
                 {c.phone && <span>• {c.phone}</span>}
                 {c.wilaya && <span>• {c.wilaya}</span>}
               </div>
+              {sector && (
+                <div className="flex items-center gap-1 text-[10px] text-muted-foreground mt-0.5">
+                  {sector.delivery_worker_id && sector.sales_worker_id
+                    ? <span>📍 {sector.name}</span>
+                    : sector.delivery_worker_id
+                    ? <span>🚚 {sector.name}</span>
+                    : <span>🛒 {sector.name}</span>
+                  }
+                </div>
+              )}
             </div>
           </button>
           <div className="flex items-center gap-1 mt-1.5 justify-end flex-wrap">
@@ -1146,7 +1170,7 @@ const CustomerList: React.FC<{
               </Button>
             )}
             {showPrintButton && onPrint && (
-              <Button variant="ghost" size="icon" className="h-6 w-6 text-blue-600" onClick={(e) => { e.stopPropagation(); onPrint(c); }}>
+              <Button variant="ghost" size="icon" className="h-6 w-6 text-primary" onClick={(e) => { e.stopPropagation(); onPrint(c); }}>
                 <Printer className="w-3.5 h-3.5" />
               </Button>
             )}
@@ -1163,20 +1187,21 @@ const CustomerList: React.FC<{
               </Button>
             )}
             {showActionButtons && onClosed && (
-              <Button variant="ghost" size="sm" className="h-6 text-[10px] px-1.5 gap-0.5 text-red-600" onClick={() => onClosed(c)} disabled={checkingLocationFor === c.id}>
+              <Button variant="ghost" size="sm" className="h-6 text-[10px] px-1.5 gap-0.5 text-destructive" onClick={() => onClosed(c)} disabled={checkingLocationFor === c.id}>
                 <DoorClosed className="w-3 h-3" />
                 مغلق
               </Button>
             )}
             {showActionButtons && onUnavailable && (
-              <Button variant="ghost" size="sm" className="h-6 text-[10px] px-1.5 gap-0.5 text-gray-600" onClick={() => onUnavailable(c)} disabled={checkingLocationFor === c.id}>
+              <Button variant="ghost" size="sm" className="h-6 text-[10px] px-1.5 gap-0.5 text-muted-foreground" onClick={() => onUnavailable(c)} disabled={checkingLocationFor === c.id}>
                 <UserX className="w-3 h-3" />
                 غير متاح
               </Button>
             )}
           </div>
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 };
