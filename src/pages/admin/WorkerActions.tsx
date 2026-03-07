@@ -10,6 +10,7 @@ import { useSelectedWorker } from '@/contexts/SelectedWorkerContext';
 import { ArrowRight, Calculator, Truck, Banknote, Wallet, MapPin, ShoppingCart, Activity, Shield, HardHat, HandCoins, ArrowLeftRight, ClipboardList, Trophy, AlertTriangle, DollarSign, Package, PackageOpen, ClipboardCheck, TrendingUp, TrendingDown, Gift, CalendarDays, ShoppingBag, Settings } from 'lucide-react';
 import { useWorkerLiability } from '@/hooks/useWorkerLiability';
 import { useRealtimeSubscription } from '@/hooks/useRealtimeSubscription';
+import { useMyUIOverrides } from '@/hooks/useUIOverrides';
 import { Badge } from '@/components/ui/badge';
 import { Worker } from '@/types/database';
 import { getLocalizedName } from '@/utils/sectorName';
@@ -71,8 +72,9 @@ const workerActions = [
 ];
 
 const WorkerActions: React.FC = () => {
-  const { activeBranch } = useAuth();
+  const { activeBranch, role } = useAuth();
   const { t, language } = useLanguage();
+  const { data: myOverrides } = useMyUIOverrides();
   const navigate = useNavigate();
   const { setSelectedWorker: setContextWorker } = useSelectedWorker();
   const [selectedWorker, setSelectedWorker] = useState<Worker | null>(null);
@@ -497,7 +499,12 @@ const WorkerActions: React.FC = () => {
           className="grid !grid-cols-4 gap-1.5"
           style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' }}
         >
-          {workerActions.map((action) => (
+          {workerActions.filter(action => {
+            // Admin sees all, others check UI overrides
+            if (role === 'admin') return true;
+            const overrideKey = `wa_${action.key}`;
+            return !myOverrides?.some(o => o.element_type === 'button' && o.element_key === overrideKey && o.is_hidden);
+          }).map((action) => (
             <div
               key={action.key}
               className={`flex min-w-0 flex-col items-center justify-center p-2 gap-1 rounded-lg border cursor-pointer active:scale-95 transition-all hover:shadow-md ${action.color}`}
