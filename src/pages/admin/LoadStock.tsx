@@ -32,6 +32,7 @@ import CustomerPickerDialog from '@/components/orders/CustomerPickerDialog';
 import PartialLoadFromOrdersDialog from '@/components/stock/PartialLoadFromOrdersDialog';
 import WorkerLoadRequestBanner from '@/components/stock/WorkerLoadRequestBanner';
 import LoadSheetPrintView from '@/components/stock/LoadSheetPrintView';
+import SessionPrintView from '@/components/stock/SessionPrintView';
 import { Customer, Sector } from '@/types/database';
 
 interface EmptyTruckItem {
@@ -106,6 +107,7 @@ const LoadStock: React.FC = () => {
   const [showSessionHistory, setShowSessionHistory] = useState(false);
   const [showPartialLoadDialog, setShowPartialLoadDialog] = useState(false);
   const [showLoadSheetPrint, setShowLoadSheetPrint] = useState(false);
+  const [printSessionId, setPrintSessionId] = useState<string | null>(null);
   const [viewSessionId, setViewSessionId] = useState<string | null>(null);
   const [viewSessionItems, setViewSessionItems] = useState<any[]>([]);
   const [viewReviewDiscrepancies, setViewReviewDiscrepancies] = useState<any[]>([]);
@@ -1755,6 +1757,17 @@ const LoadStock: React.FC = () => {
                           <Button
                             size="icon"
                             variant="ghost"
+                            className="h-7 w-7 text-primary hover:bg-primary/10"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setPrintSessionId(session.id);
+                            }}
+                          >
+                            <Printer className="w-3.5 h-3.5" />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
                             className="h-7 w-7 text-destructive hover:bg-destructive/10"
                             onClick={(e) => {
                               e.stopPropagation();
@@ -2222,6 +2235,14 @@ const LoadStock: React.FC = () => {
           workerId={selectedWorker}
           workerName={workers.find(w => w.id === selectedWorker)?.full_name || ''}
           branchId={branchId}
+        />
+      )}
+      {printSessionId && (
+        <SessionPrintView
+          open={!!printSessionId}
+          onOpenChange={(open) => { if (!open) setPrintSessionId(null); }}
+          sessionId={printSessionId}
+          workerName={workers.find(w => w.id === selectedWorker)?.full_name || ''}
         />
       )}
     </div>
