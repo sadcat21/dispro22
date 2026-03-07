@@ -1220,7 +1220,7 @@ const DebtList: React.FC<{ debts: DueDebt[]; onSelect: (d: DueDebt) => void; onC
 
   return (
     <div className="divide-y">
-      {debts.map(debt => (
+      {filtered.map(debt => (
         <div key={debt.id} className="p-3 hover:bg-muted/50 transition-colors">
           <button className="w-full text-right" onClick={() => onSelect(debt)}>
             <div className="flex items-center justify-between">
