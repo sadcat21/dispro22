@@ -179,9 +179,10 @@ const ManageSectorsDialog: React.FC<ManageSectorsDialogProps> = ({ open, onOpenC
         name: name.trim(),
         name_fr: finalNameFr || null,
         branch_id: activeBranch?.id || null,
-        visit_day_sales: visitDaySales || null,
+        sector_type: sectorType,
+        visit_day_sales: sectorType === 'cash_van' ? null : (visitDaySales || null),
         visit_day_delivery: visitDayDelivery || null,
-        sales_worker_id: salesWorkerId || null,
+        sales_worker_id: sectorType === 'cash_van' ? null : (salesWorkerId || null),
         delivery_worker_id: deliveryWorkerId || null,
         created_by: workerId,
       };
