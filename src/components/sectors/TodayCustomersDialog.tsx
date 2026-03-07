@@ -72,6 +72,11 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
   const effectiveWorkerId = targetWorkerId || (isAdmin && selectedAdminWorkerId ? selectedAdminWorkerId : authWorkerId);
   const effectiveWorkerName = targetWorkerName || (isAdmin && selectedAdminWorkerId ? workersList.find(w => w.id === selectedAdminWorkerId)?.full_name : undefined);
   const hasSpecificWorker = !!(targetWorkerId || selectedAdminWorkerId);
+  const scopedBranchId = useMemo(() => {
+    if (!activeBranch?.id) return null;
+    if (role === 'admin' && hasSpecificWorker) return null;
+    return activeBranch.id;
+  }, [activeBranch?.id, role, hasSpecificWorker]);
 
   const todayStart = useMemo(() => {
     const d = new Date();
@@ -101,10 +106,10 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
 
   // Data queries
   const { data: sectors = [] } = useQuery({
-    queryKey: ['today-cust-sectors', effectiveWorkerId, activeBranch?.id],
+    queryKey: ['today-cust-sectors', effectiveWorkerId, scopedBranchId],
     queryFn: async () => {
       let query = supabase.from('sectors').select('*');
-      if (activeBranch) query = query.eq('branch_id', activeBranch.id);
+      if (scopedBranchId) query = query.eq('branch_id', scopedBranchId);
       const { data } = await query;
       return data || [];
     },
@@ -112,10 +117,10 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
   });
 
   const { data: customers = [] } = useQuery({
-    queryKey: ['today-cust-customers', activeBranch?.id],
+    queryKey: ['today-cust-customers', scopedBranchId],
     queryFn: async () => {
       let query = supabase.from('customers').select('id, name, phone, wilaya, sector_id, store_name, latitude, longitude').not('sector_id', 'is', null);
-      if (activeBranch) query = query.eq('branch_id', activeBranch.id);
+      if (scopedBranchId) query = query.eq('branch_id', scopedBranchId);
       const { data } = await query;
       return data || [];
     },
@@ -152,7 +157,7 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
   });
 
   const { data: assignedOrders = [] } = useQuery({
-    queryKey: ['today-cust-assigned-orders-full', effectiveWorkerId, todayDateStr],
+    queryKey: ['today-cust-assigned-orders-full', effectiveWorkerId, todayDateStr, scopedBranchId],
     queryFn: async () => {
       let query = supabase
         .from('orders')
@@ -160,8 +165,8 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
         .in('status', ['pending', 'assigned', 'in_progress']);
       if (!isAdmin || hasSpecificWorker) {
         query = query.eq('assigned_worker_id', effectiveWorkerId!);
-      } else if (activeBranch) {
-        query = query.eq('branch_id', activeBranch.id);
+      } else if (scopedBranchId) {
+        query = query.eq('branch_id', scopedBranchId);
       }
       const { data } = await query;
       return (data || []) as OrderWithDetails[];
