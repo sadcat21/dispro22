@@ -304,6 +304,11 @@ const WorkerHome: React.FC = () => {
           if (isSupervisor && !isWorkerActionsHidden) {
             quickActions.push({ key: 'worker-actions', icon: <HardHat className="w-6 h-6" />, label: 'إجراءات العمال', onClick: () => navigate('/worker-actions') });
           }
+          // Worker Actions for regular workers (self-view)
+          if (!isSupervisor && !isWorkerActionsHidden) {
+            quickActions.push({ key: 'worker-actions', icon: <HardHat className="w-6 h-6" />, label: 'إجراءاتي', onClick: () => navigate('/worker-actions') });
+          }
+
           const colorSchemes: Record<string, { bg: string; iconBg: string; iconColor: string; text: string; border: string }> = {
             deliveries: { bg: 'bg-gradient-to-br from-blue-500 to-blue-600', iconBg: 'bg-white/20', iconColor: 'text-white', text: 'text-white', border: '' },
             'direct-sale': { bg: 'bg-gradient-to-br from-emerald-500 to-teal-600', iconBg: 'bg-white/20', iconColor: 'text-white', text: 'text-white', border: '' },
