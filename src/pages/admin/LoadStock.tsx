@@ -1757,6 +1757,17 @@ const LoadStock: React.FC = () => {
                           <Button
                             size="icon"
                             variant="ghost"
+                            className="h-7 w-7 text-primary hover:bg-primary/10"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setPrintSessionId(session.id);
+                            }}
+                          >
+                            <Printer className="w-3.5 h-3.5" />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
                             className="h-7 w-7 text-destructive hover:bg-destructive/10"
                             onClick={(e) => {
                               e.stopPropagation();
