@@ -29,6 +29,8 @@ interface GiftCustomerDetail {
   customerName: string;
   storeName: string | null;
   customerPhone: string;
+  customerAddress: string;
+  customerWilaya: string;
   sectorName: string;
   workerName: string;
   giftPieces: number;
