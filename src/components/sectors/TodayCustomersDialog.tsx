@@ -46,12 +46,31 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
 }) => {
   const { workerId: authWorkerId, activeBranch, role, user } = useAuth();
   const navigate = useNavigate();
-  const effectiveWorkerId = targetWorkerId || authWorkerId;
   const isAdmin = role === 'admin' || role === 'branch_admin';
   const todayName = JS_DAY_TO_NAME[new Date().getDay()] || '';
   const { trackVisit } = useTrackVisit();
   const { data: locationThreshold } = useLocationThreshold();
   const canBypassLocation = useHasPermission('bypass_location_check');
+
+  // Admin worker picker state
+  const [selectedAdminWorkerId, setSelectedAdminWorkerId] = useState<string | null>(targetWorkerId || null);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Fetch workers list for admin picker
+  const { data: workersList = [] } = useQuery({
+    queryKey: ['today-cust-workers-list', activeBranch?.id],
+    queryFn: async () => {
+      let query = supabase.from('workers').select('id, full_name, username').eq('is_active', true);
+      if (activeBranch && role === 'branch_admin') query = query.eq('branch_id', activeBranch.id);
+      const { data } = await query.order('full_name');
+      return data || [];
+    },
+    enabled: isAdmin && open && !targetWorkerId,
+  });
+
+  // For admin: use selected worker or fallback to auth worker
+  const effectiveWorkerId = targetWorkerId || (isAdmin && selectedAdminWorkerId ? selectedAdminWorkerId : authWorkerId);
+  const effectiveWorkerName = targetWorkerName || (isAdmin && selectedAdminWorkerId ? workersList.find(w => w.id === selectedAdminWorkerId)?.full_name : undefined);
 
   const todayStart = useMemo(() => {
     const d = new Date();
