@@ -12,9 +12,10 @@ import { useSectors } from '@/hooks/useSectors';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Sector } from '@/types/database';
+import { Sector, SectorType } from '@/types/database';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { autoTranslateBeforeSave } from '@/components/translation/TranslatableInput';
+import { Switch } from '@/components/ui/switch';
 
 interface ManageSectorsDialogProps {
   open: boolean;
