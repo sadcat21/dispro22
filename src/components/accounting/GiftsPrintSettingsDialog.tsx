@@ -48,6 +48,7 @@ export interface GiftPrintSettings {
   productFilter: string;
   separateByProduct: boolean;
   printSummary: boolean;
+  summaryOnly: boolean;
 }
 
 interface Props {
@@ -141,12 +142,12 @@ const GiftsPrintSettingsDialog: React.FC<Props> = ({ open, onOpenChange, product
   }, [columnOrder, selectedColumns]);
 
   const handlePrint = () => {
-    onPrint({ columns: orderedSelectedColumns, productFilter, separateByProduct, printSummary });
+    onPrint({ columns: orderedSelectedColumns, productFilter, separateByProduct, printSummary, summaryOnly: false });
     onOpenChange(false);
   };
 
   const handlePrintSummaryOnly = () => {
-    onPrint({ columns: orderedSelectedColumns, productFilter, separateByProduct, printSummary: true });
+    onPrint({ columns: orderedSelectedColumns, productFilter, separateByProduct, printSummary: true, summaryOnly: true });
     onOpenChange(false);
   };
 
