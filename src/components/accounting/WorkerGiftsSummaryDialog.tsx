@@ -16,6 +16,7 @@ import { format, startOfMonth, endOfMonth, addMonths, subMonths, isSameMonth } f
 import { ar } from 'date-fns/locale';
 import ThermalPreview, { ThermalLine } from '@/components/stock/ThermalPreview';
 import GiftsPrintView, { GiftPrintRow } from '@/components/accounting/GiftsPrintView';
+import GiftsPrintSettingsDialog, { GiftPrintSettings } from '@/components/accounting/GiftsPrintSettingsDialog';
 
 interface Props {
   open: boolean;
@@ -27,14 +28,18 @@ interface Props {
 interface GiftCustomerDetail {
   customerId: string;
   customerName: string;
+  customerNameFr: string;
   storeName: string | null;
+  storeNameFr: string | null;
   customerPhone: string;
   customerAddress: string;
   customerWilaya: string;
   sectorName: string;
+  sectorNameFr: string;
   workerName: string;
   giftPieces: number;
   quantitySold: number;
+  piecesPerBox: number;
   date: string;
 }
 
