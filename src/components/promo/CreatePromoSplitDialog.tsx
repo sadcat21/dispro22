@@ -24,14 +24,14 @@ const CreatePromoSplitDialog: React.FC<Props> = ({ open, onOpenChange, editSplit
 
   const [name, setName] = useState('');
   const [splitType, setSplitType] = useState<string>('quantity_accumulation');
-  const [offerId, setOfferId] = useState<string>('');
+  const [offerId, setOfferId] = useState<string>('none');
   const [productId, setProductId] = useState('');
   const [targetQty, setTargetQty] = useState('');
   const [targetUnit, setTargetUnit] = useState('box');
   const [giftQty, setGiftQty] = useState('');
   const [giftUnit, setGiftUnit] = useState('box');
   const [adjustedGift, setAdjustedGift] = useState('');
-  const [giftProductId, setGiftProductId] = useState('');
+  const [giftProductId, setGiftProductId] = useState('none');
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
 
