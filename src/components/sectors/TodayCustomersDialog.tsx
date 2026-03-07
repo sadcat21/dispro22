@@ -405,9 +405,15 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
   const preventeDeliverySectors = useMemo(() => todayDeliverySectors.filter(s => (s as any).sector_type !== 'cash_van'), [todayDeliverySectors]);
   const salesWorkerIds = useMemo(() => {
     const ids = new Set<string>();
-    preventeDeliverySectors.forEach(s => { if (s.sales_worker_id) ids.add(s.sales_worker_id); });
+    // Get sales workers from sector_schedules for these sectors
+    preventeDeliverySectors.forEach(s => {
+      const salesSchedules = sectorSchedules.filter(sc => sc.sector_id === s.id && sc.schedule_type === 'sales');
+      salesSchedules.forEach(sc => { if (sc.worker_id) ids.add(sc.worker_id); });
+      // Fallback to legacy field
+      if (salesSchedules.length === 0 && s.sales_worker_id) ids.add(s.sales_worker_id);
+    });
     return Array.from(ids);
-  }, [preventeDeliverySectors]);
+  }, [preventeDeliverySectors, sectorSchedules]);
 
   const { data: salesWorkerVisits = [] } = useQuery({
     queryKey: ['sales-worker-visits-for-prevente', salesWorkerIds, todayStart],
