@@ -1382,7 +1382,7 @@ const LoadStock: React.FC = () => {
                 <Plus className="w-4 h-4 me-1" />
                 بدء جلسة شحن جديدة
               </Button>
-              <div className="grid grid-cols-3 gap-1.5">
+              <div className="grid grid-cols-4 gap-1.5">
                 <Button variant="outline" onClick={() => setShowSessionHistory(true)} className="h-10 rounded-xl text-[11px] px-2">
                   <History className="w-3.5 h-3.5 me-1" />
                   سجل الجلسات
@@ -1404,6 +1404,15 @@ const LoadStock: React.FC = () => {
                 >
                   <RefreshCw className="w-3.5 h-3.5 me-1" />
                   تغيير
+                </Button>
+                <Button
+                  variant="outline"
+                  className="h-10 rounded-xl text-[11px] px-2 border-primary/30 text-primary hover:bg-primary/5"
+                  onClick={() => setShowLoadSheetPrint(true)}
+                  disabled={!selectedWorker}
+                >
+                  <Printer className="w-3.5 h-3.5 me-1" />
+                  ورقة الشحن
                 </Button>
               </div>
             </>
