@@ -467,8 +467,6 @@ const ManageSectorsDialog: React.FC<ManageSectorsDialogProps> = ({ open, onOpenC
               <Plus className="w-4 h-4 ml-2" />
               إضافة سكتور جديد
             </Button>
-          )}
-
           {/* Sectors List */}
           <div className="space-y-2 mt-2">
             {isLoading ? (
