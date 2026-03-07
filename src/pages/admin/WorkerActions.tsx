@@ -12,6 +12,24 @@ import { useWorkerLiability } from '@/hooks/useWorkerLiability';
 import { useRealtimeSubscription } from '@/hooks/useRealtimeSubscription';
 import { Badge } from '@/components/ui/badge';
 import { Worker } from '@/types/database';
+import { getLocalizedName } from '@/utils/sectorName';
+
+const JS_DAY_TO_NAME: Record<number, string> = {
+  6: 'saturday', 0: 'sunday', 1: 'monday', 2: 'tuesday', 3: 'wednesday', 4: 'thursday',
+};
+
+const WORKER_CARD_COLORS = [
+  { bg: 'bg-blue-50', border: 'border-blue-200', icon: 'bg-blue-100 text-blue-600', accent: 'text-blue-600' },
+  { bg: 'bg-emerald-50', border: 'border-emerald-200', icon: 'bg-emerald-100 text-emerald-600', accent: 'text-emerald-600' },
+  { bg: 'bg-amber-50', border: 'border-amber-200', icon: 'bg-amber-100 text-amber-600', accent: 'text-amber-600' },
+  { bg: 'bg-violet-50', border: 'border-violet-200', icon: 'bg-violet-100 text-violet-600', accent: 'text-violet-600' },
+  { bg: 'bg-rose-50', border: 'border-rose-200', icon: 'bg-rose-100 text-rose-600', accent: 'text-rose-600' },
+  { bg: 'bg-cyan-50', border: 'border-cyan-200', icon: 'bg-cyan-100 text-cyan-600', accent: 'text-cyan-600' },
+  { bg: 'bg-orange-50', border: 'border-orange-200', icon: 'bg-orange-100 text-orange-600', accent: 'text-orange-600' },
+  { bg: 'bg-teal-50', border: 'border-teal-200', icon: 'bg-teal-100 text-teal-600', accent: 'text-teal-600' },
+  { bg: 'bg-indigo-50', border: 'border-indigo-200', icon: 'bg-indigo-100 text-indigo-600', accent: 'text-indigo-600' },
+  { bg: 'bg-pink-50', border: 'border-pink-200', icon: 'bg-pink-100 text-pink-600', accent: 'text-pink-600' },
+];
 import CoinExchangeDialog from '@/components/treasury/CoinExchangeDialog';
 import WorkerHandoverPreviewDialog from '@/components/accounting/WorkerHandoverPreviewDialog';
 import TodayCustomersDialog from '@/components/sectors/TodayCustomersDialog';
@@ -50,7 +68,7 @@ const workerActions = [
 
 const WorkerActions: React.FC = () => {
   const { activeBranch } = useAuth();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const navigate = useNavigate();
   const { setSelectedWorker: setContextWorker } = useSelectedWorker();
   const [selectedWorker, setSelectedWorker] = useState<Worker | null>(null);
@@ -107,6 +125,59 @@ const WorkerActions: React.FC = () => {
       return (data || []) as Worker[];
     },
   });
+
+  const todayName = JS_DAY_TO_NAME[new Date().getDay()] || '';
+
+  // Fetch sectors for today's assignments
+  const { data: sectors = [] } = useQuery({
+    queryKey: ['worker-actions-sectors', activeBranch?.id],
+    queryFn: async () => {
+      let query = supabase.from('sectors').select('id, name, name_fr, sales_worker_id, delivery_worker_id, visit_day_sales, visit_day_delivery');
+      if (activeBranch?.id) query = query.eq('branch_id', activeBranch.id);
+      const { data } = await query;
+      return data || [];
+    },
+  });
+
+  // Fetch worker roles
+  const { data: workerRolesData = [] } = useQuery({
+    queryKey: ['worker-actions-roles', activeBranch?.id],
+    queryFn: async () => {
+      let query = supabase.from('worker_roles').select('worker_id, custom_roles(name_ar, code)');
+      if (activeBranch?.id) query = query.eq('branch_id', activeBranch.id);
+      const { data } = await query;
+      return data || [];
+    },
+  });
+
+  // Build worker role labels map
+  const workerRoleLabels = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const wr of workerRolesData) {
+      const roleName = (wr as any).custom_roles?.name_ar;
+      if (roleName && wr.worker_id) {
+        map[wr.worker_id] = map[wr.worker_id] ? `${map[wr.worker_id]}، ${roleName}` : roleName;
+      }
+    }
+    return map;
+  }, [workerRolesData]);
+
+  // Build today's sector assignments per worker
+  const workerTodaySectors = useMemo(() => {
+    const map: Record<string, { delivery: string[]; sales: string[] }> = {};
+    for (const s of sectors) {
+      const sectorName = getLocalizedName(s, language);
+      if (s.visit_day_delivery === todayName && s.delivery_worker_id) {
+        if (!map[s.delivery_worker_id]) map[s.delivery_worker_id] = { delivery: [], sales: [] };
+        map[s.delivery_worker_id].delivery.push(sectorName);
+      }
+      if (s.visit_day_sales === todayName && s.sales_worker_id) {
+        if (!map[s.sales_worker_id]) map[s.sales_worker_id] = { delivery: [], sales: [] };
+        map[s.sales_worker_id].sales.push(sectorName);
+      }
+    }
+    return map;
+  }, [sectors, todayName, language]);
 
   const { data: truckStock = [] } = useQuery({
     queryKey: ['worker-truck-stock', selectedWorker?.id],
@@ -336,20 +407,43 @@ const WorkerActions: React.FC = () => {
       )}
 
       {!selectedWorker ? (
-        <div className="grid grid-cols-3 gap-3">
-          {workers.map((worker) => (
-            <div
-              key={worker.id}
-              className="flex flex-col items-center justify-center p-4 gap-2 rounded-xl border border-border bg-card cursor-pointer active:scale-95 transition-all hover:shadow-md"
-              onClick={() => handleSelectWorker(worker)}
-            >
-              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                <HardHat className="w-6 h-6 text-primary" />
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          {workers.map((worker, index) => {
+            const colorSet = WORKER_CARD_COLORS[index % WORKER_CARD_COLORS.length];
+            const todaySectors = workerTodaySectors[worker.id];
+            const roleLabel = workerRoleLabels[worker.id] || (worker.role === 'worker' ? t('nav.workers') : worker.role);
+
+            return (
+              <div
+                key={worker.id}
+                className={`flex flex-col items-center justify-center p-3 gap-1.5 rounded-xl border-2 cursor-pointer active:scale-95 transition-all hover:shadow-lg ${colorSet.bg} ${colorSet.border}`}
+                onClick={() => handleSelectWorker(worker)}
+              >
+                <div className={`w-12 h-12 rounded-full flex items-center justify-center ${colorSet.icon}`}>
+                  <HardHat className="w-6 h-6" />
+                </div>
+                <span className="text-xs font-bold text-center leading-tight text-foreground">{worker.full_name}</span>
+                <span className={`text-[10px] font-medium ${colorSet.accent}`}>{roleLabel}</span>
+
+                {todaySectors && (todaySectors.delivery.length > 0 || todaySectors.sales.length > 0) && (
+                  <div className="w-full mt-1 space-y-0.5">
+                    {todaySectors.delivery.length > 0 && (
+                      <div className="flex items-center gap-1 text-[9px] text-muted-foreground bg-background/60 rounded px-1.5 py-0.5">
+                        <Truck className="w-3 h-3 shrink-0" />
+                        <span className="truncate">توصيل: {todaySectors.delivery.join('، ')}</span>
+                      </div>
+                    )}
+                    {todaySectors.sales.length > 0 && (
+                      <div className="flex items-center gap-1 text-[9px] text-muted-foreground bg-background/60 rounded px-1.5 py-0.5">
+                        <ShoppingCart className="w-3 h-3 shrink-0" />
+                        <span className="truncate">طلبيات: {todaySectors.sales.join('، ')}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
-              <span className="text-xs font-medium text-center leading-tight">{worker.full_name}</span>
-              <span className="text-[10px] text-muted-foreground">{worker.role === 'worker' ? t('nav.workers') : worker.role}</span>
-            </div>
-          ))}
+            );
+          })}
         </div>
       ) : (
         <div
