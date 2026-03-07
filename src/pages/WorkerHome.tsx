@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Capacitor } from '@capacitor/core';
+
 import { supabase } from '@/integrations/supabase/client';
 import { Product } from '@/types/database';
 import { useAuth } from '@/contexts/AuthContext';
@@ -14,9 +14,9 @@ import CreateOrderDialog from '@/components/orders/CreateOrderDialog';
 import CustomerPickerDialog from '@/components/orders/CustomerPickerDialog';
 import { useTrackVisit } from '@/hooks/useVisitTracking';
 import { Customer } from '@/types/database';
-import { sendSmsDirectly } from '@/utils/smsHelper';
 import { toast } from 'sonner';
-import { ShoppingCart, Gift, Loader2, ShoppingBag, Truck, Package, Banknote, Users, Wallet, ClipboardList, MapPin, Trophy, MessageCircle, Send, HardHat } from 'lucide-react';
+import { ShoppingCart, Gift, Loader2, ShoppingBag, Truck, Package, Banknote, Users, Wallet, ClipboardList, MapPin, Trophy, MessageCircle, HardHat, CalendarCheck } from 'lucide-react';
+
 import { useNavigate, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
@@ -43,7 +43,7 @@ const WorkerHome: React.FC = () => {
   const [showHandoverPreview, setShowHandoverPreview] = useState(false);
   const [showTodayCustomers, setShowTodayCustomers] = useState(false);
   const [showPalletCalculator, setShowPalletCalculator] = useState(false);
-  const [isSendingTestSms, setIsSendingTestSms] = useState(false);
+  
 
   const { trackVisit } = useTrackVisit();
   const isDirectSaleHidden = useIsElementHidden('button', 'home_direct_sale');
@@ -159,31 +159,7 @@ const WorkerHome: React.FC = () => {
     return t('common.welcome');
   };
 
-  const handleSendTestSms = async () => {
-    if (isSendingTestSms) return;
 
-    if (!Capacitor.isNativePlatform() || Capacitor.getPlatform() !== 'android') {
-      toast.error('اختبار SMS يعمل فقط داخل تطبيق Android APK وليس نسخة Vercel.');
-      return;
-    }
-
-    setIsSendingTestSms(true);
-    try {
-      const targetPhone = '0555636513';
-      const testMessage = `رسالة اختبار من هاتف العمل - ${new Date().toLocaleString('fr-DZ')}`;
-      const sent = await sendSmsDirectly(targetPhone, testMessage);
-      if (sent) {
-        toast.success(`تم إرسال الرسالة التجريبية إلى ${targetPhone}`);
-      } else {
-        toast.error('فشل الإرسال: تأكد من صلاحيات SMS وبناء APK جديد بعد npx cap sync android');
-      }
-    } catch (error) {
-      console.error('[SMS] Test send failed:', error);
-      toast.error('حدث خطأ أثناء إرسال الرسالة التجريبية');
-    } finally {
-      setIsSendingTestSms(false);
-    }
-  };
 
   // Loading skeleton for permissions
   if (permissionsLoading) {
@@ -247,21 +223,23 @@ const WorkerHome: React.FC = () => {
         </div>
       </div>
 
-      {/* زر اختبار SMS واضح ومستقل */}
-      <div className="px-4 mt-3">
-        <button
-          onClick={handleSendTestSms}
-          disabled={isSendingTestSms}
-          className="w-full flex items-center justify-center gap-3 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-xl py-3 px-4 font-bold shadow-lg hover:shadow-xl active:scale-[0.97] transition-all disabled:opacity-60"
-        >
-          {isSendingTestSms ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
-          <span>📩 اختبار إرسال SMS بالخلفية (0555636513)</span>
-        </button>
-      </div>
+      {/* Today's Customers Notification for Supervisors */}
+      {isSupervisor && (
+        <div className="px-4 mt-3">
+          <div
+            onClick={() => setShowTodayCustomers(true)}
+            className="relative overflow-hidden rounded-xl border-2 border-sky-300 bg-gradient-to-br from-sky-50 to-blue-100 p-4 cursor-pointer active:scale-[0.97] transition-all hover:shadow-lg flex items-center gap-3"
+          >
+            <CalendarCheck className="w-8 h-8 text-sky-600 shrink-0" />
+            <div>
+              <p className="font-bold text-sm text-sky-900">عملاء اليوم</p>
+              <p className="text-xs text-sky-700">عرض جدول العملاء والتوصيلات المجدولة لليوم</p>
+            </div>
+          </div>
+        </div>
+      )}
 
 
-
-      {/* Content based on permissions */}
       {hasPromoAccess ? (
         <>
           {/* Products Section for Promo */}
