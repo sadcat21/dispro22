@@ -827,6 +827,13 @@ const WorkerGiftsSummaryDialog: React.FC<Props> = ({ open, onOpenChange, workerI
           )}
         </ScrollArea>
       </DialogContent>
+      <GiftsPrintView
+        ref={printRef}
+        rows={printRows}
+        workerName={allWorkers ? 'جميع العمال' : workerName}
+        dateRange={periodDateLabel}
+        isVisible={showPrintView}
+      />
     </Dialog>
   );
 };
