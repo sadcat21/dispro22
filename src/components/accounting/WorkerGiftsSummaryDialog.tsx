@@ -79,6 +79,12 @@ const WorkerGiftsSummaryDialog: React.FC<Props> = ({ open, onOpenChange, workerI
   const [allWorkers, setAllWorkers] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [isPrinting, setIsPrinting] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
+
+  // Date range: current month → 1st to today, past month → 1st to last day
+  const periodStartDate = startOfMonth(currentMonth);
+  const periodEndDate = isSameMonth(currentMonth, new Date()) ? new Date() : endOfMonth(currentMonth);
+  const periodDateLabel = `${format(periodStartDate, 'dd/MM/yyyy')} → ${format(periodEndDate, 'dd/MM/yyyy')}`;
 
   const periodStart = format(startOfMonth(currentMonth), 'yyyy-MM-dd');
   const periodEnd = format(endOfMonth(currentMonth), 'yyyy-MM-dd');
