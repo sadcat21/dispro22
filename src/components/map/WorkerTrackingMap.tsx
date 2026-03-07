@@ -15,10 +15,12 @@ const TILE_LAYERS = {
   street: {
     url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
     attribution: '© OSM',
+    maxNativeZoom: 19,
   },
   satellite: {
     url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
     attribution: '© Esri',
+    maxNativeZoom: 17,
   },
 };
 
@@ -57,34 +59,45 @@ const WorkerTrackingMap: React.FC<WorkerTrackingMapProps> = ({ highlightWorkerId
   const [mapStyle, setMapStyle] = useState<'street' | 'satellite'>('satellite');
   const [showLabels, setShowLabels] = useState(true);
   const labelsLayerRef = useRef<L.TileLayer | null>(null);
+  const initRetryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const initAttemptsRef = useRef(0);
 
   // Initialize map with robust sizing
   useEffect(() => {
     if (!mapContainerRef.current) return;
-    // If map already exists, just invalidate
+
     if (mapRef.current) {
       mapRef.current.invalidateSize();
       return;
     }
 
-    const container = mapContainerRef.current;
+    const tryInit = () => {
+      if (!mapContainerRef.current || mapRef.current) return;
 
-    // Ensure the container has actual dimensions before creating the map
-    const rect = container.getBoundingClientRect();
-    if (rect.width === 0 || rect.height === 0) {
-      // Retry after a frame
-      const raf = requestAnimationFrame(() => {
-        if (mapContainerRef.current && !mapRef.current) {
-          const r2 = mapContainerRef.current.getBoundingClientRect();
-          if (r2.width > 0 && r2.height > 0) {
-            initMap(mapContainerRef.current);
-          }
-        }
-      });
-      return () => cancelAnimationFrame(raf);
-    }
+      const rect = mapContainerRef.current.getBoundingClientRect();
+      if (rect.width > 0 && rect.height > 0) {
+        initMap(mapContainerRef.current);
+        return;
+      }
 
-    initMap(container);
+      if (initAttemptsRef.current >= 20) {
+        initMap(mapContainerRef.current);
+        return;
+      }
+
+      initAttemptsRef.current += 1;
+      initRetryTimerRef.current = setTimeout(tryInit, 120);
+    };
+
+    tryInit();
+
+    return () => {
+      if (initRetryTimerRef.current) {
+        clearTimeout(initRetryTimerRef.current);
+        initRetryTimerRef.current = null;
+      }
+      initAttemptsRef.current = 0;
+    };
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -105,6 +118,7 @@ const WorkerTrackingMap: React.FC<WorkerTrackingMapProps> = ({ highlightWorkerId
     const tile = L.tileLayer(TILE_LAYERS.satellite.url, {
       attribution: TILE_LAYERS.satellite.attribution,
       maxZoom: 19,
+      maxNativeZoom: TILE_LAYERS.satellite.maxNativeZoom,
     }).addTo(map);
     tileLayerRef.current = tile;
 
@@ -265,7 +279,11 @@ const WorkerTrackingMap: React.FC<WorkerTrackingMapProps> = ({ highlightWorkerId
   useEffect(() => {
     if (!mapRef.current || !tileLayerRef.current) return;
     const config = TILE_LAYERS[mapStyle];
+
+    tileLayerRef.current.options.maxNativeZoom = config.maxNativeZoom;
+    tileLayerRef.current.options.attribution = config.attribution;
     tileLayerRef.current.setUrl(config.url);
+    tileLayerRef.current.redraw();
   }, [mapStyle]);
 
   // Toggle labels overlay
