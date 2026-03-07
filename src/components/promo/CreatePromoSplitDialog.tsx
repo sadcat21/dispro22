@@ -24,14 +24,14 @@ const CreatePromoSplitDialog: React.FC<Props> = ({ open, onOpenChange, editSplit
 
   const [name, setName] = useState('');
   const [splitType, setSplitType] = useState<string>('quantity_accumulation');
-  const [offerId, setOfferId] = useState<string>('');
+  const [offerId, setOfferId] = useState<string>('none');
   const [productId, setProductId] = useState('');
   const [targetQty, setTargetQty] = useState('');
   const [targetUnit, setTargetUnit] = useState('box');
   const [giftQty, setGiftQty] = useState('');
   const [giftUnit, setGiftUnit] = useState('box');
   const [adjustedGift, setAdjustedGift] = useState('');
-  const [giftProductId, setGiftProductId] = useState('');
+  const [giftProductId, setGiftProductId] = useState('none');
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -47,14 +47,14 @@ const CreatePromoSplitDialog: React.FC<Props> = ({ open, onOpenChange, editSplit
     if (editSplit) {
       setName(editSplit.name);
       setSplitType(editSplit.split_type);
-      setOfferId(editSplit.offer_id || '');
+      setOfferId(editSplit.offer_id || 'none');
       setProductId(editSplit.product_id);
       setTargetQty(String(editSplit.target_quantity));
       setTargetUnit(editSplit.target_quantity_unit);
       setGiftQty(String(editSplit.gift_quantity));
       setGiftUnit(editSplit.gift_quantity_unit);
       setAdjustedGift(editSplit.adjusted_gift_quantity != null ? String(editSplit.adjusted_gift_quantity) : '');
-      setGiftProductId(editSplit.gift_product_id || '');
+      setGiftProductId(editSplit.gift_product_id || 'none');
       setNotes(editSplit.notes || '');
     } else {
       setName(''); setSplitType('quantity_accumulation'); setOfferId('');
@@ -87,14 +87,14 @@ const CreatePromoSplitDialog: React.FC<Props> = ({ open, onOpenChange, editSplit
       const payload: any = {
         name,
         split_type: splitType,
-        offer_id: offerId || null,
+        offer_id: offerId && offerId !== 'none' ? offerId : null,
         product_id: productId,
         target_quantity: Number(targetQty),
         target_quantity_unit: targetUnit,
         gift_quantity: Number(giftQty),
         gift_quantity_unit: giftUnit,
         adjusted_gift_quantity: adjustedGift ? Number(adjustedGift) : null,
-        gift_product_id: giftProductId || null,
+        gift_product_id: giftProductId && giftProductId !== 'none' ? giftProductId : null,
         notes: notes || null,
         branch_id: activeBranch?.id || null,
         created_by: workerId || null,
@@ -142,7 +142,7 @@ const CreatePromoSplitDialog: React.FC<Props> = ({ open, onOpenChange, editSplit
             <Select value={offerId} onValueChange={setOfferId}>
               <SelectTrigger><SelectValue placeholder="اختر العرض..." /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="">بدون عرض</SelectItem>
+                <SelectItem value="none">بدون عرض</SelectItem>
                 {activeOffers.map(o => (
                   <SelectItem key={o.id} value={o.id}>{o.name} - {o.product?.name}</SelectItem>
                 ))}
@@ -211,7 +211,7 @@ const CreatePromoSplitDialog: React.FC<Props> = ({ open, onOpenChange, editSplit
             <Select value={giftProductId} onValueChange={setGiftProductId}>
               <SelectTrigger><SelectValue placeholder="نفس المنتج" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="">نفس المنتج</SelectItem>
+                <SelectItem value="none">نفس المنتج</SelectItem>
                 {products?.map(p => (
                   <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
                 ))}
