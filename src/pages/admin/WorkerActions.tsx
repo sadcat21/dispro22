@@ -598,6 +598,13 @@ const WorkerActions: React.FC = () => {
         workerId={selectedWorker?.id}
         workerName={selectedWorker?.full_name}
       />
+      <SectorScheduleDialog
+        open={sectorScheduleOpen}
+        onOpenChange={setSectorScheduleOpen}
+        workerId={selectedWorker?.id}
+        workerName={selectedWorker?.full_name}
+        workerType={sectorScheduleType}
+      />
     </div>
   );
 };
