@@ -33,6 +33,8 @@ const WorkerTrackingMap: React.FC<WorkerTrackingMapProps> = ({ highlightWorkerId
   const mapRef = useRef<L.Map | null>(null);
   const markersRef = useRef<Map<string, L.Marker>>(new Map());
   const hasFittedBoundsRef = useRef(false);
+  const routeLayerRef = useRef<L.Polyline | null>(null);
+  const [routeInfo, setRouteInfo] = useState<{ distance: number; duration: number } | null>(null);
 
   // Initialize map with robust sizing
   useEffect(() => {
