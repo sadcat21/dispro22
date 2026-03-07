@@ -648,16 +648,28 @@ const WorkerGiftsSummaryDialog: React.FC<Props> = ({ open, onOpenChange, workerI
                 جميع العمال
               </Label>
             </div>
-            <Button
-              size="sm"
-              variant="outline"
-              className="gap-1 text-[10px] h-7"
-              onClick={() => setShowPreview(prev => !prev)}
-              disabled={!giftsData?.items?.length}
-            >
-              <Printer className="w-3 h-3" />
-              {showPreview ? 'إخفاء المعاينة' : 'معاينة الطباعة'}
-            </Button>
+            <div className="flex items-center gap-1">
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-1 text-[10px] h-7"
+                onClick={handleA4Print}
+                disabled={!giftsData?.items?.length}
+              >
+                <FileText className="w-3 h-3" />
+                طباعة A4
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-1 text-[10px] h-7"
+                onClick={() => setShowPreview(prev => !prev)}
+                disabled={!giftsData?.items?.length}
+              >
+                <Printer className="w-3 h-3" />
+                {showPreview ? 'إخفاء' : 'حرارية'}
+              </Button>
+            </div>
           </div>
 
           {/* Month navigation */}
