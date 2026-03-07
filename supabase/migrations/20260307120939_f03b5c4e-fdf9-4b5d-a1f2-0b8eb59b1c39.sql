@@ -1,0 +1,1 @@
+ALTER TABLE public.sectors ADD COLUMN IF NOT EXISTS sector_type text NOT NULL DEFAULT 'prevente';
