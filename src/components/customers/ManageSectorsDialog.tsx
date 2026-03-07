@@ -553,8 +553,38 @@ const ManageSectorsDialog: React.FC<ManageSectorsDialogProps> = ({ open, onOpenC
                 <MapPin className="w-10 h-10 mx-auto mb-2 opacity-30" />
                 <p className="text-sm">{sectors.length === 0 ? 'لا توجد سكتورات بعد' : 'لا توجد نتائج'}</p>
               </div>
+            ) : groupedByDay ? (
+              // Grouped by day view
+              groupedByDay.map(group => (
+                <div key={group.day.value} className="space-y-2">
+                  <div className="sticky top-0 z-10 bg-muted/80 backdrop-blur-sm px-3 py-1.5 rounded-md border flex items-center gap-2">
+                    <Calendar className="w-3.5 h-3.5 text-primary" />
+                    <span className="text-xs font-bold text-primary">{group.day.label}</span>
+                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4">{group.sectors.length}</Badge>
+                  </div>
+                  {group.sectors.map(sector => {
+                const sectorZones = zonesMap[sector.id] || [];
+                return (
+                  <Card key={sector.id}>
+                    <CardContent className="p-3">
+                      {renderSectorContent(sector, sectorZones)}
+                    </CardContent>
+                  </Card>
+                );
+              })}
+                </div>
+              ))
             ) : (
-              filteredSectors.map(sector => {
+              sortedFilteredSectors.map(sector => {
+                const sectorZones = zonesMap[sector.id] || [];
+                return (
+                  <Card key={sector.id}>
+                    <CardContent className="p-3">
+                      {renderSectorContent(sector, sectorZones)}
+                    </CardContent>
+                  </Card>
+                );
+              })
                 const sectorZones = zonesMap[sector.id] || [];
                 return (
                   <Card key={sector.id}>
