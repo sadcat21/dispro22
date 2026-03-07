@@ -72,6 +72,11 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
   const effectiveWorkerId = targetWorkerId || (isAdmin && selectedAdminWorkerId ? selectedAdminWorkerId : authWorkerId);
   const effectiveWorkerName = targetWorkerName || (isAdmin && selectedAdminWorkerId ? workersList.find(w => w.id === selectedAdminWorkerId)?.full_name : undefined);
   const hasSpecificWorker = !!(targetWorkerId || selectedAdminWorkerId);
+  const scopedBranchId = useMemo(() => {
+    if (!activeBranch?.id) return null;
+    if (role === 'admin' && hasSpecificWorker) return null;
+    return activeBranch.id;
+  }, [activeBranch?.id, role, hasSpecificWorker]);
 
   const todayStart = useMemo(() => {
     const d = new Date();
