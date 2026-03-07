@@ -878,7 +878,15 @@ const WorkerGiftsSummaryDialog: React.FC<Props> = ({ open, onOpenChange, workerI
         rows={printRows}
         workerName={allWorkers ? 'جميع العمال' : workerName}
         dateRange={periodDateLabel}
+        productFilter={printProductLabel}
         isVisible={showPrintView}
+        visibleColumns={printSettings?.columns}
+      />
+      <GiftsPrintSettingsDialog
+        open={showPrintSettings}
+        onOpenChange={setShowPrintSettings}
+        products={availableProducts}
+        onPrint={handleA4Print}
       />
     </Dialog>
   );
