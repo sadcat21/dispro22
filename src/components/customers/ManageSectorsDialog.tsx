@@ -492,6 +492,10 @@ const ManageSectorsDialog: React.FC<ManageSectorsDialogProps> = ({ open, onOpenC
                           {(sector as any).name_fr && (
                             <p className="text-xs text-muted-foreground" dir="ltr">{(sector as any).name_fr}</p>
                           )}
+                          <Badge variant={(sector as any).sector_type === 'cash_van' ? 'secondary' : 'default'} className="text-[10px] w-fit">
+                            {(sector as any).sector_type === 'cash_van' ? 'Cash Van' : 'Prévente'}
+                          </Badge>
+                          )}
                           <div className="flex flex-wrap gap-1.5">
                             {getDayLabel(sector.visit_day_sales) && (
                               <Badge variant="outline" className="text-[10px] px-1.5">
