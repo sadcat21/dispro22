@@ -240,6 +240,34 @@ const AdminHome: React.FC = () => {
 
       <InvoiceRequestDialog open={invoiceRequestOpen} onOpenChange={setInvoiceRequestOpen} />
       <CreateOrderDialog open={showCreateOrder} onOpenChange={setShowCreateOrder} />
+      
+      {giftsOpen && (
+        <WorkerGiftsSummaryDialog
+          open={giftsOpen}
+          onOpenChange={setGiftsOpen}
+          workerId={currentGiftsWorker?.id}
+          workerName={currentGiftsWorker?.full_name || currentGiftsWorker?.username}
+        />
+      )}
+
+      {/* Worker navigation bar for gifts - shown when gifts dialog is open */}
+      {giftsOpen && activeWorkers.length > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 z-[60] bg-background border-t p-2 flex items-center gap-1 overflow-x-auto" dir="rtl">
+          {activeWorkers.map((w, idx) => (
+            <button
+              key={w.id}
+              onClick={() => setGiftsWorkerIdx(idx)}
+              className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                idx === giftsWorkerIdx
+                  ? 'bg-purple-600 text-white shadow-md'
+                  : 'bg-muted text-muted-foreground hover:bg-accent'
+              }`}
+            >
+              {w.full_name || w.username}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
