@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Shield, Trash2, Edit, Save, X, ChevronDown, ChevronUp, Briefcase, User, EyeOff } from 'lucide-react';
+import { Plus, Shield, Trash2, Edit, Save, X, ChevronDown, ChevronUp, Briefcase, User, Users, EyeOff } from 'lucide-react';
 import { useSelectedWorker } from '@/contexts/SelectedWorkerContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -41,6 +41,7 @@ import { Loader2 } from 'lucide-react';
 import RoleCard from '@/components/permissions/RoleCard';
 import WorkerPermissionsSection from '@/components/permissions/WorkerPermissionsSection';
 import WorkerUIOverridesSection from '@/components/permissions/WorkerUIOverridesSection';
+import SupervisorWorkersSection from '@/components/permissions/SupervisorWorkersSection';
 
 const Permissions: React.FC = () => {
   const { toast } = useToast();
@@ -186,6 +187,10 @@ const Permissions: React.FC = () => {
             <EyeOff className="w-4 h-4" />
             إخفاء العناصر
           </TabsTrigger>
+          <TabsTrigger value="supervisor-workers" className="flex-1 gap-1.5">
+            <Users className="w-4 h-4" />
+            تعيين المشرفين
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="roles" className="space-y-6 mt-4">
@@ -313,6 +318,11 @@ const Permissions: React.FC = () => {
         <TabsContent value="ui-overrides" className="mt-4">
           <WorkerUIOverridesSection initialWorkerId={contextWorkerId} />
         </TabsContent>
+
+        <TabsContent value="supervisor-workers" className="mt-4">
+          <SupervisorWorkersSection />
+        </TabsContent>
+
       </Tabs>
 
       {/* Delete Confirmation Dialog */}

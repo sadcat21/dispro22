@@ -72,7 +72,7 @@ const workerActions = [
 ];
 
 const WorkerActions: React.FC = () => {
-  const { activeBranch, role } = useAuth();
+  const { activeBranch, role, workerId } = useAuth();
   const { t, language } = useLanguage();
   const { data: myOverrides } = useMyUIOverrides();
   const navigate = useNavigate();
@@ -93,6 +93,22 @@ const WorkerActions: React.FC = () => {
   const [achievementsOpen, setAchievementsOpen] = useState(false);
   const [sectorScheduleOpen, setSectorScheduleOpen] = useState(false);
   const [sectorScheduleType, setSectorScheduleType] = useState<'delivery' | 'sales'>('delivery');
+
+  const isSelfMode = role === 'worker';
+  const isSupervisorMode = role === 'supervisor';
+
+  // For supervisors: fetch assigned workers
+  const { data: supervisorAssignments = [] } = useQuery({
+    queryKey: ['supervisor-workers', workerId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('supervisor_workers')
+        .select('worker_id')
+        .eq('supervisor_id', workerId!);
+      return (data || []).map(d => d.worker_id);
+    },
+    enabled: isSupervisorMode && !!workerId,
+  });
 
   useRealtimeSubscription(
     `worker-actions-realtime-${selectedWorker?.id || 'none'}`,
@@ -126,14 +142,41 @@ const WorkerActions: React.FC = () => {
   );
 
   const { data: workers = [] } = useQuery({
-    queryKey: ['workers-for-actions', activeBranch?.id],
+    queryKey: ['workers-for-actions', activeBranch?.id, isSupervisorMode, supervisorAssignments],
     queryFn: async () => {
       let query = supabase.from('workers').select('*').eq('is_active', true).order('full_name');
-      if (activeBranch?.id) query = query.eq('branch_id', activeBranch.id);
+      if (activeBranch?.id && !isSupervisorMode) query = query.eq('branch_id', activeBranch.id);
       const { data } = await query;
-      return (data || []) as Worker[];
+      let result = (data || []) as Worker[];
+      // Supervisor: filter to only assigned workers
+      if (isSupervisorMode && supervisorAssignments.length > 0) {
+        result = result.filter(w => supervisorAssignments.includes(w.id));
+      } else if (isSupervisorMode && supervisorAssignments.length === 0) {
+        result = [];
+      }
+      return result;
     },
+    enabled: !isSelfMode,
   });
+
+  // Self-mode: auto-select self as the worker
+  const { data: selfWorker } = useQuery({
+    queryKey: ['self-worker', workerId],
+    queryFn: async () => {
+      const { data } = await supabase.from('workers').select('*').eq('id', workerId!).single();
+      return data as Worker | null;
+    },
+    enabled: isSelfMode && !!workerId,
+  });
+
+  // Auto-select self worker
+  React.useEffect(() => {
+    if (isSelfMode && selfWorker && !selectedWorker) {
+      setSelectedWorker(selfWorker);
+      setContextWorker(selfWorker.id, selfWorker.full_name);
+    }
+  }, [isSelfMode, selfWorker]);
+
 
   const todayName = JS_DAY_TO_NAME[new Date().getDay()] || '';
 
@@ -427,13 +470,13 @@ const WorkerActions: React.FC = () => {
   return (
     <div className="p-4 space-y-4">
       <div className="flex items-center gap-2">
-        {selectedWorker && (
+        {selectedWorker && !isSelfMode && (
           <button onClick={handleBack} className="p-1.5 rounded-lg hover:bg-muted">
             <ArrowRight className="w-5 h-5" />
           </button>
         )}
         <h2 className="text-xl font-bold">
-          {selectedWorker ? selectedWorker.full_name : t('worker_actions.title')}
+          {isSelfMode ? 'إجراءاتي' : selectedWorker ? selectedWorker.full_name : t('worker_actions.title')}
         </h2>
         {selectedWorker && liability && (
           <Badge variant={liability.totalLiability > 0 ? 'destructive' : 'outline'} className="mr-auto text-xs">
@@ -442,7 +485,8 @@ const WorkerActions: React.FC = () => {
         )}
       </div>
 
-      {selectedWorker && (
+
+      {selectedWorker && !isSelfMode && (
         <div className="flex justify-end">
           <button
             type="button"
@@ -454,6 +498,7 @@ const WorkerActions: React.FC = () => {
           </button>
         </div>
       )}
+
 
       {!selectedWorker ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
