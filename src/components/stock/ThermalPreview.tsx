@@ -86,7 +86,7 @@ const ThermalPreview: React.FC<ThermalPreviewProps> = ({ lines, showLegendToggle
                     overflow: 'hidden',
                   }}
                 >
-                  {line.text}
+                  {line.text || ''}
                 </div>
               );
             })}
