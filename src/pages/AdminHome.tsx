@@ -3,13 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import { useNavigation } from '@/hooks/useNavigation';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useFontSize } from '@/contexts/FontSizeContext';
-import { Calculator, Banknote, ArrowLeft, Navigation, Users, Receipt, ShoppingCart, Scale, Trophy, CalendarDays } from 'lucide-react';
+import { Calculator, Banknote, ArrowLeft, Navigation, Users, Receipt, ShoppingCart, Scale, Trophy, CalendarDays, Gift } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useIsElementHidden } from '@/hooks/useUIOverrides';
 import InvoiceRequestDialog from '@/components/treasury/InvoiceRequestDialog';
 import CreateOrderDialog from '@/components/orders/CreateOrderDialog';
+import WorkerGiftsSummaryDialog from '@/components/accounting/WorkerGiftsSummaryDialog';
 
 // Color mapping by path for semantic meaning
 const pathColors: Record<string, { bg: string; icon: string; border: string }> = {
@@ -57,12 +58,29 @@ const AdminHome: React.FC = () => {
   const { activeBranch, role } = useAuth();
   const [invoiceRequestOpen, setInvoiceRequestOpen] = useState(false);
   const [showCreateOrder, setShowCreateOrder] = useState(false);
+  const [giftsOpen, setGiftsOpen] = useState(false);
+  const [giftsWorkerIdx, setGiftsWorkerIdx] = useState(0);
 
   const isAccountingHidden = useIsElementHidden('page', '/accounting');
   const isDebtsHidden = useIsElementHidden('page', '/customer-debts');
   const isGeoHidden = useIsElementHidden('page', '/geo-operations');
   const isWorkerActionsHidden = useIsElementHidden('page', '/worker-actions');
   const showInvoiceButton = role === 'admin' || role === 'branch_admin';
+  const showGiftsButton = role === 'admin' || role === 'branch_admin';
+
+  // Fetch active workers for gifts navigation
+  const { data: activeWorkers = [] } = useQuery({
+    queryKey: ['admin-home-workers', activeBranch?.id],
+    queryFn: async () => {
+      let q = supabase.from('workers').select('id, full_name, username').eq('is_active', true).eq('role', 'worker');
+      if (activeBranch?.id) q = q.eq('branch_id', activeBranch.id);
+      const { data } = await q.order('full_name');
+      return data || [];
+    },
+    enabled: showGiftsButton,
+  });
+
+  const currentGiftsWorker = activeWorkers[giftsWorkerIdx] || null;
 
   const allItems = [...main, ...more].filter(item => item.path !== '/' && item.path !== '/accounting' && item.path !== '/customer-debts' && item.path !== '/geo-operations' && item.path !== '/worker-actions');
 
@@ -125,27 +143,34 @@ const AdminHome: React.FC = () => {
 
       {/* Surplus/Deficit Treasury & Rewards */}
       {(role === 'admin' || role === 'branch_admin') && (
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-4 gap-3">
           <div
-            className="relative overflow-hidden rounded-xl border-2 border-violet-300 bg-gradient-to-br from-violet-50 to-violet-100 p-4 cursor-pointer active:scale-[0.97] transition-all hover:shadow-lg"
+            className="relative overflow-hidden rounded-xl border-2 border-violet-300 bg-gradient-to-br from-violet-50 to-violet-100 p-3 cursor-pointer active:scale-[0.97] transition-all hover:shadow-lg"
             onClick={() => navigate('/surplus-deficit')}
           >
-            <Scale className="w-7 h-7 text-violet-600 mb-1" />
-            <p className="font-bold text-xs text-violet-900">خزينة الفائض والعجز</p>
+            <Scale className="w-6 h-6 text-violet-600 mb-1" />
+            <p className="font-bold text-[10px] text-violet-900">خزينة الفائض</p>
           </div>
           <div
-            className="relative overflow-hidden rounded-xl border-2 border-yellow-300 bg-gradient-to-br from-yellow-50 to-yellow-100 p-4 cursor-pointer active:scale-[0.97] transition-all hover:shadow-lg"
+            className="relative overflow-hidden rounded-xl border-2 border-yellow-300 bg-gradient-to-br from-yellow-50 to-yellow-100 p-3 cursor-pointer active:scale-[0.97] transition-all hover:shadow-lg"
             onClick={() => navigate('/rewards')}
           >
-            <Trophy className="w-7 h-7 text-yellow-600 mb-1" />
-            <p className="font-bold text-xs text-yellow-900">المكافآت والعقوبات</p>
+            <Trophy className="w-6 h-6 text-yellow-600 mb-1" />
+            <p className="font-bold text-[10px] text-yellow-900">المكافآت</p>
           </div>
           <div
-            className="relative overflow-hidden rounded-xl border-2 border-emerald-300 bg-gradient-to-br from-emerald-50 to-emerald-100 p-4 cursor-pointer active:scale-[0.97] transition-all hover:shadow-lg"
+            className="relative overflow-hidden rounded-xl border-2 border-emerald-300 bg-gradient-to-br from-emerald-50 to-emerald-100 p-3 cursor-pointer active:scale-[0.97] transition-all hover:shadow-lg"
             onClick={() => navigate('/attendance')}
           >
-            <CalendarDays className="w-7 h-7 text-emerald-600 mb-1" />
-            <p className="font-bold text-xs text-emerald-900">المداومة</p>
+            <CalendarDays className="w-6 h-6 text-emerald-600 mb-1" />
+            <p className="font-bold text-[10px] text-emerald-900">المداومة</p>
+          </div>
+          <div
+            className="relative overflow-hidden rounded-xl border-2 border-purple-300 bg-gradient-to-br from-purple-50 to-purple-100 p-3 cursor-pointer active:scale-[0.97] transition-all hover:shadow-lg"
+            onClick={() => { setGiftsWorkerIdx(0); setGiftsOpen(true); }}
+          >
+            <Gift className="w-6 h-6 text-purple-600 mb-1" />
+            <p className="font-bold text-[10px] text-purple-900">تتبع العروض</p>
           </div>
         </div>
       )}
@@ -215,6 +240,34 @@ const AdminHome: React.FC = () => {
 
       <InvoiceRequestDialog open={invoiceRequestOpen} onOpenChange={setInvoiceRequestOpen} />
       <CreateOrderDialog open={showCreateOrder} onOpenChange={setShowCreateOrder} />
+      
+      {giftsOpen && (
+        <WorkerGiftsSummaryDialog
+          open={giftsOpen}
+          onOpenChange={setGiftsOpen}
+          workerId={currentGiftsWorker?.id}
+          workerName={currentGiftsWorker?.full_name || currentGiftsWorker?.username}
+        />
+      )}
+
+      {/* Worker navigation bar for gifts - shown when gifts dialog is open */}
+      {giftsOpen && activeWorkers.length > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 z-[60] bg-background border-t p-2 flex items-center gap-1 overflow-x-auto" dir="rtl">
+          {activeWorkers.map((w, idx) => (
+            <button
+              key={w.id}
+              onClick={() => setGiftsWorkerIdx(idx)}
+              className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                idx === giftsWorkerIdx
+                  ? 'bg-purple-600 text-white shadow-md'
+                  : 'bg-muted text-muted-foreground hover:bg-accent'
+              }`}
+            >
+              {w.full_name || w.username}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
