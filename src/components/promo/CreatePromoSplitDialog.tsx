@@ -47,14 +47,14 @@ const CreatePromoSplitDialog: React.FC<Props> = ({ open, onOpenChange, editSplit
     if (editSplit) {
       setName(editSplit.name);
       setSplitType(editSplit.split_type);
-      setOfferId(editSplit.offer_id || '');
+      setOfferId(editSplit.offer_id || 'none');
       setProductId(editSplit.product_id);
       setTargetQty(String(editSplit.target_quantity));
       setTargetUnit(editSplit.target_quantity_unit);
       setGiftQty(String(editSplit.gift_quantity));
       setGiftUnit(editSplit.gift_quantity_unit);
       setAdjustedGift(editSplit.adjusted_gift_quantity != null ? String(editSplit.adjusted_gift_quantity) : '');
-      setGiftProductId(editSplit.gift_product_id || '');
+      setGiftProductId(editSplit.gift_product_id || 'none');
       setNotes(editSplit.notes || '');
     } else {
       setName(''); setSplitType('quantity_accumulation'); setOfferId('');
@@ -94,7 +94,7 @@ const CreatePromoSplitDialog: React.FC<Props> = ({ open, onOpenChange, editSplit
         gift_quantity: Number(giftQty),
         gift_quantity_unit: giftUnit,
         adjusted_gift_quantity: adjustedGift ? Number(adjustedGift) : null,
-        gift_product_id: giftProductId || null,
+        gift_product_id: giftProductId && giftProductId !== 'none' ? giftProductId : null,
         notes: notes || null,
         branch_id: activeBranch?.id || null,
         created_by: workerId || null,
