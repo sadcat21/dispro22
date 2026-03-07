@@ -3,20 +3,29 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { useSearchParams } from 'react-router-dom';
 import WorkerTrackingMap from '@/components/map/WorkerTrackingMap';
 import { Switch } from '@/components/ui/switch';
-import { Users, User } from 'lucide-react';
+import { Users, Settings } from 'lucide-react';
 import { useWorkerLocations } from '@/hooks/useWorkerLocation';
+import { useTrackableWorkers } from '@/components/map/TrackingSettingsDialog';
+import TrackingSettingsDialog from '@/components/map/TrackingSettingsDialog';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import { Button } from '@/components/ui/button';
 
 const WorkerTracking: React.FC = () => {
   const { t, dir } = useLanguage();
   const [searchParams, setSearchParams] = useSearchParams();
   const highlightWorkerId = searchParams.get('worker') || undefined;
   const [showAll, setShowAll] = useState(!highlightWorkerId);
-  const { data: workers } = useWorkerLocations();
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const { data: allWorkers } = useWorkerLocations();
+  const { data: trackableIds } = useTrackableWorkers();
+
+  // Filter workers based on tracking settings
+  const workers = allWorkers?.filter(w =>
+    trackableIds === null || trackableIds === undefined || trackableIds.includes(w.worker_id)
+  );
 
   const selectWorker = (workerId: string) => {
     if (workerId === highlightWorkerId) {
-      // Deselect → show all
       setSearchParams({});
       setShowAll(true);
     } else {
@@ -29,13 +38,18 @@ const WorkerTracking: React.FC = () => {
     <div className="p-4 space-y-3">
       <div className="flex items-center justify-between" dir={dir}>
         <h2 className="text-xl font-bold">{t('navigation.tracking_title')}</h2>
-        {highlightWorkerId && (
-          <div className="flex items-center gap-2">
-            <Users className="w-4 h-4 text-muted-foreground" />
-            <span className="text-sm text-muted-foreground">كل العمال</span>
-            <Switch checked={showAll} onCheckedChange={setShowAll} />
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="icon" onClick={() => setSettingsOpen(true)}>
+            <Settings className="w-5 h-5" />
+          </Button>
+          {highlightWorkerId && (
+            <div className="flex items-center gap-2">
+              <Users className="w-4 h-4 text-muted-foreground" />
+              <span className="text-sm text-muted-foreground">كل العمال</span>
+              <Switch checked={showAll} onCheckedChange={setShowAll} />
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Worker quick-pick strip */}
@@ -69,7 +83,10 @@ const WorkerTracking: React.FC = () => {
         key={highlightWorkerId || '__all__'}
         highlightWorkerId={highlightWorkerId}
         showOnlyHighlighted={!!highlightWorkerId && !showAll}
+        trackableWorkerIds={trackableIds ?? undefined}
       />
+
+      <TrackingSettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
     </div>
   );
 };
