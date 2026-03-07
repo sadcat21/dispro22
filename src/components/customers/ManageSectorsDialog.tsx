@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { MapPin, Plus, Pencil, Trash2, Loader2, Save, X, UserCheck, Truck, Calendar, Layers, Languages } from 'lucide-react';
+import { MapPin, Plus, Pencil, Trash2, Loader2, Save, X, UserCheck, Truck, Calendar, Layers, Languages, Filter } from 'lucide-react';
 import { useSectors } from '@/hooks/useSectors';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -69,6 +69,17 @@ const ManageSectorsDialog: React.FC<ManageSectorsDialogProps> = ({ open, onOpenC
   const [translatingName, setTranslatingName] = useState(false);
   const [translatingZone, setTranslatingZone] = useState(false);
 
+  // Filter state
+  const [filterWorker, setFilterWorker] = useState('all');
+  const [filterDay, setFilterDay] = useState('all');
+  const [filterType, setFilterType] = useState<'all' | 'prevente' | 'cash_van'>('all');
+
+  const filteredSectors = sectors.filter(s => {
+    if (filterType !== 'all' && (s as any).sector_type !== filterType) return false;
+    if (filterDay !== 'all' && s.visit_day_sales !== filterDay && s.visit_day_delivery !== filterDay) return false;
+    if (filterWorker !== 'all' && s.sales_worker_id !== filterWorker && s.delivery_worker_id !== filterWorker) return false;
+    return true;
+  });
   useEffect(() => {
     if (open) {
       fetchWorkers();
@@ -469,19 +480,61 @@ const ManageSectorsDialog: React.FC<ManageSectorsDialogProps> = ({ open, onOpenC
             </Button>
           )}
 
+          {/* Filters */}
+          {!showForm && sectors.length > 0 && (
+            <div className="space-y-2 border rounded-lg p-3 bg-muted/30">
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
+                <Filter className="w-3.5 h-3.5" />
+                فلترة
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <Select value={filterType} onValueChange={(v) => setFilterType(v as any)}>
+                  <SelectTrigger className="text-[11px] h-8"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">الكل</SelectItem>
+                    <SelectItem value="prevente">Prévente</SelectItem>
+                    <SelectItem value="cash_van">Cash Van</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={filterDay} onValueChange={setFilterDay}>
+                  <SelectTrigger className="text-[11px] h-8"><SelectValue placeholder="اليوم" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">كل الأيام</SelectItem>
+                    {DAYS.map(d => <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <Select value={filterWorker} onValueChange={setFilterWorker}>
+                  <SelectTrigger className="text-[11px] h-8"><SelectValue placeholder="العامل" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">كل العمال</SelectItem>
+                    {workers.map(w => <SelectItem key={w.id} value={w.id}>{w.full_name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              {(filterType !== 'all' || filterDay !== 'all' || filterWorker !== 'all') && (
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] text-muted-foreground">{filteredSectors.length} / {sectors.length}</span>
+                  <Button variant="ghost" size="sm" className="h-6 text-[11px] px-2" onClick={() => { setFilterType('all'); setFilterDay('all'); setFilterWorker('all'); }}>
+                    <X className="w-3 h-3 ml-1" /> مسح الفلاتر
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Sectors List */}
           <div className="space-y-2 mt-2">
             {isLoading ? (
               <div className="flex justify-center py-8">
                 <Loader2 className="w-6 h-6 animate-spin text-primary" />
               </div>
-            ) : sectors.length === 0 ? (
+            ) : filteredSectors.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <MapPin className="w-10 h-10 mx-auto mb-2 opacity-30" />
-                <p className="text-sm">لا توجد سكتورات بعد</p>
+                <p className="text-sm">{sectors.length === 0 ? 'لا توجد سكتورات بعد' : 'لا توجد نتائج'}</p>
               </div>
             ) : (
-              sectors.map(sector => {
+              filteredSectors.map(sector => {
                 const sectorZones = zonesMap[sector.id] || [];
                 return (
                   <Card key={sector.id}>
