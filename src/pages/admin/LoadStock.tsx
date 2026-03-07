@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Plus, Loader2, Trash2, Truck, AlertTriangle, Package, CheckCircle, PackageX, User, ChevronDown, Gift, Save, History, X, CalendarIcon, Search, RefreshCw, UserCheck, ShoppingCart } from 'lucide-react';
+import { Plus, Loader2, Trash2, Truck, AlertTriangle, Package, CheckCircle, PackageX, User, ChevronDown, Gift, Save, History, X, CalendarIcon, Search, RefreshCw, UserCheck, ShoppingCart, Printer } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
@@ -31,6 +31,7 @@ import ExchangeSessionDialog from '@/components/stock/ExchangeSessionDialog';
 import CustomerPickerDialog from '@/components/orders/CustomerPickerDialog';
 import PartialLoadFromOrdersDialog from '@/components/stock/PartialLoadFromOrdersDialog';
 import WorkerLoadRequestBanner from '@/components/stock/WorkerLoadRequestBanner';
+import LoadSheetPrintView from '@/components/stock/LoadSheetPrintView';
 import { Customer, Sector } from '@/types/database';
 
 interface EmptyTruckItem {
@@ -104,6 +105,7 @@ const LoadStock: React.FC = () => {
   const [showEmptyDialog, setShowEmptyDialog] = useState(false);
   const [showSessionHistory, setShowSessionHistory] = useState(false);
   const [showPartialLoadDialog, setShowPartialLoadDialog] = useState(false);
+  const [showLoadSheetPrint, setShowLoadSheetPrint] = useState(false);
   const [viewSessionId, setViewSessionId] = useState<string | null>(null);
   const [viewSessionItems, setViewSessionItems] = useState<any[]>([]);
   const [viewReviewDiscrepancies, setViewReviewDiscrepancies] = useState<any[]>([]);
@@ -1380,7 +1382,7 @@ const LoadStock: React.FC = () => {
                 <Plus className="w-4 h-4 me-1" />
                 بدء جلسة شحن جديدة
               </Button>
-              <div className="grid grid-cols-3 gap-1.5">
+              <div className="grid grid-cols-4 gap-1.5">
                 <Button variant="outline" onClick={() => setShowSessionHistory(true)} className="h-10 rounded-xl text-[11px] px-2">
                   <History className="w-3.5 h-3.5 me-1" />
                   سجل الجلسات
@@ -1402,6 +1404,15 @@ const LoadStock: React.FC = () => {
                 >
                   <RefreshCw className="w-3.5 h-3.5 me-1" />
                   تغيير
+                </Button>
+                <Button
+                  variant="outline"
+                  className="h-10 rounded-xl text-[11px] px-2 border-primary/30 text-primary hover:bg-primary/5"
+                  onClick={() => setShowLoadSheetPrint(true)}
+                  disabled={!selectedWorker}
+                >
+                  <Printer className="w-3.5 h-3.5 me-1" />
+                  ورقة الشحن
                 </Button>
               </div>
             </>
@@ -2202,6 +2213,15 @@ const LoadStock: React.FC = () => {
           workerName={workers.find(w => w.id === selectedWorker)?.full_name || ''}
           branchId={branchId}
           onConfirm={handlePartialLoadConfirm}
+        />
+      )}
+      {selectedWorker && (
+        <LoadSheetPrintView
+          open={showLoadSheetPrint}
+          onOpenChange={setShowLoadSheetPrint}
+          workerId={selectedWorker}
+          workerName={workers.find(w => w.id === selectedWorker)?.full_name || ''}
+          branchId={branchId}
         />
       )}
     </div>
