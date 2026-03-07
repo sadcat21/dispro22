@@ -11,6 +11,17 @@ import L from 'leaflet';
 // Warehouse location
 const WAREHOUSE_LOCATION = { lat: 35.90775, lng: 0.10253 };
 
+const TILE_LAYERS = {
+  street: {
+    url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    attribution: '© OSM',
+  },
+  satellite: {
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    attribution: '© Esri',
+  },
+};
+
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
@@ -38,7 +49,10 @@ const WorkerTrackingMap: React.FC<WorkerTrackingMapProps> = ({ highlightWorkerId
   const markersRef = useRef<Map<string, L.Marker>>(new Map());
   const hasFittedBoundsRef = useRef(false);
   const routeLayerRef = useRef<L.Polyline | null>(null);
+  const tileLayerRef = useRef<L.TileLayer | null>(null);
+  const userInteractedRef = useRef(false);
   const [routeInfo, setRouteInfo] = useState<{ distance: number; duration: number } | null>(null);
+  const [mapStyle, setMapStyle] = useState<'street' | 'satellite'>('street');
 
   // Initialize map with robust sizing
   useEffect(() => {
@@ -83,11 +97,21 @@ const WorkerTrackingMap: React.FC<WorkerTrackingMapProps> = ({ highlightWorkerId
       scrollWheelZoom: true,
     });
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OSM',
+    const tile = L.tileLayer(TILE_LAYERS.street.url, {
+      attribution: TILE_LAYERS.street.attribution,
     }).addTo(map);
+    tileLayerRef.current = tile;
 
     mapRef.current = map;
+
+    // Track user interaction to prevent auto-zoom override
+    map.on('zoomstart', (e: any) => {
+      // Only mark as user-interacted if not programmatic
+      if (!e.flyTo) userInteractedRef.current = true;
+    });
+    map.on('dragstart', () => {
+      userInteractedRef.current = true;
+    });
 
     // ResizeObserver for dynamic resizing
     const observer = new ResizeObserver(() => {
@@ -204,8 +228,8 @@ const WorkerTrackingMap: React.FC<WorkerTrackingMapProps> = ({ highlightWorkerId
       }
     });
 
-    // Fit bounds only on first data load
-    if (locations.length > 0 && !hasFittedBoundsRef.current) {
+    // Fit bounds only on first data load and if user hasn't interacted
+    if (locations.length > 0 && !hasFittedBoundsRef.current && !userInteractedRef.current) {
       hasFittedBoundsRef.current = true;
       const allPoints: [number, number][] = [
         [WAREHOUSE_LOCATION.lat, WAREHOUSE_LOCATION.lng],
@@ -215,6 +239,12 @@ const WorkerTrackingMap: React.FC<WorkerTrackingMapProps> = ({ highlightWorkerId
       mapRef.current.fitBounds(bounds, { padding: [50, 50], maxZoom: 14 });
     }
   }, [locations, t, dir, highlightWorkerId]);
+  // Switch tile layer when mapStyle changes
+  useEffect(() => {
+    if (!mapRef.current || !tileLayerRef.current) return;
+    const config = TILE_LAYERS[mapStyle];
+    tileLayerRef.current.setUrl(config.url);
+  }, [mapStyle]);
 
   // Fetch and draw route from highlighted worker to warehouse
   useEffect(() => {
@@ -257,8 +287,10 @@ const WorkerTrackingMap: React.FC<WorkerTrackingMapProps> = ({ highlightWorkerId
           dashArray: '10, 8',
         }).addTo(mapRef.current);
 
-        // Fit bounds to show full route
-        mapRef.current.fitBounds(routeLayerRef.current.getBounds(), { padding: [50, 50] });
+        // Fit bounds to show full route only if user hasn't manually zoomed
+        if (!userInteractedRef.current) {
+          mapRef.current.fitBounds(routeLayerRef.current.getBounds(), { padding: [50, 50] });
+        }
 
         setRouteInfo({
           distance: route.distance,
@@ -326,6 +358,14 @@ const WorkerTrackingMap: React.FC<WorkerTrackingMapProps> = ({ highlightWorkerId
       {/* Map */}
       <div className="h-[400px] rounded-lg overflow-hidden border shadow-sm relative">
         <div ref={mapContainerRef} className="h-full w-full" style={{ zIndex: 1 }} />
+        {/* Satellite toggle */}
+        <button
+          onClick={() => setMapStyle(prev => prev === 'street' ? 'satellite' : 'street')}
+          className="absolute top-3 right-3 z-[1000] bg-background/90 backdrop-blur-sm border rounded-lg px-3 py-1.5 text-xs font-medium shadow-md hover:bg-accent transition-colors"
+          style={{ zIndex: 1000 }}
+        >
+          {mapStyle === 'street' ? '🛰️ قمر صناعي' : '🗺️ مخطط'}
+        </button>
       </div>
 
       {/* Worker List */}
