@@ -73,7 +73,44 @@ function transliterate(text: string): string {
   return result.replace(/\s+/g, ' ').trim().substring(0, 20);
 }
 
-const WorkerGiftsSummaryDialog: React.FC<Props> = ({ open, onOpenChange, workerId, workerName }) => {
+type OfferTierRule = {
+  minQuantity: number;
+  minQuantityUnit: 'box' | 'piece';
+  giftQuantity: number;
+  giftQuantityUnit: 'box' | 'piece';
+  tierOrder: number;
+  detail: string;
+};
+
+const normalizeOfferUnit = (unit: string | null | undefined): 'box' | 'piece' =>
+  unit === 'box' ? 'box' : 'piece';
+
+const toOfferDetail = (
+  minQuantity: number,
+  minUnit: 'box' | 'piece',
+  giftQuantity: number,
+  giftUnit: 'box' | 'piece'
+): string => `${minQuantity}${minUnit === 'box' ? 'BOX' : 'PCS'}+${giftQuantity}${giftUnit === 'box' ? 'BOX' : 'PCS'}`;
+
+const resolveAppliedOfferDetail = ({
+  rules,
+  soldQuantity,
+  piecesPerBox,
+}: {
+  rules: OfferTierRule[];
+  soldQuantity: number;
+  piecesPerBox: number;
+}): string => {
+  if (!rules.length) return '';
+
+  const safePieces = Math.max(1, piecesPerBox || 1);
+  const matchingRules = rules.filter((rule) => {
+    const soldComparable = rule.minQuantityUnit === 'box' ? soldQuantity : soldQuantity * safePieces;
+    return soldComparable + 1e-6 >= rule.minQuantity;
+  });
+
+  return (matchingRules.length > 0 ? matchingRules[matchingRules.length - 1] : rules[0]).detail;
+};
   const { activeBranch } = useAuth();
   const { isConnected, scanAndConnect, printReceipt } = useBluetoothPrinter();
   const [expandedProduct, setExpandedProduct] = useState<string | null>(null);
