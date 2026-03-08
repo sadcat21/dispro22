@@ -44,7 +44,7 @@ const WorkerHome: React.FC = () => {
   const [showHandoverPreview, setShowHandoverPreview] = useState(false);
   const [showTodayCustomers, setShowTodayCustomers] = useState(false);
   const [showPalletCalculator, setShowPalletCalculator] = useState(false);
-  
+  const [showManualPromoEntry, setShowManualPromoEntry] = useState(false);
 
   const { trackVisit } = useTrackVisit();
   const isDirectSaleHidden = useIsElementHidden('button', 'home_direct_sale');
