@@ -184,9 +184,11 @@ const GiftExpandedCarousel: React.FC<{
       >
         <div className="px-3 py-2 text-center bg-primary">
           <span className="font-bold text-sm block truncate text-primary-foreground">{item.productName}</span>
-          {item.offerName && (
+          {item.offerDetails.length > 0 ? (
+            <span className="inline-block mt-0.5 text-[10px] font-bold text-primary-foreground/90 bg-primary-foreground/15 rounded px-1.5 py-0.5">{item.offerDetails.join(' | ')}</span>
+          ) : item.offerName ? (
             <span className="text-[10px] text-primary-foreground/70 block truncate">{item.offerName}</span>
-          )}
+          ) : null}
         </div>
 
         <div className="relative w-full overflow-hidden bg-muted h-[38vh] min-h-[200px] max-h-[400px]">
@@ -979,9 +981,11 @@ const WorkerGiftsSummaryDialog: React.FC<Props> = ({ open, onOpenChange, workerI
                   >
                     <div className="px-2 py-1.5 border-b text-center bg-muted border-border">
                       <span className="font-bold text-xs leading-tight block truncate text-foreground">{item.productName}</span>
-                      {item.offerName && (
+                      {item.offerDetails.length > 0 ? (
+                        <span className="inline-block mt-0.5 text-[9px] font-bold text-primary bg-primary/10 rounded px-1 py-0.5 truncate max-w-full">{item.offerDetails.join(' | ')}</span>
+                      ) : item.offerName ? (
                         <span className="text-[8px] text-muted-foreground block truncate">{item.offerName}</span>
-                      )}
+                      ) : null}
                     </div>
                     <div className="w-full aspect-square bg-muted overflow-hidden">
                       {item.imageUrl ? (
