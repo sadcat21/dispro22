@@ -87,6 +87,7 @@ const OrdersContent: React.FC = () => {
   const [modifyOrder, setModifyOrder] = useState<OrderWithDetails | null>(null);
   const [showDeliverySaleDialog, setShowDeliverySaleDialog] = useState(false);
   const [pendingDeliveryOrder, setPendingDeliveryOrder] = useState<OrderWithDetails | null>(null);
+  const [showManualPromoDialog, setShowManualPromoDialog] = useState(false);
 
   const [products, setProducts] = useState<Product[]>([]);
   const [workers, setWorkers] = useState<Worker[]>([]);
