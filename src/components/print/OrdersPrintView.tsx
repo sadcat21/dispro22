@@ -457,13 +457,6 @@ const OrdersPrintView = forwardRef<HTMLDivElement, OrdersPrintViewProps>(
                       })()}
                     </td>
                   )}
-                              </div>
-                            );
-                          })()}
-                        </>
-                      )}
-                    </td>
-                  )}
                 </tr>
               );
             })}
