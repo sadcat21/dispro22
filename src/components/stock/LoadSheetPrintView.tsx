@@ -89,15 +89,17 @@ const LoadSheetPrintView: React.FC<LoadSheetPrintViewProps> = ({
   return (
     <>
       {/* Reuse OrdersPrintView with custom title */}
-      <OrdersPrintView
-        ref={printRef}
-        orders={orders}
-        orderItems={orderItems}
-        products={products}
-        title={`ورقة الشحن - ${workerName}`}
-        dateRange={format(new Date(), 'dd/MM/yyyy')}
-        isVisible={isPrintReady}
-      />
+      {isPrintReady && (
+        <OrdersPrintView
+          ref={printRef}
+          orders={orders}
+          orderItems={orderItems}
+          products={products}
+          title={`ورقة الشحن - ${workerName}`}
+          dateRange={format(new Date(), 'dd/MM/yyyy')}
+          isVisible
+        />
+      )}
 
       <div className="print:hidden">
         <Dialog open={open} onOpenChange={onOpenChange}>
