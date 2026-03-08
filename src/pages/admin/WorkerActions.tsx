@@ -465,6 +465,10 @@ const WorkerActions: React.FC = () => {
       navigate(`${action.path}?worker=${selectedWorker.id}`);
       return;
     }
+    if (action.key === 'session_history') {
+      navigate(`${action.path}?worker=${selectedWorker.id}&history=1`);
+      return;
+    }
     navigate(action.path);
   };
 
