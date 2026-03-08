@@ -824,6 +824,9 @@ const MyDeliveries: React.FC = () => {
             <Truck className="w-4 h-4 me-1" />
             طلب شحن
           </Button>
+          <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setShowPrintDialog(true)} disabled={!orders || orders.length === 0}>
+            <Printer className="w-4 h-4" />
+          </Button>
           {!isSearchHidden && (
             <Button variant="outline" size="sm" onClick={() => setShowSearchDialog(true)}>
               <Search className="w-4 h-4" />
