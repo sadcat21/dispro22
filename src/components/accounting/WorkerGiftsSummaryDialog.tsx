@@ -941,6 +941,9 @@ const WorkerGiftsSummaryDialog: React.FC<Props> = ({ open, onOpenChange, workerI
         printSummary={printSettings?.printSummary ?? false}
         summaryOnly={printSettings?.summaryOnly ?? false}
         isTemplate={printSettings?.isTemplate ?? false}
+        templatePageCount={templateConfig?.pageCount ?? 2}
+        templateProductName={templateConfig?.productName ?? ''}
+        templateOfferDetail={templateConfig?.offerDetail ?? ''}
       />
       <GiftsPrintSettingsDialog
         open={showPrintSettings}
@@ -948,6 +951,13 @@ const WorkerGiftsSummaryDialog: React.FC<Props> = ({ open, onOpenChange, workerI
         products={availableProducts}
         onPrint={handleA4Print}
         isAdmin={!!activeBranch || true}
+      />
+      <TemplatePrintDialog
+        open={showTemplateDialog}
+        onOpenChange={setShowTemplateDialog}
+        products={availableProducts}
+        offers={templateOfferOptions}
+        onPrint={handleTemplatePrint}
       />
     </Dialog>
   );
