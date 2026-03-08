@@ -567,6 +567,18 @@ const WorkerGiftsSummaryDialog: React.FC<Props> = ({ open, onOpenChange, workerI
     return giftsData.items.map(item => ({ id: item.productId, name: item.productName }));
   }, [giftsData]);
 
+  // Available offers for template dialog
+  const templateOfferOptions = useMemo(() => {
+    if (!giftsData?.items?.length) return [];
+    const options: { productId: string; detail: string }[] = [];
+    for (const item of giftsData.items) {
+      for (const detail of (item.offerDetails || [])) {
+        options.push({ productId: item.productId, detail });
+      }
+    }
+    return options;
+  }, [giftsData]);
+
   const printProductLabel = useMemo(() => {
     if (!printSettings || printSettings.productFilter === 'all') return 'Tous les produits';
     return giftsData?.items?.find(i => i.productId === printSettings.productFilter)?.productName || '';
