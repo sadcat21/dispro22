@@ -135,7 +135,7 @@ const getCellValue = (row: GiftPrintRow, col: GiftPrintColumnKey, rowNumber: num
 };
 
 const GiftsPrintView = forwardRef<HTMLDivElement, GiftsPrintViewProps>(
-  ({ rows, summaryRows, workerNames, workerName, dateRange, productFilter, isVisible = false, visibleColumns, separateByProduct = true, printSummary = false, summaryOnly = false, isTemplate = false }, ref) => {
+  ({ rows, summaryRows, workerNames, workerName, dateRange, productFilter, isVisible = false, visibleColumns, separateByProduct = true, printSummary = false, summaryOnly = false, isTemplate = false, templatePageCount = 2, templateProductName = '', templateOfferDetail = '' }, ref) => {
     const [container, setContainer] = useState<HTMLDivElement | null>(null);
 
     const columns = useMemo(() => {
@@ -182,14 +182,14 @@ const GiftsPrintView = forwardRef<HTMLDivElement, GiftsPrintViewProps>(
       // Template mode: generate empty pages
       if (isTemplate) {
         const templatePages: PrintPage[] = [];
-        const numTemplatePages = 2;
+        const numTemplatePages = templatePageCount;
         for (let i = 0; i < numTemplatePages; i++) {
           templatePages.push({
             productName: null,
             rows: [],
             rowOffset: i * ROWS_PER_PAGE,
             showTotals: true,
-            totals: { vente: 0, gift: 0, giftBoxPiece: '0.00' },
+            totals: { vente: 0, gift: 0, giftBoxPiece: '' },
             pageNum: i + 1,
             totalPages: numTemplatePages,
           });
