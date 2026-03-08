@@ -126,6 +126,7 @@ const WorkerGiftsSummaryDialog: React.FC<Props> = ({ open, onOpenChange, workerI
   const { isConnected, scanAndConnect } = useBluetoothPrinter();
   const [expandedProduct, setExpandedProduct] = useState<string | null>(null);
   const [allWorkers, setAllWorkers] = useState(false);
+  const [selectedWorkerId, setSelectedWorkerId] = useState<string | undefined>(workerId);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [isPrinting, setIsPrinting] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
