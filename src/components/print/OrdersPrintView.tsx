@@ -7,6 +7,8 @@ import logoImage from '@/assets/logo.png';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { StampPriceTier } from '@/types/stamp';
+import { calculateStampAmount } from '@/hooks/useStampTiers';
 
 interface OrderItemWithProduct {
   order_id: string;
@@ -48,6 +50,7 @@ const OrdersPrintView = forwardRef<HTMLDivElement, OrdersPrintViewProps>(
     const [container, setContainer] = useState<HTMLDivElement | null>(null);
     const [customerDebts, setCustomerDebts] = useState<Record<string, { amount: number; docType?: string }>>({});
     const [shortageProductIds, setShortageProductIds] = useState<Set<string>>(new Set());
+    const [stampTiers, setStampTiers] = useState<StampPriceTier[]>([]);
     const { tp, printDir, printLanguage } = useLanguage();
     const { activeBranch } = useAuth();
     
@@ -171,6 +174,19 @@ const OrdersPrintView = forwardRef<HTMLDivElement, OrdersPrintViewProps>(
       };
       fetchShortages();
     }, [activeBranch?.id]);
+
+    // Fetch stamp price tiers
+    useEffect(() => {
+      const fetchTiers = async () => {
+        const { data } = await supabase
+          .from('stamp_price_tiers')
+          .select('*')
+          .eq('is_active', true)
+          .order('min_amount', { ascending: true });
+        if (data) setStampTiers(data as StampPriceTier[]);
+      };
+      fetchTiers();
+    }, []);
 
     const getFilterCriteria = () => {
       const criteria: string[] = [];
@@ -420,35 +436,25 @@ const OrdersPrintView = forwardRef<HTMLDivElement, OrdersPrintViewProps>(
                   })}
                   {isColEffective('total_amount') && (
                     <td className="center bold" style={{ padding: '2px 1px' }}>
-                      {getOrderTotalAmount(order) > 0 && (
-                        <>
-                          <div>{getOrderTotalAmount(order).toLocaleString()}</div>
-                          {order.payment_type === 'with_invoice' && order.invoice_payment_method === 'cash' && (() => {
-                            const items = orderItems.get(order.id);
-                            if (!items) return null;
-                            const subtotal = items.reduce((sum, item) => {
-                              if (shortageProductIds.has(item.product_id)) return sum;
-                              if (item.total_price && item.total_price > 0) return sum + item.total_price;
-                              if (item.unit_price && item.unit_price > 0) return sum + (item.unit_price * (item.quantity - (item.gift_quantity || 0)));
-                              if (item.product) {
-                                const bp = getBaseUnitPrice(order, item.product);
-                                const m = getBoxMultiplier(item.product);
-                                return sum + (bp * m * item.quantity);
-                              }
-                              return sum;
-                            }, 0);
-                            const total = getOrderTotalAmount(order);
-                            const stampAmount = total - subtotal;
-                            if (stampAmount <= 0) return null;
-                            const stampPct = subtotal > 0 ? Math.round((stampAmount / subtotal) * 100 * 10) / 10 : 0;
-                            return (
+                      {getOrderTotalAmount(order) > 0 && (() => {
+                        const orderTotal = getOrderTotalAmount(order);
+                        const isCashInvoice = order.payment_type === 'with_invoice' && order.invoice_payment_method === 'cash';
+                        const stampAmount = isCashInvoice && stampTiers.length > 0 ? calculateStampAmount(orderTotal, stampTiers) : 0;
+                        const stampPct = stampAmount > 0 && orderTotal > 0
+                          ? Math.round((stampAmount / (orderTotal - stampAmount)) * 100 * 10) / 10
+                          : 0;
+                        const totalWithStamp = orderTotal + (stampAmount > 0 ? stampAmount : 0);
+                        return (
+                          <>
+                            <div>{isCashInvoice && stampAmount > 0 ? totalWithStamp.toLocaleString() : orderTotal.toLocaleString()}</div>
+                            {stampAmount > 0 && (
                               <div style={{ fontSize: '7pt', fontWeight: 'normal', borderTop: '1px solid #bbb', marginTop: '2px', paddingTop: '2px', color: '#555' }}>
                                 {tp('print.header.stamp') || 'T'} {stampPct}% = {stampAmount.toLocaleString()}
                               </div>
-                            );
-                          })()}
-                        </>
-                      )}
+                            )}
+                          </>
+                        );
+                      })()}
                     </td>
                   )}
                 </tr>

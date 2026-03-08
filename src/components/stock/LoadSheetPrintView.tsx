@@ -11,6 +11,7 @@ import PrintColumnsConfigDialog from '@/components/print/PrintColumnsConfigDialo
 import { OrderWithDetails, Product } from '@/types/database';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useWorkerPrintInfo } from '@/hooks/useWorkerPrintInfo';
 
 const LOADSHEET_COLUMNS_KEY = 'loadsheet_columns_v1';
 
@@ -57,6 +58,7 @@ const LoadSheetPrintView: React.FC<LoadSheetPrintViewProps> = ({
 
   const { activeBranch, workerId: currentWorkerId } = useAuth();
   const { tp } = useLanguage();
+  const { data: workerPrintInfo } = useWorkerPrintInfo(workerId);
 
   const printRef = useRef<HTMLDivElement>(null);
   const previewViewportRef = useRef<HTMLDivElement>(null);
@@ -236,7 +238,8 @@ const LoadSheetPrintView: React.FC<LoadSheetPrintViewProps> = ({
   };
 
   const hasData = orders.length > 0;
-  const title = `${tp('print.load_sheet') || 'Fiche de Chargement'} - ${workerName}`;
+  const printWorkerName = workerPrintInfo?.printName || workerName;
+  const title = `${tp('print.load_sheet') || 'Fiche de Chargement'} - ${printWorkerName}`;
   const printDate = format(new Date(), 'dd/MM/yyyy');
 
   const hasSurplus = Object.values(surplusMap).some(v => v > 0);
