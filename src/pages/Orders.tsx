@@ -35,6 +35,7 @@ import { useIsElementHidden } from '@/hooks/useUIOverrides';
 import { useSectors } from '@/hooks/useSectors';
 import ModifyOrderDialog from '@/components/orders/ModifyOrderDialog';
 import DeliverySaleDialog from '@/components/orders/DeliverySaleDialog';
+import ManualPromoEntryDialog from '@/components/offers/ManualPromoEntryDialog';
 import { Edit } from 'lucide-react';
 import { useSelectedWorker } from '@/contexts/SelectedWorkerContext';
 
@@ -86,6 +87,7 @@ const OrdersContent: React.FC = () => {
   const [modifyOrder, setModifyOrder] = useState<OrderWithDetails | null>(null);
   const [showDeliverySaleDialog, setShowDeliverySaleDialog] = useState(false);
   const [pendingDeliveryOrder, setPendingDeliveryOrder] = useState<OrderWithDetails | null>(null);
+  const [showManualPromoDialog, setShowManualPromoDialog] = useState(false);
 
   const [products, setProducts] = useState<Product[]>([]);
   const [workers, setWorkers] = useState<Worker[]>([]);
@@ -649,6 +651,9 @@ const OrdersContent: React.FC = () => {
                 <Plus className="w-2.5 h-2.5 absolute -top-0.5 -right-0.5 bg-primary text-primary-foreground rounded-full" />
               </Button>
             )}
+            <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setShowManualPromoDialog(true)} title={t('promos.manual_entry') || 'تسجيل عرض يدوي'}>
+              <Gift className="w-4 h-4" />
+            </Button>
           </div>
         </div>
 
@@ -1026,6 +1031,11 @@ const OrdersContent: React.FC = () => {
           orderItems={selectedOrderItems || []}
         />
       )}
+
+      <ManualPromoEntryDialog
+        open={showManualPromoDialog}
+        onOpenChange={setShowManualPromoDialog}
+      />
     </div>
   );
 };
