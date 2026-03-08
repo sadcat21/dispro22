@@ -254,7 +254,7 @@ const GiftsPrintView = forwardRef<HTMLDivElement, GiftsPrintViewProps>(
       return (
         <section
           className="print-page"
-          style={{ pageBreakBefore: 'always' }}
+          style={{ pageBreakBefore: summaryOnly ? 'auto' : 'always' }}
         >
           <div style={{ position: 'absolute', top: '45%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 0, opacity: 0.2, pointerEvents: 'none' }}>
             <img src={logoImage} alt="" style={{ width: '280px', height: 'auto' }} />
