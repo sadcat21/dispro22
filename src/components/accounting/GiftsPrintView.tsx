@@ -343,10 +343,7 @@ const GiftsPrintView = forwardRef<HTMLDivElement, GiftsPrintViewProps>(
             </tbody>
           </table>
 
-          <div className="print-footer">
-            <span>Date d'impression: {format(new Date(), 'dd/MM/yyyy HH:mm')}</span>
-            <span>Laser Food</span>
-          </div>
+          {/* No footer */}
         </section>
       );
     }, [printSummary, summaryRows, workerNames, filterCriteria]);
@@ -359,9 +356,13 @@ const GiftsPrintView = forwardRef<HTMLDivElement, GiftsPrintViewProps>(
       >
         {!summaryOnly && pages.map((page, pageIndex) => {
           const emptyRowsCount = Math.max(0, ROWS_PER_PAGE - page.rows.length);
-          const pageTitle = page.productName
-            ? `Registre des promotions — ${page.productName}`
-            : 'Registre des promotions';
+          const templateDots = '··············';
+          const pageSuffix = page.totalPages > 1 ? ` (${page.pageNum}/${page.totalPages})` : '';
+          const pageTitle = isTemplate
+            ? `Registre des promotions — ${templateDots}${pageSuffix}`
+            : page.productName
+              ? `Registre des promotions — ${page.productName}${pageSuffix}`
+              : `Registre des promotions${pageSuffix}`;
 
           return (
             <section
@@ -377,8 +378,9 @@ const GiftsPrintView = forwardRef<HTMLDivElement, GiftsPrintViewProps>(
               <div className="print-header-with-logo" style={{ position: 'relative', zIndex: 1 }}>
                 <div className="print-logo"><img src={logoImage} alt="Laser Food" /></div>
                 <div className="print-title-section">
-                  <h1 style={{ fontSize: page.productName ? '16pt' : '18pt' }}>{pageTitle}</h1>
-                  <p style={{ fontSize: '10pt', fontWeight: 600, marginTop: '5px' }}>{filterCriteria}</p>
+                  <h1 style={{ fontSize: page.productName || isTemplate ? '14pt' : '18pt' }}>{pageTitle}</h1>
+                  <p style={{ fontSize: '10pt', fontWeight: 600, marginTop: '3px' }}>{isTemplate ? `Employé: ${templateDots}  |  Produit: ${templateDots}  |  Période: ${templateDots}` : filterCriteria}</p>
+                  <p style={{ fontSize: '8pt', color: '#666', marginTop: '2px' }}>Date d'impression: {format(new Date(), 'dd/MM/yyyy HH:mm')}</p>
                 </div>
                 <div className="print-logo"><img src={logoImage} alt="Laser Food" /></div>
               </div>
@@ -397,7 +399,7 @@ const GiftsPrintView = forwardRef<HTMLDivElement, GiftsPrintViewProps>(
                   </tr>
                 </thead>
                 <tbody>
-                  {page.rows.map((row, rowIndex) => (
+                  {!isTemplate && page.rows.map((row, rowIndex) => (
                     <tr key={rowIndex}>
                       {columns.map(col => {
                         const cfg = COLUMN_CONFIG[col];
@@ -410,9 +412,14 @@ const GiftsPrintView = forwardRef<HTMLDivElement, GiftsPrintViewProps>(
                     </tr>
                   ))}
 
-                  {Array.from({ length: emptyRowsCount }).map((_, i) => (
+                  {/* Empty rows: template shows all ROWS_PER_PAGE, normal fills remaining */}
+                  {Array.from({ length: isTemplate ? ROWS_PER_PAGE : emptyRowsCount }).map((_, i) => (
                     <tr key={`empty-${i}`}>
-                      {columns.map((_, j) => <td key={j}>&nbsp;</td>)}
+                      {columns.map((col, j) => (
+                        <td key={j}>
+                          {isTemplate && col === 'number' ? (page.rowOffset + i + 1) : '\u00A0'}
+                        </td>
+                      ))}
                     </tr>
                   ))}
 
@@ -423,11 +430,6 @@ const GiftsPrintView = forwardRef<HTMLDivElement, GiftsPrintViewProps>(
                   )}
                 </tbody>
               </table>
-
-              <div className="print-footer">
-                <span>Date d'impression: {format(new Date(), 'dd/MM/yyyy HH:mm')}</span>
-                <span>Laser Food</span>
-              </div>
             </section>
           );
         })}
