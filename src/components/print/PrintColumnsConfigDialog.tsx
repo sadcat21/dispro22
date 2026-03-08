@@ -20,6 +20,8 @@ export const DEFAULT_PRINT_COLUMNS: PrintColumnConfig[] = [
   { id: 'store_name', labelKey: 'print.header.store_name', visible: false },
   { id: 'phone', labelKey: 'print.header.phone', visible: true },
   { id: 'address', labelKey: 'print.header.address', visible: true },
+  { id: 'sector', labelKey: 'print.header.sector', visible: false },
+  { id: 'zone', labelKey: 'print.header.zone', visible: false },
   { id: 'delivery_worker', labelKey: 'print.header.delivery_worker', visible: true },
   { id: 'payment_info', labelKey: 'print.header.payment_info', visible: true },
   { id: 'products', labelKey: 'print.columns.products', visible: true },
