@@ -17,6 +17,7 @@ import { ar } from 'date-fns/locale';
 import ThermalPreview, { ThermalLine } from '@/components/stock/ThermalPreview';
 import GiftsPrintView, { GiftPrintRow, SummaryRow } from '@/components/accounting/GiftsPrintView';
 import GiftsPrintSettingsDialog, { GiftPrintSettings } from '@/components/accounting/GiftsPrintSettingsDialog';
+import TemplatePrintDialog, { TemplatePrintConfig } from '@/components/accounting/TemplatePrintDialog';
 
 interface Props {
   open: boolean;
