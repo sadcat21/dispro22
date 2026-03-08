@@ -573,7 +573,23 @@ const WorkerGiftsSummaryDialog: React.FC<Props> = ({ open, onOpenChange, workerI
   }, [printSettings, giftsData]);
 
   const handleA4Print = useCallback((settings: GiftPrintSettings) => {
+    if (settings.isTemplate) {
+      // Open template dialog instead of printing directly
+      setPrintSettings(settings);
+      setShowTemplateDialog(true);
+      return;
+    }
     setPrintSettings(settings);
+    setTemplateConfig(null);
+    setShowPrintView(true);
+    setTimeout(() => {
+      window.print();
+      setTimeout(() => setShowPrintView(false), 500);
+    }, 200);
+  }, []);
+
+  const handleTemplatePrint = useCallback((config: TemplatePrintConfig) => {
+    setTemplateConfig(config);
     setShowPrintView(true);
     setTimeout(() => {
       window.print();
