@@ -35,6 +35,7 @@ import { useIsElementHidden } from '@/hooks/useUIOverrides';
 import { useSectors } from '@/hooks/useSectors';
 import ModifyOrderDialog from '@/components/orders/ModifyOrderDialog';
 import DeliverySaleDialog from '@/components/orders/DeliverySaleDialog';
+import ManualPromoEntryDialog from '@/components/offers/ManualPromoEntryDialog';
 import { Edit } from 'lucide-react';
 import { useSelectedWorker } from '@/contexts/SelectedWorkerContext';
 
