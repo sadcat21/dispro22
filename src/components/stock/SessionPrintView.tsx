@@ -790,7 +790,7 @@ const SessionPrintView: React.FC<SessionPrintViewProps> = ({
                 </TabsContent>
               </Tabs>
 
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <Button onClick={handlePrint} className="flex-1 gap-2">
                   <Printer className="w-4 h-4" />
                   طباعة A4
@@ -804,6 +804,16 @@ const SessionPrintView: React.FC<SessionPrintViewProps> = ({
                   {isThermalPrinting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Bluetooth className="w-4 h-4" />}
                   طباعة 48mm
                 </Button>
+                {isLoad && session?.worker_id && (
+                  <Button
+                    variant="secondary"
+                    onClick={() => setShowOrdersSheet(true)}
+                    className="flex-1 gap-2"
+                  >
+                    <ClipboardList className="w-4 h-4" />
+                    طباعة الطلبيات
+                  </Button>
+                )}
               </div>
             </>
           )}
@@ -811,6 +821,16 @@ const SessionPrintView: React.FC<SessionPrintViewProps> = ({
       </Dialog>
 
       {container && printContent && open && createPortal(printContent, container)}
+
+      {session?.worker_id && (
+        <LoadSheetPrintView
+          open={showOrdersSheet}
+          onOpenChange={setShowOrdersSheet}
+          workerId={session.worker_id}
+          workerName={session.worker?.full_name || workerName}
+          branchId={null}
+        />
+      )}
     </>
   );
 };
