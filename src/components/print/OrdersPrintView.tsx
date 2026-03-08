@@ -449,10 +449,9 @@ const OrdersPrintView = forwardRef<HTMLDivElement, OrdersPrintViewProps>(
       </div>
     );
 
-    // Render directly into body using portal
+    if (!usePortal) return content;
     if (!container) return null;
     return createPortal(content, container);
-  }
 );
 
 OrdersPrintView.displayName = 'OrdersPrintView';
