@@ -37,6 +37,10 @@ import ReceiptDialog from '@/components/printing/ReceiptDialog';
 import { ReceiptItem, ReceiptType } from '@/types/receipt';
 import { useWorkerPrintInfo } from '@/hooks/useWorkerPrintInfo';
 import { useProductOffers } from '@/hooks/useProductOffers';
+import PrintOrdersDialog from '@/components/orders/PrintOrdersDialog';
+import OrdersPrintView from '@/components/print/OrdersPrintView';
+import { PrintColumnConfig } from '@/components/print/PrintColumnsConfigDialog';
+import { Eye } from 'lucide-react';
 
 type TabStatus = 'all' | OrderStatus;
 type DeliveryType = 'orders' | 'direct_sales';
