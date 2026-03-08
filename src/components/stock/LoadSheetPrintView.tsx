@@ -134,6 +134,11 @@ const LoadSheetPrintView: React.FC<LoadSheetPrintViewProps> = ({
   const title = `ورقة الشحن - ${workerName}`;
   const printDate = format(new Date(), 'dd/MM/yyyy');
 
+  const hasSurplus = Object.values(surplusMap).some(v => v > 0);
+  const extraRows = hasSurplus
+    ? [{ label: 'الفائض', productQuantities: surplusMap, style: 'highlight' as const }]
+    : [];
+
   return (
     <>
       {isPrintReady && (
@@ -145,6 +150,7 @@ const LoadSheetPrintView: React.FC<LoadSheetPrintViewProps> = ({
           title={title}
           dateRange={printDate}
           isVisible
+          extraRows={extraRows}
         />
       )}
 
@@ -188,6 +194,7 @@ const LoadSheetPrintView: React.FC<LoadSheetPrintViewProps> = ({
                             dateRange={printDate}
                             isVisible
                             usePortal={false}
+                            extraRows={extraRows}
                           />
                         </div>
                       </div>
