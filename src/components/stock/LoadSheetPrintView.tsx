@@ -58,6 +58,7 @@ const LoadSheetPrintView: React.FC<LoadSheetPrintViewProps> = ({
 
   const { activeBranch, workerId: currentWorkerId } = useAuth();
   const { tp } = useLanguage();
+  const { data: workerPrintInfo } = useWorkerPrintInfo(workerId);
 
   const printRef = useRef<HTMLDivElement>(null);
   const previewViewportRef = useRef<HTMLDivElement>(null);
