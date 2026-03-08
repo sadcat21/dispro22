@@ -11,6 +11,7 @@ import PrintColumnsConfigDialog from '@/components/print/PrintColumnsConfigDialo
 import { OrderWithDetails, Product } from '@/types/database';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useWorkerPrintInfo } from '@/hooks/useWorkerPrintInfo';
 
 const LOADSHEET_COLUMNS_KEY = 'loadsheet_columns_v1';
 
