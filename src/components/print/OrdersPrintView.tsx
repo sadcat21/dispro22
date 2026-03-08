@@ -452,6 +452,7 @@ const OrdersPrintView = forwardRef<HTMLDivElement, OrdersPrintViewProps>(
     if (!usePortal) return content;
     if (!container) return null;
     return createPortal(content, container);
+  }
 );
 
 OrdersPrintView.displayName = 'OrdersPrintView';
