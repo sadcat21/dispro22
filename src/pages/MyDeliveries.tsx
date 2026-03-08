@@ -20,7 +20,7 @@ import { useLocationThreshold } from '@/hooks/useLocationSettings';
 import { useHasPermission } from '@/hooks/usePermissions';
 import { calculateDistance } from '@/utils/geoUtils';
 import { useLanguage, Language } from '@/contexts/LanguageContext';
-import { OrderStatus, OrderWithDetails } from '@/types/database';
+import { OrderStatus, OrderWithDetails, Product, Worker } from '@/types/database';
 import { format } from 'date-fns';
 import { ar, fr, enUS } from 'date-fns/locale';
 import LazyCustomerLocationView from '@/components/map/LazyCustomerLocationView';
