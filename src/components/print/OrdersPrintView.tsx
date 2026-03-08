@@ -430,7 +430,31 @@ const OrdersPrintView = forwardRef<HTMLDivElement, OrdersPrintViewProps>(
                 )}
               </tr>
             ))}
-            
+
+            {/* Extra rows (e.g. surplus) */}
+            {extraRows.map((row, idx) => {
+              const hasAny = productsWithOrders.some(p => (row.productQuantities[p.id] || 0) > 0);
+              if (!hasAny) return null;
+              return (
+                <tr key={`extra-${idx}`} style={{ backgroundColor: row.style === 'highlight' ? '#fff3cd' : undefined, fontWeight: 'bold' }}>
+                  <td colSpan={visibleStaticCols} className="center" style={{ fontSize: '9pt' }}>{row.label}</td>
+                  {isColVisible('products') && productsWithOrders.map((product) => {
+                    const qty = row.productQuantities[product.id] || 0;
+                    return (
+                      <td key={product.id} className="center" style={{ fontWeight: 'bold', color: qty > 0 ? '#b45309' : undefined }}>
+                        {qty > 0 ? qty : ''}
+                      </td>
+                    );
+                  })}
+                  {isColVisible('total_amount') && (
+                    <td className="center bold">
+                      {row.totalAmount && row.totalAmount > 0 ? row.totalAmount.toLocaleString() : ''}
+                    </td>
+                  )}
+                </tr>
+              );
+            })}
+
             {/* Totals row */}
             <tr className="totals-row">
               <td colSpan={visibleStaticCols} className="totals-label">{tp('print.header.total')}</td>
