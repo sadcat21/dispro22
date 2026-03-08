@@ -1170,6 +1170,88 @@ const MyDeliveries: React.FC = () => {
         />
       )}
 
+      {/* Print View (hidden, for window.print) */}
+      <OrdersPrintView
+        ref={printRef}
+        orders={filteredOrdersForPrint.length > 0 ? filteredOrdersForPrint : (orders || [])}
+        orderItems={toMap(allOrderItems)}
+        products={products}
+        title={printWorkerName ? `توصيلاتي - ${printWorkerName}` : 'قائمة التوصيلات'}
+        isVisible={isPrintReady}
+        columnConfig={printColumnConfig}
+      />
+
+      {/* Print Dialog */}
+      <PrintOrdersDialog
+        open={showPrintDialog}
+        onOpenChange={setShowPrintDialog}
+        workers={workersList}
+        orders={(orders || []).filter(o => o.status !== 'cancelled')}
+        products={products}
+        onPrint={handlePrint}
+        onExportCSV={handleExportCSV}
+        onPreview={async (filteredOrders, columnConfig) => {
+          const orderIds = filteredOrders.map(o => o.id);
+          const { data: items } = await supabase
+            .from('order_items')
+            .select('*, product:products(*)')
+            .in('order_id', orderIds);
+          const itemsRecord: Record<string, any[]> = {};
+          items?.forEach(item => {
+            if (!itemsRecord[item.order_id]) itemsRecord[item.order_id] = [];
+            itemsRecord[item.order_id].push(item);
+          });
+          setPreviewOrders(filteredOrders);
+          setPreviewItems(itemsRecord);
+          setPreviewColumnConfig(columnConfig);
+          setShowPrintDialog(false);
+          setShowPreviewDialog(true);
+        }}
+      />
+
+      {/* Print Preview Dialog */}
+      <Dialog open={showPreviewDialog} onOpenChange={setShowPreviewDialog}>
+        <DialogContent className="max-w-[95vw] max-h-[90vh] p-0 overflow-hidden">
+          <DialogHeader className="p-4 pb-2 border-b">
+            <DialogTitle className="flex items-center gap-2">
+              <Eye className="w-5 h-5" />
+              معاينة
+            </DialogTitle>
+          </DialogHeader>
+          <div className="overflow-auto max-h-[calc(90vh-8rem)] p-2">
+            <div className="transform scale-[0.6] origin-top-left" style={{ width: '166%' }}>
+              <OrdersPrintView
+                orders={previewOrders}
+                orderItems={toMap(previewItems)}
+                products={products}
+                title="قائمة التوصيلات"
+                isVisible={true}
+                columnConfig={previewColumnConfig}
+              />
+            </div>
+          </div>
+          <div className="p-3 border-t flex gap-2 justify-end">
+            <Button variant="outline" onClick={() => setShowPreviewDialog(false)}>
+              إغلاق
+            </Button>
+            <Button onClick={() => {
+              setShowPreviewDialog(false);
+              setAllOrderItems(previewItems);
+              setFilteredOrdersForPrint(previewOrders);
+              setPrintColumnConfig(previewColumnConfig);
+              setIsPrintReady(true);
+              setTimeout(() => {
+                window.print();
+                setIsPrintReady(false);
+              }, 500);
+            }}>
+              <Printer className="w-4 h-4 ms-2" />
+              طباعة
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Worker Load Request Dialog */}
       <WorkerLoadRequestDialog open={showLoadRequestDialog} onOpenChange={setShowLoadRequestDialog} />
     </div>
