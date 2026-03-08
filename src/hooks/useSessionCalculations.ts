@@ -384,6 +384,7 @@ export const useSessionCalculations = (params: SessionCalcParams | null, options
           giftQuantity: extraGifts,
           piecesPerBox: Number(product?.pieces_per_box || 1),
           offerName: 'عرض ترويجي',
+          offerDescription: '',
           customerDetails: promoAgg.customers,
         };
         // Add gift value for extra gifts (now normalized to pieces)
