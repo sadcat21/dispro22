@@ -42,9 +42,10 @@ interface GiftsPrintViewProps {
   separateByProduct?: boolean;
   printSummary?: boolean;
   summaryOnly?: boolean;
+  isTemplate?: boolean;
 }
 
-const ROWS_PER_PAGE = 16;
+const ROWS_PER_PAGE = 20;
 
 const COLUMN_CONFIG: Record<GiftPrintColumnKey, { header: string; width?: string; className?: string }> = {
   number: { header: 'N°', width: '30px', className: 'center' },
@@ -70,6 +71,8 @@ type PrintPage = {
   rowOffset: number;
   showTotals: boolean;
   totals: { vente: number; gift: number; giftBoxPiece: string };
+  pageNum: number;
+  totalPages: number;
 };
 
 const chunkRows = <T,>(items: T[], size: number): T[][] => {
