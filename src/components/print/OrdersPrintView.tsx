@@ -419,7 +419,7 @@ const OrdersPrintView = forwardRef<HTMLDivElement, OrdersPrintViewProps>(
                           if (stampAmount <= 0) return null;
                           const stampPct = subtotal > 0 ? Math.round((stampAmount / subtotal) * 100 * 10) / 10 : 0;
                           return (
-                            <div style={{ fontSize: '5.5pt', opacity: 0.5, fontWeight: 'normal', borderTop: '1px dotted #ccc', marginTop: '1px', paddingTop: '1px' }}>
+                            <div style={{ fontSize: '7pt', fontWeight: 'normal', borderTop: '1px solid #bbb', marginTop: '2px', paddingTop: '2px', color: '#555' }}>
                               {tp('print.header.stamp') || 'T'} {stampPct}% = {stampAmount.toLocaleString()}
                             </div>
                           );
