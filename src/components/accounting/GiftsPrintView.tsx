@@ -22,14 +22,25 @@ export interface GiftPrintRow {
   piecesPerBox: number;
 }
 
+export interface SummaryRow {
+  productName: string;
+  offerDetail: string;
+  workerGifts: Record<string, number>; // workerName -> giftPieces
+  piecesPerBox: number;
+}
+
 interface GiftsPrintViewProps {
   rows: GiftPrintRow[];
+  summaryRows?: SummaryRow[];
+  workerNames?: string[];
   workerName?: string;
   dateRange?: string;
   productFilter?: string;
   isVisible?: boolean;
   visibleColumns?: GiftPrintColumnKey[];
   separateByProduct?: boolean;
+  printSummary?: boolean;
+  summaryOnly?: boolean;
 }
 
 const ROWS_PER_PAGE = 16;
@@ -71,16 +82,13 @@ const chunkRows = <T,>(items: T[], size: number): T[][] => {
 
 const formatGiftTotalBoxPiece = (rows: GiftPrintRow[]): string => {
   if (!rows.length) return '0';
-  // Group by piecesPerBox to compute total
   let totalPieces = 0;
   let ppb = rows[0]?.piecesPerBox || 1;
-  // Use the most common ppb
   const ppbMap = new Map<number, number>();
   rows.forEach(r => {
     ppbMap.set(r.piecesPerBox, (ppbMap.get(r.piecesPerBox) || 0) + r.giftQuantity);
     totalPieces += r.giftQuantity;
   });
-  // Find dominant ppb
   let maxCount = 0;
   ppbMap.forEach((count, key) => {
     if (count > maxCount) { maxCount = count; ppb = key; }
@@ -88,6 +96,13 @@ const formatGiftTotalBoxPiece = (rows: GiftPrintRow[]): string => {
   if (ppb <= 1) return `${totalPieces}`;
   const boxes = Math.floor(totalPieces / ppb);
   const rem = totalPieces % ppb;
+  return rem > 0 ? `${boxes}.${String(rem).padStart(2, '0')}` : `${boxes}`;
+};
+
+const formatBoxPiece = (pieces: number, ppb: number): string => {
+  if (ppb <= 1) return `${pieces}`;
+  const boxes = Math.floor(pieces / ppb);
+  const rem = pieces % ppb;
   return rem > 0 ? `${boxes}.${String(rem).padStart(2, '0')}` : `${boxes}`;
 };
 
@@ -113,10 +128,9 @@ const getCellValue = (row: GiftPrintRow, col: GiftPrintColumnKey, rowNumber: num
 };
 
 const GiftsPrintView = forwardRef<HTMLDivElement, GiftsPrintViewProps>(
-  ({ rows, workerName, dateRange, productFilter, isVisible = false, visibleColumns, separateByProduct = true }, ref) => {
+  ({ rows, summaryRows, workerNames, workerName, dateRange, productFilter, isVisible = false, visibleColumns, separateByProduct = true, printSummary = false, summaryOnly = false }, ref) => {
     const [container, setContainer] = useState<HTMLDivElement | null>(null);
 
-    // When separating by product, remove productName column automatically
     const columns = useMemo(() => {
       let cols = visibleColumns || [
         'number', 'customerNameFr', 'phone', 'sector',
@@ -144,9 +158,8 @@ const GiftsPrintView = forwardRef<HTMLDivElement, GiftsPrintViewProps>(
       };
     }, []);
 
-    // All French filter criteria
     const workerLabel = workerName === 'جميع العمال' ? 'Tous les employés' : (workerName || 'Tous les employés');
-    const productLabel = (!productFilter || productFilter === 'جميع المنتجات') ? 'Tous les produits' : productFilter;
+    const productLabel = (!productFilter || productFilter === 'جميع المنتجات' || productFilter === 'Tous les produits') ? 'Tous les produits' : productFilter;
 
     const filterCriteria = [
       `Employé: ${workerLabel}`,
@@ -234,14 +247,85 @@ const GiftsPrintView = forwardRef<HTMLDivElement, GiftsPrintViewProps>(
       return cells;
     };
 
+    // Build summary page
+    const summaryContent = useMemo(() => {
+      if (!printSummary || !summaryRows?.length || !workerNames?.length) return null;
+      
+      return (
+        <section
+          className="print-page"
+          style={{ pageBreakBefore: summaryOnly ? 'auto' : 'always' }}
+        >
+          <div style={{ position: 'absolute', top: '45%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 0, opacity: 0.2, pointerEvents: 'none' }}>
+            <img src={logoImage} alt="" style={{ width: '280px', height: 'auto' }} />
+          </div>
+
+          <div className="print-header-with-logo" style={{ position: 'relative', zIndex: 1 }}>
+            <div className="print-logo"><img src={logoImage} alt="Laser Food" /></div>
+            <div className="print-title-section">
+              <h1 style={{ fontSize: '16pt' }}>Résumé des promotions par employé</h1>
+              <p style={{ fontSize: '10pt', fontWeight: 600, marginTop: '5px' }}>{filterCriteria}</p>
+            </div>
+            <div className="print-logo"><img src={logoImage} alt="Laser Food" /></div>
+          </div>
+
+          <table className="word-table" dir="ltr" style={{ position: 'relative', zIndex: 1 }}>
+            <thead>
+              <tr>
+                <th>Produit</th>
+                <th>Offre</th>
+                {workerNames.map(w => <th key={w} style={{ fontSize: '8pt' }}>{w}</th>)}
+                <th>Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {summaryRows.map((sr, idx) => {
+                const totalPieces = Object.values(sr.workerGifts).reduce((s, v) => s + v, 0);
+                return (
+                  <tr key={idx}>
+                    <td style={{ fontWeight: 600 }}>{sr.productName}</td>
+                    <td className="small-text">{sr.offerDetail}</td>
+                    {workerNames.map(w => {
+                      const pieces = sr.workerGifts[w] || 0;
+                      return (
+                        <td key={w} className="center bold">
+                          {pieces > 0 ? formatBoxPiece(pieces, sr.piecesPerBox) : '-'}
+                        </td>
+                      );
+                    })}
+                    <td className="center bold">{formatBoxPiece(totalPieces, sr.piecesPerBox)}</td>
+                  </tr>
+                );
+              })}
+              {/* Totals row per worker */}
+              <tr className="totals-row">
+                <td colSpan={2} className="totals-label">Total</td>
+                {workerNames.map(w => {
+                  const total = summaryRows.reduce((s, sr) => s + (sr.workerGifts[w] || 0), 0);
+                  return <td key={w} className="center bold">{total > 0 ? total : '-'}</td>;
+                })}
+                <td className="center bold">
+                  {summaryRows.reduce((s, sr) => s + Object.values(sr.workerGifts).reduce((a, b) => a + b, 0), 0)}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div className="print-footer">
+            <span>Date d'impression: {format(new Date(), 'dd/MM/yyyy HH:mm')}</span>
+            <span>Laser Food</span>
+          </div>
+        </section>
+      );
+    }, [printSummary, summaryRows, workerNames, filterCriteria]);
+
     const content = (
       <div
         ref={ref}
         className="print-container"
-        dir="rtl"
         style={{ display: isVisible ? 'block' : 'none' }}
       >
-        {pages.map((page, pageIndex) => {
+        {!summaryOnly && pages.map((page, pageIndex) => {
           const emptyRowsCount = Math.max(0, ROWS_PER_PAGE - page.rows.length);
           const pageTitle = page.productName
             ? `Registre des promotions — ${page.productName}`
@@ -267,7 +351,7 @@ const GiftsPrintView = forwardRef<HTMLDivElement, GiftsPrintViewProps>(
                 <div className="print-logo"><img src={logoImage} alt="Laser Food" /></div>
               </div>
 
-              <table className="word-table" style={{ position: 'relative', zIndex: 1 }}>
+              <table className="word-table" dir="ltr" style={{ position: 'relative', zIndex: 1 }}>
                 <thead>
                   <tr>
                     {columns.map(col => {
@@ -315,6 +399,7 @@ const GiftsPrintView = forwardRef<HTMLDivElement, GiftsPrintViewProps>(
             </section>
           );
         })}
+        {(printSummary || summaryOnly) && summaryContent}
       </div>
     );
 

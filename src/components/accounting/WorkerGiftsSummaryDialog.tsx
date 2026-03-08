@@ -15,7 +15,7 @@ import { Label } from '@/components/ui/label';
 import { format, startOfMonth, endOfMonth, addMonths, subMonths, isSameMonth } from 'date-fns';
 import { ar } from 'date-fns/locale';
 import ThermalPreview, { ThermalLine } from '@/components/stock/ThermalPreview';
-import GiftsPrintView, { GiftPrintRow } from '@/components/accounting/GiftsPrintView';
+import GiftsPrintView, { GiftPrintRow, SummaryRow } from '@/components/accounting/GiftsPrintView';
 import GiftsPrintSettingsDialog, { GiftPrintSettings } from '@/components/accounting/GiftsPrintSettingsDialog';
 
 interface Props {
@@ -525,6 +525,38 @@ const WorkerGiftsSummaryDialog: React.FC<Props> = ({ open, onOpenChange, workerI
     return rows;
   }, [giftsData, printSettings]);
 
+  // Build summary rows for the summary page
+  const { summaryRows, summaryWorkerNames } = useMemo(() => {
+    if (!giftsData?.items?.length) return { summaryRows: [] as SummaryRow[], summaryWorkerNames: [] as string[] };
+    const workerSet = new Set<string>();
+    const rows: SummaryRow[] = [];
+    const productFilter = printSettings?.productFilter;
+
+    for (const item of giftsData.items) {
+      if (productFilter && productFilter !== 'all' && item.productId !== productFilter) continue;
+      // Build offer detail string like "50 box + 1 box gift"
+      const offerDetail = item.offerDetails?.length
+        ? item.offerDetails.join(' | ')
+        : item.offerName || '-';
+
+      const workerGifts: Record<string, number> = {};
+      for (const c of item.customers) {
+        const wName = c.workerName || '-';
+        workerSet.add(wName);
+        workerGifts[wName] = (workerGifts[wName] || 0) + c.giftPieces;
+      }
+
+      rows.push({
+        productName: item.productName,
+        offerDetail,
+        workerGifts,
+        piecesPerBox: item.piecesPerBox || 1,
+      });
+    }
+
+    return { summaryRows: rows, summaryWorkerNames: Array.from(workerSet).sort() };
+  }, [giftsData, printSettings]);
+
   // Available products for filter
   const availableProducts = useMemo(() => {
     if (!giftsData?.items?.length) return [];
@@ -878,12 +910,16 @@ const WorkerGiftsSummaryDialog: React.FC<Props> = ({ open, onOpenChange, workerI
       <GiftsPrintView
         ref={printRef}
         rows={printRows}
+        summaryRows={summaryRows}
+        workerNames={summaryWorkerNames}
         workerName={allWorkers ? 'Tous les employés' : workerName}
         dateRange={periodDateLabel}
         productFilter={printProductLabel}
         isVisible={showPrintView}
         visibleColumns={printSettings?.columns}
         separateByProduct={printSettings?.separateByProduct ?? true}
+        printSummary={printSettings?.printSummary ?? false}
+        summaryOnly={printSettings?.summaryOnly ?? false}
       />
       <GiftsPrintSettingsDialog
         open={showPrintSettings}
