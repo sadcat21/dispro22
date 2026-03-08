@@ -7,7 +7,8 @@ import logoImage from '@/assets/logo.png';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { StampPriceTier, calculateStampAmount } from '@/hooks/useStampTiers';
+import { StampPriceTier } from '@/types/stamp';
+import { calculateStampAmount } from '@/hooks/useStampTiers';
 
 interface OrderItemWithProduct {
   order_id: string;
