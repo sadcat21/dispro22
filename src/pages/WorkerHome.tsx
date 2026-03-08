@@ -243,6 +243,16 @@ const WorkerHome: React.FC = () => {
 
       {hasPromoAccess ? (
         <>
+          <div className="px-4 mt-4">
+            <button
+              onClick={() => setShowManualPromoEntry(true)}
+              className="w-full rounded-2xl bg-gradient-to-br from-purple-500 to-purple-700 text-white p-4 flex items-center justify-center gap-2 shadow-lg active:scale-[0.97] transition-all"
+            >
+              <Gift className="w-5 h-5" />
+              <span className="font-bold text-sm">تسجيل عروض يدوية</span>
+            </button>
+          </div>
+
           {/* Products Section for Promo */}
           <div className="mt-4">
             <div className="px-4 mb-2">
