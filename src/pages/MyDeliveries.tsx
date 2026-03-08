@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -20,7 +20,7 @@ import { useLocationThreshold } from '@/hooks/useLocationSettings';
 import { useHasPermission } from '@/hooks/usePermissions';
 import { calculateDistance } from '@/utils/geoUtils';
 import { useLanguage, Language } from '@/contexts/LanguageContext';
-import { OrderStatus, OrderWithDetails } from '@/types/database';
+import { OrderStatus, OrderWithDetails, Product, Worker } from '@/types/database';
 import { format } from 'date-fns';
 import { ar, fr, enUS } from 'date-fns/locale';
 import LazyCustomerLocationView from '@/components/map/LazyCustomerLocationView';
@@ -37,6 +37,10 @@ import ReceiptDialog from '@/components/printing/ReceiptDialog';
 import { ReceiptItem, ReceiptType } from '@/types/receipt';
 import { useWorkerPrintInfo } from '@/hooks/useWorkerPrintInfo';
 import { useProductOffers } from '@/hooks/useProductOffers';
+import PrintOrdersDialog from '@/components/orders/PrintOrdersDialog';
+import OrdersPrintView from '@/components/print/OrdersPrintView';
+import { PrintColumnConfig } from '@/components/print/PrintColumnsConfigDialog';
+import { Eye } from 'lucide-react';
 
 type TabStatus = 'all' | OrderStatus;
 type DeliveryType = 'orders' | 'direct_sales';
@@ -74,7 +78,21 @@ const MyDeliveries: React.FC = () => {
   const [reprintReceiptData, setReprintReceiptData] = useState<any>(null);
   const [showLoadRequestDialog, setShowLoadRequestDialog] = useState(false);
 
-  // UI override checks
+  // Print state
+  const [showPrintDialog, setShowPrintDialog] = useState(false);
+  const [isPrintReady, setIsPrintReady] = useState(false);
+  const [allOrderItems, setAllOrderItems] = useState<Record<string, any[]>>({});
+  const [filteredOrdersForPrint, setFilteredOrdersForPrint] = useState<OrderWithDetails[]>([]);
+  const [printWorkerName, setPrintWorkerName] = useState<string | null>(null);
+  const [printColumnConfig, setPrintColumnConfig] = useState<PrintColumnConfig[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [workersList, setWorkersList] = useState<Worker[]>([]);
+  const printRef = useRef<HTMLDivElement>(null);
+  const [showPreviewDialog, setShowPreviewDialog] = useState(false);
+  const [previewOrders, setPreviewOrders] = useState<OrderWithDetails[]>([]);
+  const [previewItems, setPreviewItems] = useState<Record<string, any[]>>({});
+  const [previewColumnConfig, setPreviewColumnConfig] = useState<PrintColumnConfig[]>([]);
+
   const isSearchHidden = useIsElementHidden('button', 'deliveries_search');
   const isModifyHidden = useIsElementHidden('action', 'modify_delivery');
   const isCancelHidden = useIsElementHidden('action', 'cancel_delivery');
@@ -96,10 +114,110 @@ const MyDeliveries: React.FC = () => {
       });
   }, [orders]);
 
-  // Load print settings once
+  // Load print settings and products once
   useEffect(() => {
     loadPrintSettingsFromDB(null);
+    supabase.from('products').select('*').eq('is_active', true).order('sort_order', { ascending: true }).order('name')
+      .then(({ data }) => { if (data) setProducts(data); });
+    supabase.from('workers').select('*').eq('is_active', true).order('full_name')
+      .then(({ data }) => { if (data) setWorkersList(data.filter(w => w.role === 'worker')); });
   }, []);
+
+  const toMap = (record: Record<string, any[]>) => {
+    const m = new (globalThis.Map)<string, any[]>();
+    Object.entries(record).forEach(([k, v]) => m.set(k, v));
+    return m;
+  };
+
+  const handlePrint = async (_filterWorkerId: string | null, _printPerWorker: boolean, filteredOrders: OrderWithDetails[], _groupCustomers: boolean = true, _groupProducts: boolean = true, columnConfig?: PrintColumnConfig[]) => {
+    if (columnConfig) setPrintColumnConfig(columnConfig);
+    if (!filteredOrders || filteredOrders.length === 0) {
+      toast.error('لا توجد طلبيات للطباعة');
+      return;
+    }
+    try {
+      const orderIds = filteredOrders.map(o => o.id);
+      const { data: items, error } = await supabase
+        .from('order_items')
+        .select('*, product:products(*)')
+        .in('order_id', orderIds);
+      if (error) throw error;
+
+      const itemsRecord: Record<string, any[]> = {};
+      items?.forEach(item => {
+        if (!itemsRecord[item.order_id]) itemsRecord[item.order_id] = [];
+        itemsRecord[item.order_id].push(item);
+      });
+
+      setAllOrderItems(itemsRecord);
+      setFilteredOrdersForPrint(filteredOrders);
+      setPrintWorkerName(user?.full_name || null);
+      setIsPrintReady(true);
+
+      setTimeout(() => {
+        window.print();
+        setIsPrintReady(false);
+        setPrintWorkerName(null);
+      }, 500);
+    } catch (error: any) {
+      toast.error('خطأ في الطباعة');
+      console.error(error);
+    }
+  };
+
+  const handleExportCSV = async (filteredOrders: OrderWithDetails[]) => {
+    if (!filteredOrders || filteredOrders.length === 0) {
+      toast.error('لا توجد طلبيات للتصدير');
+      return;
+    }
+    try {
+      const orderIds = filteredOrders.map(o => o.id);
+      const { data: items, error } = await supabase
+        .from('order_items')
+        .select('*, product:products(*)')
+        .in('order_id', orderIds);
+      if (error) throw error;
+
+      const itemsMap: Record<string, any[]> = {};
+      items?.forEach(item => {
+        if (!itemsMap[item.order_id]) itemsMap[item.order_id] = [];
+        itemsMap[item.order_id].push(item);
+      });
+
+      const productNames = products.map(p => p.name);
+      const headers = ['رقم الطلبية', 'العميل', 'الهاتف', 'العنوان', 'تاريخ التوصيل', 'الحالة', ...productNames];
+
+      const rows = filteredOrders.map(order => {
+        const orderItemsData = itemsMap[order.id] || [];
+        const productQuantities = products.map(product => {
+          const item = orderItemsData.find((i: any) => i.product_id === product.id);
+          return item?.quantity || 0;
+        });
+        return [
+          order.id.substring(0, 8).toUpperCase(),
+          order.customer?.name || '',
+          order.customer?.phone || '',
+          order.customer?.address || '',
+          order.delivery_date || '',
+          order.status,
+          ...productQuantities
+        ];
+      });
+
+      const BOM = '\uFEFF';
+      const csvContent = BOM + [headers.join(','), ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))].join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `deliveries_${format(new Date(), 'yyyy-MM-dd_HH-mm')}.csv`;
+      link.click();
+      URL.revokeObjectURL(link.href);
+      toast.success('تم التصدير بنجاح');
+    } catch (error: any) {
+      toast.error('خطأ في التصدير');
+      console.error(error);
+    }
+  };
   
   const getDateLocale = (lang: Language) => {
     switch (lang) {
@@ -706,6 +824,9 @@ const MyDeliveries: React.FC = () => {
             <Truck className="w-4 h-4 me-1" />
             طلب شحن
           </Button>
+          <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setShowPrintDialog(true)} disabled={!orders || orders.length === 0}>
+            <Printer className="w-4 h-4" />
+          </Button>
           {!isSearchHidden && (
             <Button variant="outline" size="sm" onClick={() => setShowSearchDialog(true)}>
               <Search className="w-4 h-4" />
@@ -1048,6 +1169,88 @@ const MyDeliveries: React.FC = () => {
           receiptData={reprintReceiptData}
         />
       )}
+
+      {/* Print View (hidden, for window.print) */}
+      <OrdersPrintView
+        ref={printRef}
+        orders={filteredOrdersForPrint.length > 0 ? filteredOrdersForPrint : (orders || [])}
+        orderItems={toMap(allOrderItems)}
+        products={products}
+        title={printWorkerName ? `توصيلاتي - ${printWorkerName}` : 'قائمة التوصيلات'}
+        isVisible={isPrintReady}
+        columnConfig={printColumnConfig}
+      />
+
+      {/* Print Dialog */}
+      <PrintOrdersDialog
+        open={showPrintDialog}
+        onOpenChange={setShowPrintDialog}
+        workers={workersList}
+        orders={(orders || []).filter(o => o.status !== 'cancelled')}
+        products={products}
+        onPrint={handlePrint}
+        onExportCSV={handleExportCSV}
+        onPreview={async (filteredOrders, columnConfig) => {
+          const orderIds = filteredOrders.map(o => o.id);
+          const { data: items } = await supabase
+            .from('order_items')
+            .select('*, product:products(*)')
+            .in('order_id', orderIds);
+          const itemsRecord: Record<string, any[]> = {};
+          items?.forEach(item => {
+            if (!itemsRecord[item.order_id]) itemsRecord[item.order_id] = [];
+            itemsRecord[item.order_id].push(item);
+          });
+          setPreviewOrders(filteredOrders);
+          setPreviewItems(itemsRecord);
+          setPreviewColumnConfig(columnConfig);
+          setShowPrintDialog(false);
+          setShowPreviewDialog(true);
+        }}
+      />
+
+      {/* Print Preview Dialog */}
+      <Dialog open={showPreviewDialog} onOpenChange={setShowPreviewDialog}>
+        <DialogContent className="max-w-[95vw] max-h-[90vh] p-0 overflow-hidden">
+          <DialogHeader className="p-4 pb-2 border-b">
+            <DialogTitle className="flex items-center gap-2">
+              <Eye className="w-5 h-5" />
+              معاينة
+            </DialogTitle>
+          </DialogHeader>
+          <div className="overflow-auto max-h-[calc(90vh-8rem)] p-2">
+            <div className="transform scale-[0.6] origin-top-left" style={{ width: '166%' }}>
+              <OrdersPrintView
+                orders={previewOrders}
+                orderItems={toMap(previewItems)}
+                products={products}
+                title="قائمة التوصيلات"
+                isVisible={true}
+                columnConfig={previewColumnConfig}
+              />
+            </div>
+          </div>
+          <div className="p-3 border-t flex gap-2 justify-end">
+            <Button variant="outline" onClick={() => setShowPreviewDialog(false)}>
+              إغلاق
+            </Button>
+            <Button onClick={() => {
+              setShowPreviewDialog(false);
+              setAllOrderItems(previewItems);
+              setFilteredOrdersForPrint(previewOrders);
+              setPrintColumnConfig(previewColumnConfig);
+              setIsPrintReady(true);
+              setTimeout(() => {
+                window.print();
+                setIsPrintReady(false);
+              }, 500);
+            }}>
+              <Printer className="w-4 h-4 ms-2" />
+              طباعة
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Worker Load Request Dialog */}
       <WorkerLoadRequestDialog open={showLoadRequestDialog} onOpenChange={setShowLoadRequestDialog} />
