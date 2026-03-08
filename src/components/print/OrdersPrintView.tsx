@@ -265,7 +265,12 @@ const OrdersPrintView = forwardRef<HTMLDivElement, OrdersPrintViewProps>(
       return basePrice * multiplier;
     };
 
-    const grandTotal = orders.reduce((sum, order) => sum + getOrderTotalAmount(order), 0);
+    const grandTotal = orders.reduce((sum, order) => {
+      const orderTotal = getOrderTotalAmount(order);
+      const isCashInvoice = order.payment_type === 'with_invoice' && order.invoice_payment_method === 'cash';
+      const stamp = isCashInvoice && stampTiers.length > 0 ? calculateStampAmount(orderTotal, stampTiers) : 0;
+      return sum + orderTotal + stamp;
+    }, 0);
 
     const getShortOrderId = (orderId: string): string => orderId.substring(0, 8).toUpperCase();
 
