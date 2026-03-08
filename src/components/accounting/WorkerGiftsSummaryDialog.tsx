@@ -168,6 +168,9 @@ const WorkerGiftsSummaryDialog: React.FC<Props> = ({ open, onOpenChange, workerI
     enabled: open,
   });
 
+  const effectiveWorkerName = allWorkers ? 'جميع العمال' : (workersMap[effectiveWorkerId || ''] || workerName || '');
+  const workersList = useMemo(() => Object.entries(workersMap).map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name)), [workersMap]);
+
   const { data: giftsData, isLoading } = useQuery({
     queryKey: ['worker-gifts-summary', effectiveWorkerId, periodStart, periodEnd, allWorkers],
     queryFn: async () => {
