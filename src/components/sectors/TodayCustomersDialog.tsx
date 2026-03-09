@@ -338,7 +338,7 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
       }
     });
     return ids;
-  }, [sectorSchedules, sectors, todayName, effectiveWorkerId, isAdmin, hasSpecificWorker]);
+  }, [sectorSchedules, sectors, selectedDay, effectiveWorkerId, isAdmin, hasSpecificWorker]);
 
   const workerSectors = useMemo(() => {
     if (hasSpecificWorker) {
