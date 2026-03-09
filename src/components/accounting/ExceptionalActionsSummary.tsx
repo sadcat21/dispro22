@@ -6,6 +6,8 @@ import {
   ChevronDown,
   ChevronUp,
   Edit,
+  Eye,
+  Loader2,
   Printer,
   RotateCcw,
   Trash2,
@@ -13,6 +15,9 @@ import {
   XCircle,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { format } from 'date-fns';
 import { ar } from 'date-fns/locale';
 import {
