@@ -76,7 +76,9 @@ const ModifyOrderDialog: React.FC<ModifyOrderDialogProps> = ({
         unit_price: Number(item.unit_price || 0),
         gift_quantity: Number(item.gift_quantity || 0),
         original_gift_quantity: Number(item.gift_quantity || 0),
-        pieces_per_box: Number(item.product?.pieces_per_box || 1),
+        pieces_per_box: Number((item as any).pieces_per_box || item.product?.pieces_per_box || 1),
+        pricing_unit: (item as any).pricing_unit || item.product?.pricing_unit || 'box',
+        weight_per_box: Number((item as any).weight_per_box || item.product?.weight_per_box || 1),
       })));
       setAssignedWorkerId(order.assigned_worker_id || '');
     }
