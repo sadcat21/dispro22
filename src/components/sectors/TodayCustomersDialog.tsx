@@ -49,6 +49,7 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
   const navigate = useNavigate();
   const isAdmin = role === 'admin' || role === 'branch_admin';
   const todayName = JS_DAY_TO_NAME[new Date().getDay()] || '';
+  const [selectedDay, setSelectedDay] = useState(todayName);
   const { trackVisit } = useTrackVisit();
   const { data: locationThreshold } = useLocationThreshold();
   const canBypassLocation = useHasPermission('bypass_location_check');
@@ -297,7 +298,7 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
     const ids = new Set<string>();
     // From sector_schedules
     sectorSchedules.forEach(sc => {
-      if (sc.day === todayName && sc.schedule_type === 'sales') {
+      if (sc.day === selectedDay && sc.schedule_type === 'sales') {
         if (!hasSpecificWorker && isAdmin) {
           ids.add(sc.sector_id);
         } else if (sc.worker_id === effectiveWorkerId) {
@@ -309,18 +310,18 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
     sectors.forEach(s => {
       const hasNewSchedule = sectorSchedules.some(sc => sc.sector_id === s.id);
       if (hasNewSchedule) return;
-      if (s.visit_day_sales === todayName) {
+      if (s.visit_day_sales === selectedDay) {
         if (!hasSpecificWorker && isAdmin) ids.add(s.id);
         else if (s.sales_worker_id === effectiveWorkerId) ids.add(s.id);
       }
     });
     return ids;
-  }, [sectorSchedules, sectors, todayName, effectiveWorkerId, isAdmin, hasSpecificWorker]);
+  }, [sectorSchedules, sectors, selectedDay, effectiveWorkerId, isAdmin, hasSpecificWorker]);
 
   const todayDeliverySectorIds = useMemo(() => {
     const ids = new Set<string>();
     sectorSchedules.forEach(sc => {
-      if (sc.day === todayName && sc.schedule_type === 'delivery') {
+      if (sc.day === selectedDay && sc.schedule_type === 'delivery') {
         if (!hasSpecificWorker && isAdmin) {
           ids.add(sc.sector_id);
         } else if (sc.worker_id === effectiveWorkerId) {
@@ -331,13 +332,13 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
     sectors.forEach(s => {
       const hasNewSchedule = sectorSchedules.some(sc => sc.sector_id === s.id);
       if (hasNewSchedule) return;
-      if (s.visit_day_delivery === todayName) {
+      if (s.visit_day_delivery === selectedDay) {
         if (!hasSpecificWorker && isAdmin) ids.add(s.id);
         else if (s.delivery_worker_id === effectiveWorkerId) ids.add(s.id);
       }
     });
     return ids;
-  }, [sectorSchedules, sectors, todayName, effectiveWorkerId, isAdmin, hasSpecificWorker]);
+  }, [sectorSchedules, sectors, selectedDay, effectiveWorkerId, isAdmin, hasSpecificWorker]);
 
   const workerSectors = useMemo(() => {
     if (hasSpecificWorker) {
@@ -834,7 +835,7 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
     return sectors.filter(s => allTodayIds.has(s.id)).map(s => s.name).join(' / ');
   }, [sectors, todaySalesSectorIds, todayDeliverySectorIds]);
 
-  const dayLabel = DAY_NAMES[todayName] || todayName;
+  const dayLabel = DAY_NAMES[selectedDay] || selectedDay;
   const sectorSuffix = todaySectorNames ? ` — ${todaySectorNames}` : '';
   const title = effectiveWorkerName
     ? `عملاء اليوم — ${dayLabel} — ${effectiveWorkerName}${sectorSuffix}`
@@ -860,8 +861,10 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
                 <div className="flex gap-1.5 pb-1">
                   {workersList.filter(w => {
                     return sectors.some(s =>
-                      (s.delivery_worker_id === w.id && s.visit_day_delivery === todayName) ||
-                      (s.sales_worker_id === w.id && s.visit_day_sales === todayName)
+                      (s.delivery_worker_id === w.id && s.visit_day_delivery === selectedDay) ||
+                      (s.sales_worker_id === w.id && s.visit_day_sales === selectedDay)
+                    ) || sectorSchedules.some(sc =>
+                      sc.day === selectedDay && sc.worker_id === w.id
                     );
                   }).map(w => {
                     const isSelected = w.id === selectedAdminWorkerId;
@@ -886,7 +889,33 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
             </div>
           )}
 
-          {/* Search bar */}
+          {/* Day picker strip */}
+          <div className="border-b px-2 py-1.5 shrink-0">
+            <ScrollArea className="w-full" dir="rtl">
+              <div className="flex gap-1.5 pb-1">
+                {Object.entries(DAY_NAMES).map(([key, label]) => {
+                  const isSelected = key === selectedDay;
+                  const isToday = key === todayName;
+                  return (
+                    <button
+                      key={key}
+                      onClick={() => setSelectedDay(key)}
+                      className={`px-2.5 py-1 rounded-full border text-[11px] font-medium whitespace-nowrap transition-colors shrink-0
+                        ${isSelected
+                          ? 'bg-primary text-primary-foreground border-primary'
+                          : 'bg-background border-border hover:bg-accent text-foreground'}
+                      `}
+                    >
+                      {label}
+                      {isToday && !isSelected && <span className="mr-0.5 text-[9px] text-primary">●</span>}
+                    </button>
+                  );
+                })}
+              </div>
+              <ScrollBar orientation="horizontal" />
+            </ScrollArea>
+          </div>
+
           <div className="px-3 pt-2 pb-1 shrink-0">
             <div className="relative">
               <Search className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
