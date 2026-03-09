@@ -354,15 +354,16 @@ const ModifyOrderDialog: React.FC<ModifyOrderDialogProps> = ({
         }
       }
 
-      // Recalculate total (paid qty only)
+      // Recalculate total (paid qty only, with box multiplier)
       const { data: updatedItems } = await supabase
         .from('order_items')
-        .select('quantity, unit_price, gift_quantity')
+        .select('quantity, unit_price, gift_quantity, pricing_unit, weight_per_box, pieces_per_box')
         .eq('order_id', order.id);
 
       const newTotal = updatedItems?.reduce((sum, i: any) => {
         const paidQty = Math.max(0, Number(i.quantity) - Number(i.gift_quantity || 0));
-        return sum + (paidQty * Number(i.unit_price || 0));
+        const mult = getBoxMultiplier(i.pricing_unit || 'box', Number(i.weight_per_box || 1), Number(i.pieces_per_box || 1));
+        return sum + (paidQty * Number(i.unit_price || 0) * mult);
       }, 0) || 0;
 
       const orderUpdate: Record<string, any> = {};
