@@ -947,16 +947,17 @@ const MyDeliveries: React.FC = () => {
                 {/* Store name + sector */}
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <Store className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                  <span className="font-bold text-sm">{selectedOrder.customer.store_name || selectedOrder.customer.name}</span>
+                  <CustomerLabel
+                    customer={{
+                      name: selectedOrder.customer.name,
+                      store_name: selectedOrder.customer.store_name,
+                      customer_type: selectedOrder.customer.customer_type,
+                      sector_name: (selectedOrder.customer as any)?.sector ? getLocalizedName((selectedOrder.customer as any).sector, language) : undefined,
+                    }}
+                    compact
+                  />
                   {customerDebts[selectedOrder.customer_id] && (
                     <AlertTriangle className="w-3.5 h-3.5 text-destructive shrink-0" />
-                  )}
-                  {(selectedOrder.customer as any)?.sector && (
-                    <Badge variant="outline" className="text-[10px] px-1 py-0 gap-0.5">
-                      <Map className="w-2.5 h-2.5" />
-                      {getLocalizedName((selectedOrder.customer as any).sector, language)}
-                      {(selectedOrder.customer as any)?.zone && ` • ${getLocalizedName((selectedOrder.customer as any).zone, language)}`}
-                    </Badge>
                   )}
                 </div>
                 {/* Customer name + phone */}
