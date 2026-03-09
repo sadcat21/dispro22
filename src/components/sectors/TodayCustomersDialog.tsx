@@ -1537,6 +1537,12 @@ const DebtList: React.FC<{ debts: DueDebt[]; onCollect: (d: DueDebt) => void; on
               <UserX className="w-3 h-3" />
               غير متاح
             </Button>
+            {onDebtRefused && (
+              <Button variant="ghost" size="sm" className="h-6 text-[10px] px-1.5 gap-0.5 text-purple-600" onClick={(e) => { e.stopPropagation(); onDebtRefused(debt); }}>
+                <BanknoteIcon className="w-3 h-3" />
+                رفض الدين
+              </Button>
+            )}
           </div>
         </div>
       ))}
