@@ -432,10 +432,10 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
     queryKey: ['sales-worker-visits-for-prevente', salesWorkerIds, todayStart],
     queryFn: async () => {
       if (salesWorkerIds.length === 0) return [];
-      // Get visits by sales workers in the last 7 days for these sectors
+      // Get visits by sales workers in the last 7 days for these sectors (include notes for status badges)
       const { data } = await supabase
         .from('visit_tracking')
-        .select('customer_id, worker_id, operation_type')
+        .select('customer_id, worker_id, operation_type, notes')
         .in('worker_id', salesWorkerIds)
         .gte('created_at', sevenDaysAgo);
       return data || [];
@@ -458,33 +458,64 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
     enabled: !!effectiveWorkerId && open && salesWorkerIds.length > 0,
   });
 
-  // Customers visited or ordered by sales worker = should NOT be in direct sale
-  const salesWorkerTouchedCustomerIds = useMemo(() => {
+  // Customers visited or ordered by sales worker (for reference)
+  const salesWorkerOrderedCustomerIds = useMemo(() => {
     const ids = new Set<string>();
-    salesWorkerVisits.forEach(v => { if (v.customer_id) ids.add(v.customer_id); });
     salesWorkerOrders.forEach(o => { if (o.customer_id) ids.add(o.customer_id); });
     return ids;
-  }, [salesWorkerVisits, salesWorkerOrders]);
+  }, [salesWorkerOrders]);
+
+  // Sales rep visit status map for Prévente customers (used for badges)
+  // Status: 'ordered' | 'visited' | 'closed' | 'unavailable' | 'not_visited'
+  const salesRepStatusMap = useMemo(() => {
+    const map = new Map<string, string>();
+    const preventeSectorIds = new Set(preventeDeliverySectors.map(s => s.id));
+    // Mark all Prévente customers as not_visited by default
+    customers.forEach(c => {
+      if (c.sector_id && preventeSectorIds.has(c.sector_id)) {
+        map.set(c.id, 'not_visited');
+      }
+    });
+    // Override with actual visit status
+    salesWorkerVisits.forEach(v => {
+      if (!v.customer_id) return;
+      if (!map.has(v.customer_id)) return;
+      if (v.notes && /مغلق/.test(v.notes)) {
+        map.set(v.customer_id, 'closed');
+      } else if (v.notes && /غير متاح/.test(v.notes)) {
+        map.set(v.customer_id, 'unavailable');
+      } else if (map.get(v.customer_id) === 'not_visited') {
+        map.set(v.customer_id, 'visited');
+      }
+    });
+    // Override with ordered status (highest priority)
+    salesWorkerOrders.forEach(o => {
+      if (o.customer_id && map.has(o.customer_id)) {
+        map.set(o.customer_id, 'ordered');
+      }
+    });
+    return map;
+  }, [salesWorkerVisits, salesWorkerOrders, customers, preventeDeliverySectors]);
 
   // Direct sale customers:
   // 1. Cash Van sectors (today delivery) → ALL customers
-  // 2. Prévente sectors (today delivery) → customers NOT visited/ordered by sales worker AND not having pending delivery orders
+  // 2. Prévente sectors (today delivery) → ALL customers EXCEPT those with pending delivery orders or already ordered by sales rep
   const directSaleCustomers = useMemo(() => {
     const cashVanSectorIds = new Set(todayDeliverySectors.filter(s => (s as any).sector_type === 'cash_van').map(s => s.id));
     const preventeSectorIds = new Set(preventeDeliverySectors.map(s => s.id));
     
     const cashVanCustomers = customers.filter(c => c.sector_id && cashVanSectorIds.has(c.sector_id) && !deliveredCustomerIds.has(c.id));
-    const preventeUnvisitedCustomers = customers.filter(c => 
+    const preventeAllCustomers = customers.filter(c => 
       c.sector_id && preventeSectorIds.has(c.sector_id) && 
       !deliveryCustomerIdsWithOrders.has(c.id) && 
       !deliveredCustomerIds.has(c.id) &&
-      !salesWorkerTouchedCustomerIds.has(c.id)
+      !salesWorkerOrderedCustomerIds.has(c.id)
     );
     
     const combined = new Map<string, typeof customers[0]>();
-    [...cashVanCustomers, ...preventeUnvisitedCustomers].forEach(c => combined.set(c.id, c));
+    [...cashVanCustomers, ...preventeAllCustomers].forEach(c => combined.set(c.id, c));
     return Array.from(combined.values());
-  }, [todayDeliverySectors, preventeDeliverySectors, customers, deliveredCustomerIds, deliveryCustomerIdsWithOrders, salesWorkerTouchedCustomerIds]);
+  }, [todayDeliverySectors, preventeDeliverySectors, customers, deliveredCustomerIds, deliveryCustomerIdsWithOrders, salesWorkerOrderedCustomerIds]);
 
   // Direct sale sub-categorization
   const directSoldCustomerIds = useMemo(() => new Set(todayDirectSales.map(s => s.customer_id).filter(Boolean)), [todayDirectSales]);
@@ -1008,7 +1039,7 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
                 </TabsList>
 
                 <TabsContent value="pending" className="m-0 flex-1 min-h-0" style={{ overflow: 'auto', maxHeight: '55vh' }}>
-                  <CustomerList customers={directSalePending} emptyMessage="لا توجد محلات متاحة للبيع المباشر" onCustomerClick={handleDirectSaleClick} onClosed={handleDirectSaleClosed} onUnavailable={handleDirectSaleUnavailable} onNoSale={handleDirectSaleNoSale} showActionButtons showNoSaleButton checkingLocationFor={checkingLocationFor} searchQuery={searchQuery} sectors={sectors} />
+                  <CustomerList customers={directSalePending} emptyMessage="لا توجد محلات متاحة للبيع المباشر" onCustomerClick={handleDirectSaleClick} onClosed={handleDirectSaleClosed} onUnavailable={handleDirectSaleUnavailable} onNoSale={handleDirectSaleNoSale} showActionButtons showNoSaleButton checkingLocationFor={checkingLocationFor} searchQuery={searchQuery} sectors={sectors} salesRepStatusMap={salesRepStatusMap} />
                 </TabsContent>
                 <TabsContent value="sold" className="m-0 flex-1 min-h-0" style={{ overflow: 'auto', maxHeight: '55vh' }}>
                   <CustomerList customers={directSaleSold} emptyMessage="لا توجد مبيعات بعد" onCustomerClick={handleShowDirectSaleDetails} showPrintButton onPrint={handlePrintDirectSale} checkingLocationFor={checkingLocationFor} searchQuery={searchQuery} sectors={sectors} />
@@ -1292,7 +1323,8 @@ const CustomerList: React.FC<{
   loadingFor?: string | null;
   searchQuery?: string;
   sectors?: any[];
-}> = ({ customers, emptyMessage, onCustomerClick, onVisitWithoutOrder, onClosed, onUnavailable, onNoSale, onPrint, showVisitButton, visitButtonLabel, showActionButtons, showPrintButton, showNoSaleButton, checkingLocationFor, loadingFor, searchQuery, sectors }) => {
+  salesRepStatusMap?: Map<string, string>;
+}> = ({ customers, emptyMessage, onCustomerClick, onVisitWithoutOrder, onClosed, onUnavailable, onNoSale, onPrint, showVisitButton, visitButtonLabel, showActionButtons, showPrintButton, showNoSaleButton, checkingLocationFor, loadingFor, searchQuery, sectors, salesRepStatusMap }) => {
   const filtered = useMemo(() => {
     if (!searchQuery?.trim()) return customers;
     const q = searchQuery.trim().toLowerCase();
@@ -1329,7 +1361,15 @@ const CustomerList: React.FC<{
                   customer_type: c.customer_type,
                   sector_name: sector?.name,
                 }}
-              />
+               />
+               {salesRepStatusMap && salesRepStatusMap.has(c.id) && (() => {
+                 const status = salesRepStatusMap.get(c.id);
+                 if (status === 'not_visited') return <Badge className="text-[9px] px-1.5 py-0 h-4 bg-amber-100 text-amber-700 border-0">بدون زيارة</Badge>;
+                 if (status === 'closed') return <Badge className="text-[9px] px-1.5 py-0 h-4 bg-red-100 text-red-700 border-0">مغلق</Badge>;
+                 if (status === 'unavailable') return <Badge className="text-[9px] px-1.5 py-0 h-4 bg-gray-100 text-gray-600 border-0">غير متاح</Badge>;
+                 if (status === 'visited') return <Badge className="text-[9px] px-1.5 py-0 h-4 bg-blue-100 text-blue-700 border-0">تمت الزيارة</Badge>;
+                 return null;
+               })()}
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 {c.phone && <span>{c.phone}</span>}
                 {c.wilaya && <span>• {c.wilaya}</span>}
