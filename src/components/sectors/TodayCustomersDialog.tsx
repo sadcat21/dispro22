@@ -321,7 +321,7 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
   const todayDeliverySectorIds = useMemo(() => {
     const ids = new Set<string>();
     sectorSchedules.forEach(sc => {
-      if (sc.day === todayName && sc.schedule_type === 'delivery') {
+      if (sc.day === selectedDay && sc.schedule_type === 'delivery') {
         if (!hasSpecificWorker && isAdmin) {
           ids.add(sc.sector_id);
         } else if (sc.worker_id === effectiveWorkerId) {
