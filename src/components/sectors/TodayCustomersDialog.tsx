@@ -214,6 +214,15 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
     enabled: !!effectiveWorkerId && open,
   });
 
+  // Fetch all zones for badge display and grouping
+  const { data: allZones = [] } = useQuery({
+    queryKey: ['today-cust-zones'],
+    queryFn: async () => {
+      const { data } = await supabase.from('sector_zones').select('*').order('name');
+      return data || [];
+    },
+    enabled: open,
+  });
 
   const { data: todayDeliveredOrders = [] } = useQuery({
     queryKey: ['today-delivered-dialog', effectiveWorkerId, selectedDayBounds.start, selectedDayBounds.end, isAdmin],
