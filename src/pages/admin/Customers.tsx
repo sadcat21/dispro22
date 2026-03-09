@@ -510,7 +510,7 @@ const Customers: React.FC = () => {
             forceOpen={expandAllSectors}
           >
             {group.customers.map((customer) => {
-              const { percent, missing } = getCustomerCompletion(customer);
+              const { percent, missing, missingCompletion } = getCustomerCompletion(customer);
               const lastOrder = lastOrders[customer.id];
               return (
           <Card key={customer.id}>
