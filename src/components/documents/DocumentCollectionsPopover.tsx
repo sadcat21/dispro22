@@ -264,7 +264,7 @@ const PendingDocList: React.FC<{ orders: PendingDocOrder[]; onCollect: (o: Pendi
         {orders.map(order => (
           <div key={order.id} className="p-3 space-y-2">
             <div className="flex items-center justify-between">
-              <CustomerLabel customer={{ name: order.customer?.name, store_name: order.customer?.store_name, customer_type: order.customer?.customer_type }} compact hideBadges />
+              <CustomerLabel customer={{ name: order.customer?.name, store_name: order.customer?.store_name, customer_type: order.customer?.customer_type, sector_name: (order.customer as any)?.sector_id && sectorMap ? sectorMap.get((order.customer as any).sector_id) : undefined }} compact hideBadges />
               <Badge className={`text-[10px] ${getDocColor(order.invoice_payment_method)}`}>
                 {getDocLabel(order.invoice_payment_method)}
               </Badge>
