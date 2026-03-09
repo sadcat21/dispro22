@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import CustomerLabel from '@/components/customers/CustomerLabel';
+import { getLocalizedName } from '@/utils/sectorName';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
