@@ -244,13 +244,22 @@ const AccountingSessions: React.FC = () => {
                           {t(`accounting.status_${session.status}`)}
                         </Badge>
                         {isAdminOrBranchAdmin && (
-                          <button
-                            onClick={(e) => handleDeleteSession(session, e)}
-                            className="p-1 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                            title="حذف الجلسة"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={(e) => handleCancelSession(session, e)}
+                              className="p-1 rounded-md text-muted-foreground hover:text-orange-600 hover:bg-orange-100 transition-colors"
+                              title="إلغاء الجلسة (استعادة الحسابات)"
+                            >
+                              <RotateCcw className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={(e) => handleDeleteSession(session, e)}
+                              className="p-1 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                              title="حذف الجلسة (بدون استعادة)"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         )}
                       </div>
                     </div>
