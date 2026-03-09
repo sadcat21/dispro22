@@ -73,12 +73,51 @@ const MyDeliveries: React.FC = () => {
   
   const { data: rawOrders, isLoading, refetch: refetchOrders } = useAssignedOrders();
   
-  // Filter by selected worker for admin
+  // Cutoff: filter out delivered/cancelled orders before last accounting session
+  const cutoffWorkerId = contextWorkerId || (!isAdminOrBranchAdmin ? workerId : null);
+
+  const { data: lastAccountingSession } = useQuery({
+    queryKey: ['worker-last-accounting-session', cutoffWorkerId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('accounting_sessions')
+        .select('completed_at, period_end')
+        .eq('worker_id', cutoffWorkerId!)
+        .eq('status', 'completed')
+        .order('completed_at', { ascending: false })
+        .order('period_end', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!cutoffWorkerId,
+  });
+
+  const cutoffDate = useMemo(() => {
+    if (!lastAccountingSession) return null;
+    const text = lastAccountingSession.completed_at || lastAccountingSession.period_end;
+    if (!text) return null;
+    const d = new Date(text);
+    return Number.isNaN(d.getTime()) ? null : d;
+  }, [lastAccountingSession]);
+
+  // Filter by selected worker for admin + apply cutoff
   const orders = React.useMemo(() => {
-    if (!rawOrders) return rawOrders;
-    if (!contextWorkerId || !isAdminOrBranchAdmin) return rawOrders;
-    return rawOrders.filter(o => o.assigned_worker_id === contextWorkerId || o.created_by === contextWorkerId);
-  }, [rawOrders, contextWorkerId, isAdminOrBranchAdmin]);
+    let list = rawOrders || [];
+    if (contextWorkerId && isAdminOrBranchAdmin) {
+      list = list.filter(o => o.assigned_worker_id === contextWorkerId || o.created_by === contextWorkerId);
+    }
+    if (cutoffDate) {
+      list = list.filter(order => {
+        if (order.status === 'delivered' || order.status === 'cancelled') {
+          return new Date(order.created_at) > cutoffDate;
+        }
+        return true;
+      });
+    }
+    return list;
+  }, [rawOrders, contextWorkerId, isAdminOrBranchAdmin, cutoffDate]);
   const { data: selectedOrderItems } = useOrderItems(selectedOrderId);
   const updateStatus = useUpdateOrderStatus();
   const cancelOrder = useCancelOrder();
