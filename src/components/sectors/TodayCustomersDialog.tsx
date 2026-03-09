@@ -1572,7 +1572,11 @@ const CustomerList: React.FC<{
                })()}
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 {c.phone && <span>{c.phone}</span>}
-                {c.wilaya && <span>• {c.wilaya}</span>}
+                {distanceMap?.has(c.id) ? (
+                  <span>• 📍 {distanceMap.get(c.id)!} م</span>
+                ) : c.wilaya ? (
+                  <span>• {c.wilaya}</span>
+                ) : null}
                 {timeMap?.has(c.id) && (
                   <span className="flex items-center gap-0.5 text-[10px]">
                     <Clock className="w-3 h-3" />
@@ -1580,12 +1584,6 @@ const CustomerList: React.FC<{
                   </span>
                 )}
               </div>
-              {deliveryTimeMap?.has(c.id) && (
-                <div className="flex items-center gap-1 text-[10px] text-green-600 mt-0.5">
-                  <Check className="w-3 h-3" />
-                  <span>تم التسليم: {format(new Date(deliveryTimeMap.get(c.id)!), 'HH:mm')}</span>
-                </div>
-              )}
             </div>
           </button>
           <div className="flex items-center gap-1 mt-1.5 justify-end flex-wrap">
