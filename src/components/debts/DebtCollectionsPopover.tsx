@@ -187,7 +187,7 @@ const DebtCollectionsPopover: React.FC = () => {
           <DialogContent className="max-w-[95vw] sm:max-w-sm p-4 gap-3" dir="rtl">
             <DialogHeader className="pb-0">
               <DialogTitle className="text-base truncate">
-                {selectedDebt.customer?.store_name || selectedDebt.customer?.name || '—'}
+                <CustomerLabel customer={{ name: selectedDebt.customer?.name, store_name: selectedDebt.customer?.store_name, customer_type: selectedDebt.customer?.customer_type }} compact />
               </DialogTitle>
             </DialogHeader>
 
@@ -282,7 +282,7 @@ const DueDebtsList: React.FC<{ debts: DueDebt[]; onSelect: (d: DueDebt) => void 
             onClick={() => onSelect(debt)}
           >
             <div className="flex items-center justify-between">
-              <CustomerLabel customer={{ name: debt.customer?.name, store_name: debt.customer?.store_name, customer_type: debt.customer?.customer_type }} compact hideBadges />
+              <CustomerLabel customer={{ name: debt.customer?.name, store_name: debt.customer?.store_name, customer_type: debt.customer?.customer_type }} compact hideBadges /_type: debt.customer?.customer_type }} compact hideBadges />
               <span className="text-destructive font-bold">{Number(debt.remaining_amount).toLocaleString()} DA</span>
             </div>
             <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
