@@ -298,7 +298,7 @@ const Customers: React.FC = () => {
       );
     }
     return filtered;
-  }, [searchQuery, filteredByBranch, sectorFilter, typeFilter, missingFilter]);
+  }, [searchQuery, filteredByBranch, sectorFilter, zoneFilter, typeFilter, missingFilter]);
 
   // Fetch last delivered orders for all customers
   useEffect(() => {
