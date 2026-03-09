@@ -340,7 +340,7 @@ const WorkerLoadRequestDialog: React.FC<WorkerLoadRequestDialogProps> = ({ open,
                 </div>
 
                 {/* Orders list */}
-                <div className="flex-1 min-h-0 overflow-hidden">
+                <div className="flex-1 min-h-[35vh] overflow-hidden">
                   <ScrollArea className="h-full">
                     <div className="space-y-1.5 px-3 pb-2">
                       {availableOrders.map(order => {
