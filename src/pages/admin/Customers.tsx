@@ -445,6 +445,17 @@ const Customers: React.FC = () => {
     }
   };
 
+  // Fetch zones when sector filter changes
+  useEffect(() => {
+    setZoneFilter('all');
+    if (sectorFilter && sectorFilter !== 'all' && sectorFilter !== 'none') {
+      supabase.from('sector_zones').select('*').eq('sector_id', sectorFilter).order('name').then(({ data }) => {
+        setSectorZones((data || []) as any);
+      });
+    } else {
+      setSectorZones([]);
+    }
+  }, [sectorFilter]);
 
   const renderCustomersList = () => (
     <div className="space-y-2">
