@@ -39,6 +39,7 @@ import WorkerPointsDialog from '@/components/rewards/WorkerPointsDialog';
 import StockVerificationDialog from '@/components/stock/StockVerificationDialog';
 import WorkerAttendanceLogDialog from '@/components/attendance/WorkerAttendanceLogDialog';
 import WorkerSalesSummaryDialog from '@/components/accounting/WorkerSalesSummaryDialog';
+import WorkerOrdersSummaryDialog from '@/components/accounting/WorkerOrdersSummaryDialog';
 import WorkerGiftsSummaryDialog from '@/components/accounting/WorkerGiftsSummaryDialog';
 import EditWorkerProfileDialog from '@/components/workers/EditWorkerProfileDialog';
 import WorkerAchievementsDialog from '@/components/workers/WorkerAchievementsDialog';
