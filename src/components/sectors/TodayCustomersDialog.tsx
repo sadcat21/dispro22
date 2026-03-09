@@ -796,11 +796,18 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
     setShowVisitNoPayment(true);
   };
 
+  const todaySectorNames = useMemo(() => {
+    const allTodayIds = new Set([...todaySalesSectorIds, ...Array.from(todayDeliverySectorIds)]);
+    return sectors.filter(s => allTodayIds.has(s.id)).map(s => s.name).join(' / ');
+  }, [sectors, todaySalesSectorIds, todayDeliverySectorIds]);
+
+  const dayLabel = DAY_NAMES[todayName] || todayName;
+  const sectorSuffix = todaySectorNames ? ` — ${todaySectorNames}` : '';
   const title = effectiveWorkerName
-    ? `عملاء اليوم — ${effectiveWorkerName}`
+    ? `عملاء اليوم — ${dayLabel} — ${effectiveWorkerName}${sectorSuffix}`
     : selectedAdminWorkerId && isAdmin
-    ? `عملاء اليوم — ${workersList.find(w => w.id === selectedAdminWorkerId)?.full_name || ''}`
-    : `عملاء اليوم — ${DAY_NAMES[todayName] || todayName}`;
+    ? `عملاء اليوم — ${dayLabel} — ${workersList.find(w => w.id === selectedAdminWorkerId)?.full_name || ''}${sectorSuffix}`
+    : `عملاء اليوم — ${dayLabel}${sectorSuffix}`;
 
   return (
     <>
