@@ -365,6 +365,12 @@ const Customers: React.FC = () => {
     return sector ? getLocalizedName(sector, language) : null;
   };
 
+  const getZoneName = (zoneId: string | null | undefined) => {
+    if (!zoneId) return null;
+    const zone = allZones.find(z => z.id === zoneId);
+    return zone ? getLocalizedName(zone, language) : null;
+  };
+
   const handleCustomerAdded = (newCustomer: Customer) => {
     setCustomers(prev => [...prev, newCustomer].sort((a, b) => a.name.localeCompare(b.name)));
     setShowAddDialog(false);
