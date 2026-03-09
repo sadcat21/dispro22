@@ -500,6 +500,26 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
     });
     return map;
   }, [todayCollections]);
+
+  // Distance map: customer_id -> distance in meters (worker position at visit time vs customer stored location)
+  const customerDistanceMap = useMemo(() => {
+    const map = new Map<string, number>();
+    todayVisits.forEach(v => {
+      if (v.customer_id && v.latitude && v.longitude) {
+        const customer = customers.find(c => c.id === v.customer_id);
+        if (customer?.latitude && customer?.longitude) {
+          const distKm = calculateDistance(v.latitude, v.longitude, customer.latitude, customer.longitude);
+          const distMeters = Math.round(distKm * 1000);
+          // Keep the most recent visit distance
+          if (!map.has(v.customer_id) || (v.created_at && v.created_at > (todayVisits.find(tv => tv.customer_id === v.customer_id && map.has(v.customer_id))?.created_at || ''))) {
+            map.set(v.customer_id, distMeters);
+          }
+        }
+      }
+    });
+    return map;
+  }, [todayVisits, customers]);
+
   const deliveryVisitedCustomerIds = useMemo(() => new Set(todayVisits.filter(v => v.operation_type === 'delivery_visit').map(v => v.customer_id).filter(Boolean)), [todayVisits]);
   const deliveryNotDone = useMemo(() => deliveryCustomers.filter(c => !deliveredCustomerIds.has(c.id) && !deliveryVisitedCustomerIds.has(c.id)), [deliveryCustomers, deliveredCustomerIds, deliveryVisitedCustomerIds]);
   const deliveryNotReceived = useMemo(() => deliveryCustomers.filter(c => deliveryVisitedCustomerIds.has(c.id) && !deliveredCustomerIds.has(c.id)), [deliveryCustomers, deliveryVisitedCustomerIds, deliveredCustomerIds]);
