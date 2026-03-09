@@ -1303,6 +1303,7 @@ const CustomerList: React.FC<{
                   name: c.name,
                   store_name: c.store_name,
                   customer_type: c.customer_type,
+                  sector_name: sectors?.find((s: any) => s.id === c.sector_id)?.name,
                 }}
               />
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
