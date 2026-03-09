@@ -1323,7 +1323,8 @@ const CustomerList: React.FC<{
   loadingFor?: string | null;
   searchQuery?: string;
   sectors?: any[];
-}> = ({ customers, emptyMessage, onCustomerClick, onVisitWithoutOrder, onClosed, onUnavailable, onNoSale, onPrint, showVisitButton, visitButtonLabel, showActionButtons, showPrintButton, showNoSaleButton, checkingLocationFor, loadingFor, searchQuery, sectors }) => {
+  salesRepStatusMap?: Map<string, string>;
+}> = ({ customers, emptyMessage, onCustomerClick, onVisitWithoutOrder, onClosed, onUnavailable, onNoSale, onPrint, showVisitButton, visitButtonLabel, showActionButtons, showPrintButton, showNoSaleButton, checkingLocationFor, loadingFor, searchQuery, sectors, salesRepStatusMap }) => {
   const filtered = useMemo(() => {
     if (!searchQuery?.trim()) return customers;
     const q = searchQuery.trim().toLowerCase();
