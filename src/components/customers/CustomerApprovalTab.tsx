@@ -198,7 +198,7 @@ const CustomerApprovalTab: React.FC = () => {
         setProcessingId(request.id);
         try {
             if (request.operation_type === 'update' && request.customer_id) {
-                const { debtAmount, initial_debt: _id, new_debt_amount, ...updateData } = request.payload;
+                const { debtAmount, initial_debt: _id, new_debt_amount, changed_fields, ...updateData } = request.payload;
                 const { error: updateError } = await supabase
                     .from('customers').update(updateData).eq('id', request.customer_id);
                 if (updateError) throw updateError;
