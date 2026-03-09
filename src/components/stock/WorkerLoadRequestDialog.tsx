@@ -340,7 +340,7 @@ const WorkerLoadRequestDialog: React.FC<WorkerLoadRequestDialogProps> = ({ open,
                 </div>
 
                 {/* Orders list */}
-                <div className="flex-1 min-h-0">
+                <div className="flex-1 min-h-0 overflow-hidden">
                   <ScrollArea className="h-full">
                     <div className="space-y-1.5 px-3 pb-2">
                       {availableOrders.map(order => {
@@ -396,12 +396,12 @@ const WorkerLoadRequestDialog: React.FC<WorkerLoadRequestDialogProps> = ({ open,
 
                 {/* Aggregated products summary */}
                 {selectedOrderIds.size > 0 && (
-                  <div className="border-t bg-background px-3 pt-2.5 pb-1 shrink-0 relative z-10">
+                  <div className="border-t-2 border-primary/20 bg-muted/40 px-3 pt-2.5 pb-1 shrink-0 relative z-10 shadow-[0_-2px_8px_rgba(0,0,0,0.06)]">
                     <p className="text-[11px] font-semibold text-foreground mb-1.5 flex items-center gap-1.5">
                       <Package className="w-3.5 h-3.5 text-primary" />
                       ملخص المنتجات ({aggregatedProducts.length})
                     </p>
-                    <ScrollArea className="max-h-[16vh]">
+                    <ScrollArea className="max-h-[14vh]">
                       <div className="grid grid-cols-1 gap-1">
                         {aggregatedProducts.map(p => (
                           <div key={p.productId} className="flex items-center justify-between bg-background rounded-lg px-2.5 py-1.5 ring-1 ring-border/30">
