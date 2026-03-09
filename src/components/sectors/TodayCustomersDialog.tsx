@@ -1489,7 +1489,7 @@ const CustomerList: React.FC<{
 };
 
 // Reusable DebtList component
-const DebtList: React.FC<{ debts: DueDebt[]; onCollect: (d: DueDebt) => void; onVisitNoPayment: (d: DueDebt) => void; onClosed: (d: DueDebt) => void; onUnavailable: (d: DueDebt) => void; emptyMessage: string; searchQuery?: string }> = ({ debts, onCollect, onVisitNoPayment, onClosed, onUnavailable, emptyMessage, searchQuery }) => {
+const DebtList: React.FC<{ debts: DueDebt[]; onCollect: (d: DueDebt) => void; onVisitNoPayment: (d: DueDebt) => void; onClosed: (d: DueDebt) => void; onUnavailable: (d: DueDebt) => void; onDebtRefused?: (d: DueDebt) => void; emptyMessage: string; searchQuery?: string }> = ({ debts, onCollect, onVisitNoPayment, onClosed, onUnavailable, onDebtRefused, emptyMessage, searchQuery }) => {
   const filtered = useMemo(() => {
     if (!searchQuery?.trim()) return debts;
     const q = searchQuery.trim().toLowerCase();
