@@ -198,7 +198,7 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
       // Use stock_movements to determine actual delivery time accurately
       let smQuery = supabase
         .from('stock_movements')
-        .select('order_id')
+        .select('order_id, created_at')
         .eq('movement_type', 'delivery')
         .gte('created_at', todayStart)
         .lte('created_at', todayEnd);
@@ -208,15 +208,23 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
       const { data: movements } = await smQuery;
       if (!movements || movements.length === 0) return [];
 
+      // Build a map of order_id -> earliest delivery time
+      const deliveryTimeMap: Record<string, string> = {};
+      movements.forEach(m => {
+        if (m.order_id && (!deliveryTimeMap[m.order_id] || m.created_at < deliveryTimeMap[m.order_id])) {
+          deliveryTimeMap[m.order_id] = m.created_at;
+        }
+      });
+
       const orderIds = [...new Set(movements.map(m => m.order_id).filter(Boolean))];
       if (orderIds.length === 0) return [];
 
       const { data } = await supabase
         .from('orders')
-        .select('customer_id, status, assigned_worker_id')
+        .select('id, customer_id, status, assigned_worker_id')
         .in('id', orderIds)
         .eq('status', 'delivered');
-      return data || [];
+      return (data || []).map(o => ({ ...o, delivered_at: deliveryTimeMap[o.id] || null }));
     },
     enabled: !!effectiveWorkerId && open,
     refetchInterval: 10000,
