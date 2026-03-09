@@ -171,7 +171,7 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
     queryFn: async () => {
       const { data } = await supabase
         .from('visit_tracking')
-        .select('customer_id, operation_type, notes, created_at')
+        .select('customer_id, operation_type, notes, created_at, latitude, longitude')
         .eq('worker_id', effectiveWorkerId!)
         .gte('created_at', todayStart);
       return data || [];
