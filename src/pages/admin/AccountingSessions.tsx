@@ -35,6 +35,7 @@ const AccountingSessions: React.FC = () => {
   const { workerId: contextWorkerId } = useSelectedWorker();
   const [selectedSession, setSelectedSession] = useState<AccountingSession | null>(null);
   const [deleteSession2, setDeleteSession2] = useState<AccountingSession | null>(null);
+  const [cancelSession2, setCancelSession2] = useState<AccountingSession | null>(null);
   const [workers, setWorkers] = useState<{ id: string; full_name: string }[]>([]);
   const [loadingWorkers, setLoadingWorkers] = useState(true);
   const [previewWorker, setPreviewWorker] = useState<{ id: string; name: string } | null>(null);
