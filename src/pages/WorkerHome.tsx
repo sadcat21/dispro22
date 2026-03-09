@@ -421,6 +421,10 @@ const WorkerHome: React.FC = () => {
         open={showPalletCalculator}
         onOpenChange={setShowPalletCalculator}
       />
+      <ManualPromoEntryDialog
+        open={showManualPromoEntry}
+        onOpenChange={setShowManualPromoEntry}
+      />
     </div>
   );
 };
