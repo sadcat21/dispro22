@@ -70,7 +70,14 @@ const MyDeliveries: React.FC = () => {
     lat: number; lng: number; name: string; address?: string;
   } | null>(null);
   
-  const { data: orders, isLoading, refetch: refetchOrders } = useAssignedOrders();
+  const { data: rawOrders, isLoading, refetch: refetchOrders } = useAssignedOrders();
+  
+  // Filter by selected worker for admin
+  const orders = React.useMemo(() => {
+    if (!rawOrders) return rawOrders;
+    if (!contextWorkerId || !isAdminOrBranchAdmin) return rawOrders;
+    return rawOrders.filter(o => o.assigned_worker_id === contextWorkerId || o.created_by === contextWorkerId);
+  }, [rawOrders, contextWorkerId, isAdminOrBranchAdmin]);
   const { data: selectedOrderItems } = useOrderItems(selectedOrderId);
   const updateStatus = useUpdateOrderStatus();
   const cancelOrder = useCancelOrder();
