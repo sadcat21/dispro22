@@ -771,6 +771,20 @@ const Customers: React.FC = () => {
               </SelectContent>
             </Select>
           )}
+          {sectorZones.length > 0 && sectorFilter !== 'all' && sectorFilter !== 'none' && (
+            <Select value={zoneFilter} onValueChange={setZoneFilter}>
+              <SelectTrigger className="flex-1 h-8 text-xs">
+                <SelectValue placeholder="كل المناطق" />
+              </SelectTrigger>
+              <SelectContent className="bg-popover z-[100]">
+                <SelectItem value="all">كل المناطق</SelectItem>
+                <SelectItem value="none">بدون منطقة</SelectItem>
+                {sectorZones.map(z => (
+                  <SelectItem key={z.id} value={z.id}>{getLocalizedName(z, language)}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
         </div>
         {customerTypes.length > 0 && (
           <div className="flex gap-1 flex-wrap">
