@@ -245,6 +245,14 @@ const Customers: React.FC = () => {
       }
     }
 
+    if (zoneFilter !== 'all') {
+      if (zoneFilter === 'none') {
+        filtered = filtered.filter(c => !c.zone_id);
+      } else {
+        filtered = filtered.filter(c => c.zone_id === zoneFilter);
+      }
+    }
+
     if (typeFilter !== 'all') {
       if (typeFilter === 'none') {
         filtered = filtered.filter(c => !c.customer_type);
