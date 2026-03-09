@@ -280,7 +280,10 @@ const DueDebtsList: React.FC<{ debts: DueDebt[]; onSelect: (d: DueDebt) => void 
           <button
             key={debt.id}
             className="w-full p-3 text-right hover:bg-muted/50 transition-colors"
-            onClick={() => onSelectCustomerLabel customer={{ name: debt.customer?.name, store_name: debt.customer?.store_name, customer_type: debt.customer?.customer_type }} compact hideBadges /ustomerLabel customer={{ name: debt.customer?.name, store_name: debt.customer?.store_name, customer_type: debt.customer?.customer_type }} compact hideBadges /_type: debt.customer?.customer_type }} compact hideBadges />
+            onClick={() => onSelect(debt)}
+          >
+            <div className="flex items-center justify-between">
+              <CustomerLabel customer={{ name: debt.customer?.name, store_name: debt.customer?.store_name, customer_type: debt.customer?.customer_type }} compact hideBadges />
               <span className="text-destructive font-bold">{Number(debt.remaining_amount).toLocaleString()} DA</span>
             </div>
             <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
