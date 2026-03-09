@@ -327,29 +327,36 @@ const WorkerLoadRequestDialog: React.FC<WorkerLoadRequestDialogProps> = ({ open,
               </div>
             ) : (
               <div className="flex-1 min-h-0 flex flex-col">
-                {/* Selection toolbar */}
-                <div className="flex items-center justify-between px-4 py-2 shrink-0">
-                  <Button variant="ghost" size="sm" onClick={toggleAll} className="text-[11px] h-7 px-2 text-primary hover:text-primary">
-                    {selectedOrderIds.size === availableOrders.length ? 'إلغاء الكل' : `تحديد الكل (${availableOrders.length})`}
-                  </Button>
-                  {selectedOrderIds.size > 0 && (
-                    <Badge className="bg-primary/10 text-primary border-0 text-[11px] font-semibold px-2.5">
-                      {selectedOrderIds.size} محددة
-                    </Badge>
-                  )}
+                {/* Section: العملاء (Customers/Orders) */}
+                <div className="flex items-center justify-between px-4 py-2 shrink-0 border-b bg-muted/20">
+                  <div className="flex items-center gap-1.5">
+                    <User className="w-3.5 h-3.5 text-primary" />
+                    <span className="text-[12px] font-bold text-foreground">الطلبيات</span>
+                    <Badge variant="outline" className="text-[10px] h-5 px-1.5 rounded-full">{availableOrders.length}</Badge>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {selectedOrderIds.size > 0 && (
+                      <Badge className="bg-primary text-primary-foreground text-[10px] font-bold px-2 h-5 rounded-full">
+                        {selectedOrderIds.size} محددة
+                      </Badge>
+                    )}
+                    <Button variant="ghost" size="sm" onClick={toggleAll} className="text-[10px] h-6 px-2 text-primary hover:text-primary">
+                      {selectedOrderIds.size === availableOrders.length ? 'إلغاء الكل' : 'تحديد الكل'}
+                    </Button>
+                  </div>
                 </div>
 
-                {/* Orders list */}
-                <div className="flex-1 min-h-[35vh] overflow-hidden">
+                {/* Scrollable orders list - takes remaining space minus products panel */}
+                <div className="flex-1 min-h-0 overflow-hidden">
                   <ScrollArea className="h-full">
-                    <div className="space-y-1.5 px-3 pb-2">
+                    <div className="space-y-1 px-3 py-2">
                       {availableOrders.map(order => {
                         const isSelected = selectedOrderIds.has(order.id);
                         return (
                           <div
                             key={order.id}
                             onClick={() => toggleOrder(order.id)}
-                            className={`relative flex items-start gap-3 p-3 rounded-xl cursor-pointer transition-all duration-150 active:scale-[0.98] ${
+                            className={`relative flex items-start gap-2.5 p-2.5 rounded-xl cursor-pointer transition-all duration-150 active:scale-[0.98] ${
                               isSelected 
                                 ? 'bg-primary/5 ring-1.5 ring-primary/30 shadow-sm' 
                                 : 'bg-card hover:bg-muted/40 ring-1 ring-border/50'
@@ -358,33 +365,33 @@ const WorkerLoadRequestDialog: React.FC<WorkerLoadRequestDialogProps> = ({ open,
                             <Checkbox 
                               checked={isSelected} 
                               onCheckedChange={() => toggleOrder(order.id)} 
-                              className="mt-1 shrink-0 data-[state=checked]:bg-primary data-[state=checked]:border-primary" 
+                              className="mt-0.5 shrink-0 data-[state=checked]:bg-primary data-[state=checked]:border-primary" 
                             />
                             <div className="flex-1 min-w-0">
                               <div className="flex items-start justify-between gap-2">
                                 <div className="min-w-0">
                                   {order.store_name && (
-                                    <p className="font-semibold text-[13px] leading-tight truncate">{order.store_name}</p>
+                                    <p className="font-semibold text-[12px] leading-tight truncate">{order.store_name}</p>
                                   )}
-                                  <p className={`truncate leading-tight ${order.store_name ? 'text-[11px] text-muted-foreground' : 'text-[13px] font-medium'}`}>
+                                  <p className={`truncate leading-tight ${order.store_name ? 'text-[10px] text-muted-foreground' : 'text-[12px] font-medium'}`}>
                                     {order.customer_name}
                                   </p>
                                 </div>
                                 {order.total_amount != null && order.total_amount > 0 && (
-                                  <span className="text-[11px] font-bold text-foreground whitespace-nowrap tabular-nums">
+                                  <span className="text-[10px] font-bold text-foreground whitespace-nowrap tabular-nums">
                                     {order.total_amount.toLocaleString()} د.ج
                                   </span>
                                 )}
                               </div>
-                              <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                              <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                                 {order.sector_name && (
-                                  <span className="inline-flex items-center gap-0.5 text-[10px] text-primary bg-primary/5 rounded-full px-1.5 py-0.5">
+                                  <span className="inline-flex items-center gap-0.5 text-[9px] text-primary bg-primary/5 rounded-full px-1.5 py-0.5">
                                     <MapPin className="w-2.5 h-2.5" />
                                     {order.sector_name}
                                   </span>
                                 )}
-                                <span className="text-[10px] text-muted-foreground">{format(new Date(order.created_at), 'MM/dd HH:mm')}</span>
-                                <span className="text-[10px] text-muted-foreground bg-muted/60 rounded px-1.5 py-0.5">{order.items.length} منتج</span>
+                                <span className="text-[9px] text-muted-foreground">{format(new Date(order.created_at), 'MM/dd HH:mm')}</span>
+                                <span className="text-[9px] text-muted-foreground bg-muted/60 rounded px-1 py-0.5">{order.items.length} منتج</span>
                               </div>
                             </div>
                           </div>
@@ -394,25 +401,34 @@ const WorkerLoadRequestDialog: React.FC<WorkerLoadRequestDialogProps> = ({ open,
                   </ScrollArea>
                 </div>
 
-                {/* Aggregated products summary */}
-                {selectedOrderIds.size > 0 && (
-                  <div className="border-t-2 border-primary/20 bg-muted/40 px-3 pt-2.5 pb-1 shrink-0 relative z-10 shadow-[0_-2px_8px_rgba(0,0,0,0.06)]">
-                    <p className="text-[11px] font-semibold text-foreground mb-1.5 flex items-center gap-1.5">
-                      <Package className="w-3.5 h-3.5 text-primary" />
-                      ملخص المنتجات ({aggregatedProducts.length})
-                    </p>
-                    <ScrollArea className="max-h-[14vh]">
-                      <div className="grid grid-cols-1 gap-1">
+                {/* Section: المنتجات (Products) - Fixed bottom panel */}
+                <div className="shrink-0 border-t-2 border-primary/30 bg-background shadow-[0_-4px_12px_rgba(0,0,0,0.08)]">
+                  <div className="flex items-center gap-1.5 px-4 py-2 bg-primary/5 border-b border-primary/10">
+                    <Package className="w-3.5 h-3.5 text-primary" />
+                    <span className="text-[12px] font-bold text-foreground">ملخص المنتجات</span>
+                    {aggregatedProducts.length > 0 && (
+                      <Badge className="bg-primary text-primary-foreground text-[10px] font-bold px-2 h-5 rounded-full">
+                        {aggregatedProducts.length}
+                      </Badge>
+                    )}
+                  </div>
+                  {aggregatedProducts.length === 0 ? (
+                    <div className="px-4 py-4 text-center">
+                      <p className="text-[11px] text-muted-foreground">حدد طلبيات لرؤية ملخص المنتجات</p>
+                    </div>
+                  ) : (
+                    <ScrollArea className="max-h-[22vh]">
+                      <div className="grid grid-cols-1 gap-0.5 px-3 py-1.5">
                         {aggregatedProducts.map(p => (
-                          <div key={p.productId} className="flex items-center justify-between bg-background rounded-lg px-2.5 py-1.5 ring-1 ring-border/30">
-                            <span className="text-[12px] truncate flex-1 min-w-0">{p.productName}</span>
+                          <div key={p.productId} className="flex items-center justify-between rounded-lg px-2.5 py-1.5 odd:bg-muted/30">
+                            <span className="text-[11px] truncate flex-1 min-w-0">{p.productName}</span>
                             <Badge variant="secondary" className="text-[10px] ms-2 shrink-0 tabular-nums font-bold">{p.quantity}</Badge>
                           </div>
                         ))}
                       </div>
                     </ScrollArea>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
             )}
 
