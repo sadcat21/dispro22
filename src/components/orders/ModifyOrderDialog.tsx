@@ -312,12 +312,13 @@ const ModifyOrderDialog: React.FC<ModifyOrderDialogProps> = ({
           } else {
             // Update quantity + gift after recalculation
             const paidQty = Math.max(0, item.new_quantity - (item.gift_quantity || 0));
+            const multiplier = getBoxMultiplier(item.pricing_unit, item.weight_per_box, item.pieces_per_box);
             await supabase.from('order_items')
               .update({
                 quantity: item.new_quantity,
                 gift_quantity: item.gift_quantity || 0,
                 unit_price: item.unit_price,
-                total_price: paidQty * item.unit_price,
+                total_price: paidQty * item.unit_price * multiplier,
               })
               .eq('id', item.id);
             changes.push({
