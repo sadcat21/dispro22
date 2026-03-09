@@ -201,7 +201,7 @@ const DocumentCollectionsPopover: React.FC = () => {
               <div className="p-3 border-b font-bold text-sm">مستندات معلقة للتحصيل</div>
               {dayButtons}
               <p className="text-[10px] text-muted-foreground text-center py-1">{selectedDateLabel}</p>
-              <PendingDocList orders={pendingOrders} onCollect={(o) => { setSelectedOrder(o); setDialogMode('collect'); }} onVisit={(o) => { setSelectedOrder(o); setDialogMode('visit'); }} />
+              <PendingDocList orders={pendingOrders} onCollect={(o) => { setSelectedOrder(o); setDialogMode('collect'); }} onVisit={(o) => { setSelectedOrder(o); setDialogMode('visit'); }} sectorMap={sectorMap} />
             </>
           )}
         </PopoverContent>
