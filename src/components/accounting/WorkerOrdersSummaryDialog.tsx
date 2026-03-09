@@ -124,6 +124,8 @@ const WorkerOrdersSummaryDialog: React.FC<Props> = ({ open, onOpenChange, worker
   const currentData = activeTab === 'created' ? data?.created || [] : data?.assigned || [];
   const totalQuantity = currentData.reduce((s, p) => s + p.quantity, 0);
   const totalCustomers = new Set(currentData.flatMap(p => p.customers.map(c => c.customerId))).size;
+  const createdCustomers = new Set((data?.created || []).flatMap(p => p.customers.map(c => c.customerId))).size;
+  const assignedCustomers = new Set((data?.assigned || []).flatMap(p => p.customers.map(c => c.customerId))).size;
 
   const goDay = (dir: number) => {
     const d = dir > 0 ? addDays(new Date(selectedDate), 1) : subDays(new Date(selectedDate), 1);
