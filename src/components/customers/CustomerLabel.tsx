@@ -1,7 +1,7 @@
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { useCustomerTypes, getCustomerTypeColor, getCustomerTypeLabel, CustomerTypeEntry } from '@/hooks/useCustomerTypes';
+import { useCustomerTypes, getCustomerTypeColor, CustomerTypeEntry } from '@/hooks/useCustomerTypes';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 export interface CustomerLabelData {
@@ -42,9 +42,9 @@ const CustomerLabel: React.FC<CustomerLabelProps> = ({
 
   // Customer type badge
   const typeEntry = types.find(t => t.ar === customer.customer_type);
-  const typeLabel = typeEntry
-    ? getCustomerTypeLabel(types, customer.customer_type, language)
-    : customer.customer_type;
+  const typeShort = typeEntry?.short
+    ? typeEntry.short.toUpperCase()
+    : (customer.customer_type || '');
   const typeColor = typeEntry
     ? getCustomerTypeColor(typeEntry.short, 0, typeEntry)
     : null;
@@ -59,12 +59,12 @@ const CustomerLabel: React.FC<CustomerLabelProps> = ({
           {customer.sector_name}
         </Badge>
       )}
-      {customer.customer_type && typeLabel && (
+      {customer.customer_type && typeShort && (
         <Badge
-          className="text-[10px] px-1.5 py-0 h-4 shrink-0 border-0"
+          className="text-[10px] px-1.5 py-0 h-4 shrink-0 border-0 font-bold"
           style={typeColor ? { backgroundColor: typeColor.bg, color: typeColor.text } : undefined}
         >
-          {typeLabel}
+          {typeShort}
         </Badge>
       )}
     </>
