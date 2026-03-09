@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import CustomerLabel from '@/components/customers/CustomerLabel';
 import { MapPin, User, Truck, ShoppingCart, MapPinOff, Navigation, Loader2, Eye, EyeOff, CheckCircle, PackageX, PackageCheck, Landmark, Banknote, Clock, Check, X, DoorClosed, UserX, ShoppingBag, Printer, XCircle, Phone, Search } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -113,7 +114,7 @@ const SectorCustomersPopover: React.FC = () => {
   const { data: customers = [] } = useQuery({
     queryKey: ['sector-customers', scopedBranchId],
     queryFn: async () => {
-      let query = supabase.from('customers').select('id, name, phone, wilaya, sector_id, store_name, latitude, longitude').not('sector_id', 'is', null);
+      let query = supabase.from('customers').select('id, name, phone, wilaya, sector_id, store_name, latitude, longitude, customer_type').not('sector_id', 'is', null);
       if (scopedBranchId) query = query.eq('branch_id', scopedBranchId);
       const { data, error } = await query;
       if (error) throw error;
@@ -1046,7 +1047,7 @@ const SectorCustomersPopover: React.FC = () => {
         <DialogContent className="max-w-[95vw] sm:max-w-sm p-4 gap-3" dir="rtl">
           <DialogHeader className="pb-0">
             <DialogTitle className="text-base truncate">
-              {selectedDebt.customer?.store_name || selectedDebt.customer?.name || '—'}
+              <CustomerLabel customer={{ name: selectedDebt.customer?.name, store_name: selectedDebt.customer?.store_name, customer_type: selectedDebt.customer?.customer_type }} compact />
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
@@ -1184,8 +1185,7 @@ const OrderDetailsPopoverDialog: React.FC<{ order: any; onClose: () => void }> =
         <div className="space-y-3">
           <div className="bg-muted/50 rounded-lg p-3 space-y-1">
             <div className="flex items-center gap-2">
-              <User className="w-4 h-4 text-primary" />
-              <span className="font-bold text-sm">{customer?.store_name || customer?.name || order.customer_name || '—'}</span>
+              <CustomerLabel customer={{ name: customer?.name, store_name: customer?.store_name, customer_type: customer?.customer_type }} compact />
             </div>
             {customer?.phone && (
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -1297,10 +1297,15 @@ const CustomerList: React.FC<{
               {loadingFor === c.id ? <Loader2 className="w-4 h-4 animate-spin text-primary" /> : <User className="w-4 h-4 text-primary" />}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="font-bold text-sm truncate">{c.store_name || c.name}</p>
+              <CustomerLabel
+                customer={{
+                  name: c.name,
+                  store_name: c.store_name,
+                  customer_type: c.customer_type,
+                }}
+              />
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                {c.store_name && <span>{c.name}</span>}
-                {c.phone && <span>• {c.phone}</span>}
+                {c.phone && <span>{c.phone}</span>}
                 {c.wilaya && <span>• {c.wilaya}</span>}
               </div>
             </div>
@@ -1370,7 +1375,7 @@ const DebtList: React.FC<{ debts: DueDebt[]; onSelect: (d: DueDebt) => void; onC
         <div key={debt.id} className="p-3 hover:bg-muted/50 transition-colors">
           <button className="w-full text-right" onClick={() => onSelect(debt)}>
             <div className="flex items-center justify-between">
-              <span className="font-bold text-sm">{debt.customer?.store_name || debt.customer?.name || '—'}</span>
+              <CustomerLabel customer={{ name: debt.customer?.name, store_name: debt.customer?.store_name, customer_type: debt.customer?.customer_type }} compact hideBadges />
               <span className="text-destructive font-bold">{Number(debt.remaining_amount).toLocaleString()} DA</span>
             </div>
             <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">

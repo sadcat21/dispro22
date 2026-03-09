@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import CustomerLabel from '@/components/customers/CustomerLabel';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
@@ -129,7 +130,7 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
   const { data: customers = [] } = useQuery({
     queryKey: ['today-cust-customers', scopedBranchId],
     queryFn: async () => {
-      let query = supabase.from('customers').select('id, name, phone, wilaya, sector_id, store_name, latitude, longitude').not('sector_id', 'is', null);
+      let query = supabase.from('customers').select('id, name, phone, wilaya, sector_id, store_name, latitude, longitude, customer_type').not('sector_id', 'is', null);
       if (scopedBranchId) query = query.eq('branch_id', scopedBranchId);
       const { data } = await query;
       return data || [];
@@ -1198,8 +1199,7 @@ const OrderDetailsDialog: React.FC<{ order: any; onClose: () => void }> = ({ ord
           {/* Customer Info */}
           <div className="bg-muted/50 rounded-lg p-3 space-y-1">
             <div className="flex items-center gap-2">
-              <User className="w-4 h-4 text-primary" />
-              <span className="font-bold text-sm">{customer?.store_name || customer?.name || order.customer_name || '—'}</span>
+              <CustomerLabel customer={{ name: customer?.name, store_name: customer?.store_name, customer_type: customer?.customer_type }} compact />
             </div>
             {customer?.phone && (
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -1321,22 +1321,18 @@ const CustomerList: React.FC<{
               {loadingFor === c.id ? <Loader2 className="w-4 h-4 animate-spin text-primary" /> : <User className="w-4 h-4 text-primary" />}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="font-bold text-sm truncate">{c.store_name || c.name}</p>
+              <CustomerLabel
+                customer={{
+                  name: c.name,
+                  store_name: c.store_name,
+                  customer_type: c.customer_type,
+                  sector_name: sector?.name,
+                }}
+              />
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                {c.store_name && <span>{c.name}</span>}
-                {c.phone && <span>• {c.phone}</span>}
+                {c.phone && <span>{c.phone}</span>}
                 {c.wilaya && <span>• {c.wilaya}</span>}
               </div>
-              {sector && (
-                <div className="flex items-center gap-1 text-[10px] text-muted-foreground mt-0.5">
-                  {sector.delivery_worker_id && sector.sales_worker_id
-                    ? <span>📍 {sector.name}</span>
-                    : sector.delivery_worker_id
-                    ? <span>🚚 {sector.name}</span>
-                    : <span>🛒 {sector.name}</span>
-                  }
-                </div>
-              )}
             </div>
           </button>
           <div className="flex items-center gap-1 mt-1.5 justify-end flex-wrap">
@@ -1406,7 +1402,7 @@ const DebtList: React.FC<{ debts: DueDebt[]; onCollect: (d: DueDebt) => void; on
         <div key={debt.id} className="p-3 hover:bg-muted/50 transition-colors">
           <button className="w-full text-right" onClick={() => onCollect(debt)}>
             <div className="flex items-center justify-between">
-              <span className="font-bold text-sm">{(debt.customer as any)?.store_name || (debt.customer as any)?.name || '—'}</span>
+              <CustomerLabel customer={{ name: (debt.customer as any)?.name, store_name: (debt.customer as any)?.store_name, customer_type: (debt.customer as any)?.customer_type }} compact hideBadges />
               <span className="text-destructive font-bold">{Number(debt.remaining_amount).toLocaleString()} DA</span>
             </div>
             <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
