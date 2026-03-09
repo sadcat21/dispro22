@@ -90,6 +90,33 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   }, []);
 
+  // Compute the actual date for the selectedDay in the current Saturday-based week
+  const NAME_TO_JS_DAY: Record<string, number> = {
+    saturday: 6, sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4,
+  };
+  const selectedDayBounds = useMemo(() => {
+    const now = new Date();
+    const currentJsDay = now.getDay();
+    const targetJsDay = NAME_TO_JS_DAY[selectedDay] ?? currentJsDay;
+    
+    // Calculate the Saturday-based week start
+    const daysFromSaturday = currentJsDay === 6 ? 0 : currentJsDay + 1;
+    const weekStart = new Date(now);
+    weekStart.setDate(now.getDate() - daysFromSaturday);
+    weekStart.setHours(0, 0, 0, 0);
+    
+    // Calculate target day offset from Saturday
+    const targetOffset = targetJsDay === 6 ? 0 : targetJsDay + 1;
+    const targetDate = new Date(weekStart);
+    targetDate.setDate(weekStart.getDate() + targetOffset);
+    
+    const start = new Date(targetDate);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(targetDate);
+    end.setHours(23, 59, 59, 999);
+    return { start: start.toISOString(), end: end.toISOString() };
+  }, [selectedDay]);
+
   // Sub-dialog states
   const [showDeliveryDialog, setShowDeliveryDialog] = useState(false);
   const [pendingDeliveryOrder, setPendingDeliveryOrder] = useState<OrderWithDetails | null>(null);
