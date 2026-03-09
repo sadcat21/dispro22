@@ -324,23 +324,32 @@ const ExceptionalActionsSummary: React.FC<ExceptionalActionsSummaryProps> = ({
                   <CollapsibleTrigger asChild>
                     <button
                       type="button"
-                      className="w-full p-2.5 flex items-center justify-between gap-2 text-right"
+                      className="w-full p-2.5 flex flex-col gap-1 text-right"
                       aria-label={`عرض تفاصيل ${getActionLabel(action)}`}
                     >
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        {getActionIcon(action)}
-                        <span className="text-xs font-semibold truncate">{getActionLabel(action)}</span>
+                      <div className="flex items-center justify-between gap-2 w-full">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          {getActionIcon(action)}
+                          <span className="text-xs font-semibold truncate">{getActionLabel(action)}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <span className="text-[10px] text-muted-foreground">
+                            {format(new Date(action.created_at), 'HH:mm', { locale: ar })}
+                          </span>
+                          {isOpen ? (
+                            <ChevronUp className="w-3.5 h-3.5 text-muted-foreground" />
+                          ) : (
+                            <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
+                          )}
+                        </div>
                       </div>
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        <span className="text-[10px] text-muted-foreground">
-                          {format(new Date(action.created_at), 'HH:mm', { locale: ar })}
+                      {/* Customer name shown on collapsed header */}
+                      {action.details && (action.details as Record<string, unknown>).العميل && (
+                        <span className="text-[11px] text-muted-foreground truncate ps-5 flex items-center gap-1">
+                          <User className="w-3 h-3 shrink-0" />
+                          {toDisplayValue((action.details as Record<string, unknown>).العميل)}
                         </span>
-                        {isOpen ? (
-                          <ChevronUp className="w-3.5 h-3.5 text-muted-foreground" />
-                        ) : (
-                          <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
-                        )}
-                      </div>
+                      )}
                     </button>
                   </CollapsibleTrigger>
 
