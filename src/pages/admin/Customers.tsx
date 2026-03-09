@@ -191,6 +191,10 @@ const Customers: React.FC = () => {
 
   useEffect(() => {
     fetchData();
+    // Fetch all zones for badge display
+    supabase.from('sector_zones').select('*').order('name').then(({ data }) => {
+      setAllZones((data || []) as any);
+    });
   }, []);
 
   // Filter customers by activeBranch
