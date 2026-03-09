@@ -316,7 +316,7 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
       }
     });
     return ids;
-  }, [sectorSchedules, sectors, todayName, effectiveWorkerId, isAdmin, hasSpecificWorker]);
+  }, [sectorSchedules, sectors, selectedDay, effectiveWorkerId, isAdmin, hasSpecificWorker]);
 
   const todayDeliverySectorIds = useMemo(() => {
     const ids = new Set<string>();
