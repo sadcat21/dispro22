@@ -432,10 +432,10 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
     queryKey: ['sales-worker-visits-for-prevente', salesWorkerIds, todayStart],
     queryFn: async () => {
       if (salesWorkerIds.length === 0) return [];
-      // Get visits by sales workers in the last 7 days for these sectors
+      // Get visits by sales workers in the last 7 days for these sectors (include notes for status badges)
       const { data } = await supabase
         .from('visit_tracking')
-        .select('customer_id, worker_id, operation_type')
+        .select('customer_id, worker_id, operation_type, notes')
         .in('worker_id', salesWorkerIds)
         .gte('created_at', sevenDaysAgo);
       return data || [];
