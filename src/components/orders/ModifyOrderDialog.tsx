@@ -225,15 +225,25 @@ const ModifyOrderDialog: React.FC<ModifyOrderDialogProps> = ({
   const hasChanges = items.some(i => i.new_quantity !== i.original_quantity) ||
     items.some(i => !i.id && i.new_quantity > 0) || workerChanged;
 
+  const getBoxPrice = useCallback((item: ModifiedItem) => {
+    const multiplier = getBoxMultiplier(item.pricing_unit, item.weight_per_box, item.pieces_per_box);
+    return item.unit_price * multiplier;
+  }, []);
+
   const originalTotal = orderItems.reduce((sum, item) => {
     const giftQty = Number((item as any).gift_quantity || 0);
     const paidQty = Math.max(0, Number(item.quantity) - giftQty);
-    return sum + (paidQty * Number(item.unit_price || 0));
+    const pricingUnit = (item as any).pricing_unit || item.product?.pricing_unit || 'box';
+    const weightPerBox = Number((item as any).weight_per_box || item.product?.weight_per_box || 1);
+    const piecesPerBox = Number((item as any).pieces_per_box || item.product?.pieces_per_box || 1);
+    const multiplier = getBoxMultiplier(pricingUnit, weightPerBox, piecesPerBox);
+    return sum + (paidQty * Number(item.unit_price || 0) * multiplier);
   }, 0);
 
   const orderTotal = items.reduce((sum, item) => {
     const paidQty = Math.max(0, item.new_quantity - (item.gift_quantity || 0));
-    return sum + (paidQty * item.unit_price);
+    const multiplier = getBoxMultiplier(item.pricing_unit, item.weight_per_box, item.pieces_per_box);
+    return sum + (paidQty * item.unit_price * multiplier);
   }, 0);
 
   const productChanges = items
