@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 
 import { supabase } from '@/integrations/supabase/client';
 import { Product } from '@/types/database';
@@ -70,6 +70,44 @@ const WorkerHome: React.FC = () => {
   const isAvailableOffersPageHidden = useIsElementHidden('page', '/available-offers');
   const isWorkerActionsHidden = useIsElementHidden('page', '/worker-actions');
   const isSupervisor = role === 'supervisor';
+
+  const JS_DAY_TO_NAME: Record<number, string> = {
+    6: 'saturday', 0: 'sunday', 1: 'monday', 2: 'tuesday', 3: 'wednesday', 4: 'thursday',
+  };
+  const DAY_NAMES_AR: Record<string, string> = {
+    saturday: 'السبت', sunday: 'الأحد', monday: 'الإثنين',
+    tuesday: 'الثلاثاء', wednesday: 'الأربعاء', thursday: 'الخميس',
+  };
+  const todayName = JS_DAY_TO_NAME[new Date().getDay()] || '';
+  const todayDayAr = DAY_NAMES_AR[todayName] || todayName;
+
+  // Fetch today's scheduled sectors for current worker
+  const { data: todaySectorNames = [] } = useQuery({
+    queryKey: ['home-today-sector-names', workerId, todayName],
+    queryFn: async () => {
+      // Get sector_schedules for today
+      const { data: schedules } = await supabase
+        .from('sector_schedules')
+        .select('sector_id')
+        .eq('worker_id', workerId!)
+        .eq('day', todayName);
+      const sectorIds = (schedules || []).map(s => s.sector_id);
+      if (sectorIds.length === 0) return [];
+      const { data: sectors } = await supabase
+        .from('sectors')
+        .select('name')
+        .in('id', sectorIds);
+      return (sectors || []).map(s => s.name);
+    },
+    enabled: !!workerId && !!todayName,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const todayCustomersLabel = useMemo(() => {
+    const parts = ['عملاء اليوم', todayDayAr];
+    if (todaySectorNames.length > 0) parts.push(todaySectorNames.join(' / '));
+    return parts.join(' — ');
+  }, [todayDayAr, todaySectorNames]);
 
   const { data: stockItems } = useQuery({
     queryKey: ['my-worker-stock', workerId],
@@ -233,7 +271,7 @@ const WorkerHome: React.FC = () => {
           >
             <CalendarCheck className="w-8 h-8 text-sky-600 shrink-0" />
             <div>
-              <p className="font-bold text-sm text-sky-900">عملاء اليوم</p>
+              <p className="font-bold text-sm text-sky-900">{todayCustomersLabel}</p>
               <p className="text-xs text-sky-700">عرض جدول العملاء والتوصيلات المجدولة لليوم</p>
             </div>
           </div>
@@ -306,7 +344,7 @@ const WorkerHome: React.FC = () => {
             quickActions.push({ key: 'expenses', icon: <Wallet className="w-6 h-6" />, label: t('expenses.my_expenses'), onClick: () => navigate('/expenses') });
           }
           // Today's customers - always show
-          quickActions.push({ key: 'today-customers', icon: <MapPin className="w-6 h-6" />, label: 'عملاء اليوم', onClick: () => setShowTodayCustomers(true) });
+          quickActions.push({ key: 'today-customers', icon: <MapPin className="w-6 h-6" />, label: todayCustomersLabel, onClick: () => setShowTodayCustomers(true) });
           // Rewards page
           if (!isRewardsHidden && !isRewardsPageHidden) {
             quickActions.push({ key: 'rewards', icon: <Trophy className="w-6 h-6" />, label: 'المكافآت', onClick: () => navigate('/my-rewards') });
