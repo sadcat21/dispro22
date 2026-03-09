@@ -659,7 +659,7 @@ const Customers: React.FC = () => {
   }
 
   return (
-    <div className="p-3 space-y-3">
+    <div className="p-3 pb-24 space-y-3 touch-pan-y">
       {/* Compact Header: Title + Stats + Actions merged */}
       <div className="flex items-center gap-3">
         <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -831,11 +831,11 @@ const Customers: React.FC = () => {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="list" className="space-y-2 mt-2">
+          <TabsContent value="list" className="space-y-2 mt-2 overflow-visible overscroll-auto">
             {renderCustomersList()}
           </TabsContent>
 
-          <TabsContent value="requests">
+          <TabsContent value="requests" className="overflow-visible overscroll-auto">
             <CustomerApprovalTab />
           </TabsContent>
         </Tabs>
@@ -856,11 +856,11 @@ const Customers: React.FC = () => {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="list" className="space-y-2 mt-2">
+          <TabsContent value="list" className="space-y-2 mt-2 overflow-visible overscroll-auto">
             {renderCustomersList()}
           </TabsContent>
 
-          <TabsContent value="my-requests">
+          <TabsContent value="my-requests" className="overflow-visible overscroll-auto">
             <WorkerMyRequestsTab />
           </TabsContent>
         </Tabs>
