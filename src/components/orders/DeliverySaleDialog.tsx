@@ -962,6 +962,19 @@ const DeliverySaleDialog: React.FC<DeliverySaleDialogProps> = ({ open, onOpenCha
                   customerLatitude={order.customer?.latitude}
                   customerLongitude={order.customer?.longitude}
                 />
+                {/* Order timestamps */}
+                <div className="flex items-center gap-3 text-[11px] text-muted-foreground mt-2 flex-wrap">
+                  <span className="flex items-center gap-1">
+                    <Clock className="w-3 h-3" />
+                    تسجيل: {format(new Date(order.created_at), 'dd/MM HH:mm')}
+                  </span>
+                  {order.delivery_date && (
+                    <span className="flex items-center gap-1">
+                      <Truck className="w-3 h-3" />
+                      توصيل: {format(new Date(order.delivery_date), 'dd/MM HH:mm')}
+                    </span>
+                  )}
+                </div>
               </div>
 
               {/* Prominent prepaid alert banner */}
