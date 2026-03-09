@@ -95,6 +95,11 @@ const AccountingSessions: React.FC = () => {
     setDeleteSession2(session);
   };
 
+  const handleCancelSession = async (session: AccountingSession, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setCancelSession2(session);
+  };
+
   const confirmDeleteSession = async () => {
     if (!deleteSession2) return;
     try {
@@ -105,6 +110,18 @@ const AccountingSessions: React.FC = () => {
       toast.error('فشل في حذف الجلسة: ' + error.message);
     }
     setDeleteSession2(null);
+  };
+
+  const confirmCancelSession = async () => {
+    if (!cancelSession2) return;
+    try {
+      await cancelSession.mutateAsync(cancelSession2.id);
+      toast.success('تم إلغاء الجلسة واستعادة جميع الحسابات بنجاح');
+      if (selectedSession?.id === cancelSession2.id) setSelectedSession(null);
+    } catch (error: any) {
+      toast.error('فشل في إلغاء الجلسة: ' + error.message);
+    }
+    setCancelSession2(null);
   };
 
 
