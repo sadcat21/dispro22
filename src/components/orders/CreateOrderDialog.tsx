@@ -677,8 +677,14 @@ const CreateOrderDialog: React.FC<CreateOrderDialogProps> = ({ open, onOpenChang
                           {(selectedCustomer.store_name || selectedCustomer.name)?.charAt(0) || '?'}
                         </div>
                         <div>
-                          <p className="font-bold">{selectedCustomer.store_name || selectedCustomer.name}</p>
-                          {selectedCustomer.store_name && <p className="text-xs text-muted-foreground">{selectedCustomer.name}</p>}
+                          <CustomerLabel
+                            customer={{
+                              name: selectedCustomer.name,
+                              store_name: selectedCustomer.store_name,
+                              customer_type: selectedCustomer.customer_type,
+                              sector_name: selectedCustomer.sector_id ? sectors.find(s => s.id === selectedCustomer.sector_id)?.name : undefined,
+                            }}
+                          />
                           <div className="flex items-center gap-1.5 mt-0.5">
                             <p className="text-xs text-muted-foreground">
                               {selectedCustomer.wilaya}
