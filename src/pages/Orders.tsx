@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import CustomerLabel from '@/components/customers/CustomerLabel';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useLocation } from 'react-router-dom';
@@ -726,16 +727,16 @@ const OrdersContent: React.FC = () => {
                           setShowCreateDialog(true);
                         }}
                       >
-                        {order.customer?.store_name || order.customer?.name}
+                        <CustomerLabel
+                          customer={{
+                            name: order.customer?.name,
+                            store_name: order.customer?.store_name,
+                            customer_type: order.customer?.customer_type,
+                            sector_name: order.customer?.sector_id ? sectorMap.get(order.customer.sector_id) : undefined,
+                          }}
+                          compact
+                        />
                       </button>
-                      {order.customer?.store_name && order.customer?.name && (
-                        <span className="text-xs text-muted-foreground">{order.customer.name}</span>
-                      )}
-                      {order.customer?.sector_id && sectorMap.get(order.customer.sector_id) && (
-                        <Badge variant="outline" className="text-[10px] px-1.5 py-0">
-                          {sectorMap.get(order.customer.sector_id)}
-                        </Badge>
-                      )}
                     </div>
 
                     <div className="flex items-center gap-2 flex-wrap">

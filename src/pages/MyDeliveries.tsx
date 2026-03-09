@@ -41,6 +41,7 @@ import PrintOrdersDialog from '@/components/orders/PrintOrdersDialog';
 import OrdersPrintView from '@/components/print/OrdersPrintView';
 import { PrintColumnConfig } from '@/components/print/PrintColumnsConfigDialog';
 import { Eye } from 'lucide-react';
+import CustomerLabel from '@/components/customers/CustomerLabel';
 
 type TabStatus = 'all' | OrderStatus;
 type DeliveryType = 'orders' | 'direct_sales';
@@ -540,24 +541,19 @@ const MyDeliveries: React.FC = () => {
                 {/* Customer Info */}
                 <div className="flex items-center gap-2 mb-0.5">
                   <Store className="w-4 h-4 text-muted-foreground shrink-0" />
-                  <span className="font-bold text-sm truncate">{order.customer?.store_name || order.customer?.name}</span>
+                  <CustomerLabel
+                    customer={{
+                      name: order.customer?.name,
+                      store_name: order.customer?.store_name,
+                      customer_type: order.customer?.customer_type,
+                      sector_name: (order.customer as any)?.sector ? getLocalizedName((order.customer as any).sector, language) : undefined,
+                    }}
+                    compact
+                  />
                   {customerDebts[order.customer_id] && (
                     <AlertTriangle className="w-4 h-4 text-destructive shrink-0" />
                   )}
                 </div>
-                {order.customer?.store_name && order.customer?.name && (
-                  <p className="text-xs text-muted-foreground mr-6 mb-0.5">{order.customer.name}</p>
-                )}
-                {/* Sector & Zone */}
-                {(order.customer as any)?.sector && (
-                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground mr-6 mb-1">
-                    <Map className="w-3 h-3 shrink-0" />
-                    <span>{getLocalizedName((order.customer as any).sector, language)}</span>
-                    {(order.customer as any)?.zone && (
-                      <span className="text-muted-foreground/70">• {getLocalizedName((order.customer as any).zone, language)}</span>
-                    )}
-                  </div>
-                )}
                 
                 {order.customer?.phone && (
                   <div className="flex items-center gap-2 text-xs text-muted-foreground mb-0.5">
@@ -952,16 +948,17 @@ const MyDeliveries: React.FC = () => {
                 {/* Store name + sector */}
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <Store className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                  <span className="font-bold text-sm">{selectedOrder.customer.store_name || selectedOrder.customer.name}</span>
+                  <CustomerLabel
+                    customer={{
+                      name: selectedOrder.customer.name,
+                      store_name: selectedOrder.customer.store_name,
+                      customer_type: selectedOrder.customer.customer_type,
+                      sector_name: (selectedOrder.customer as any)?.sector ? getLocalizedName((selectedOrder.customer as any).sector, language) : undefined,
+                    }}
+                    compact
+                  />
                   {customerDebts[selectedOrder.customer_id] && (
                     <AlertTriangle className="w-3.5 h-3.5 text-destructive shrink-0" />
-                  )}
-                  {(selectedOrder.customer as any)?.sector && (
-                    <Badge variant="outline" className="text-[10px] px-1 py-0 gap-0.5">
-                      <Map className="w-2.5 h-2.5" />
-                      {getLocalizedName((selectedOrder.customer as any).sector, language)}
-                      {(selectedOrder.customer as any)?.zone && ` • ${getLocalizedName((selectedOrder.customer as any).zone, language)}`}
-                    </Badge>
                   )}
                 </div>
                 {/* Customer name + phone */}

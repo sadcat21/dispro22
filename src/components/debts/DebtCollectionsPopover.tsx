@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import CustomerLabel from '@/components/customers/CustomerLabel';
 import { Landmark, Check, X, Clock, Banknote, Eye } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -187,7 +188,7 @@ const DebtCollectionsPopover: React.FC = () => {
           <DialogContent className="max-w-[95vw] sm:max-w-sm p-4 gap-3" dir="rtl">
             <DialogHeader className="pb-0">
               <DialogTitle className="text-base truncate">
-                {selectedDebt.customer?.store_name || selectedDebt.customer?.name || '—'}
+                <CustomerLabel customer={{ name: selectedDebt.customer?.name, store_name: selectedDebt.customer?.store_name, customer_type: selectedDebt.customer?.customer_type }} compact />
               </DialogTitle>
             </DialogHeader>
 
@@ -282,7 +283,7 @@ const DueDebtsList: React.FC<{ debts: DueDebt[]; onSelect: (d: DueDebt) => void 
             onClick={() => onSelect(debt)}
           >
             <div className="flex items-center justify-between">
-              <span className="font-bold text-sm">{debt.customer?.store_name || debt.customer?.name || '—'}</span>
+              <CustomerLabel customer={{ name: debt.customer?.name, store_name: debt.customer?.store_name, customer_type: debt.customer?.customer_type }} compact hideBadges />
               <span className="text-destructive font-bold">{Number(debt.remaining_amount).toLocaleString()} DA</span>
             </div>
             <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
@@ -319,7 +320,7 @@ const PendingCollectionsList: React.FC<{
         {collections.map(c => (
           <div key={c.id} className="p-3 space-y-2">
             <div className="flex items-center justify-between">
-              <span className="font-bold text-sm">{c.debt?.customer?.store_name || c.debt?.customer?.name || '—'}</span>
+              <CustomerLabel customer={{ name: c.debt?.customer?.name, store_name: c.debt?.customer?.store_name, customer_type: c.debt?.customer?.customer_type }} compact hideBadges />
               <Badge variant="outline" className="text-xs">{actionLabels[c.action] || c.action}</Badge>
             </div>
             <div className="text-xs text-muted-foreground">
