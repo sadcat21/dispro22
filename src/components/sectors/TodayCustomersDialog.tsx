@@ -1548,10 +1548,6 @@ const CustomerList: React.FC<{
     return list;
   }, [customers, searchQuery, timeMap]);
 
-  if (filtered.length === 0) {
-    return <div className="p-6 text-center text-sm text-muted-foreground">{searchQuery?.trim() ? 'لا توجد نتائج' : emptyMessage}</div>;
-  }
-
   // Group by zone
   const zoneGroups = useMemo(() => {
     const groups = new Map<string | null, any[]>();
@@ -1560,7 +1556,6 @@ const CustomerList: React.FC<{
       if (!groups.has(key)) groups.set(key, []);
       groups.get(key)!.push(c);
     });
-    // Sort zone keys: named zones first (sorted), then null
     const sortedKeys = Array.from(groups.keys()).sort((a, b) => {
       if (!a) return 1;
       if (!b) return -1;
@@ -1574,6 +1569,10 @@ const CustomerList: React.FC<{
       customers: groups.get(key)!,
     }));
   }, [filtered, allZones, language]);
+
+  if (filtered.length === 0) {
+    return <div className="p-6 text-center text-sm text-muted-foreground">{searchQuery?.trim() ? 'لا توجد نتائج' : emptyMessage}</div>;
+  }
 
   const renderCustomer = (c: any) => {
     const sector = sectors?.find(s => s.id === c.sector_id);
