@@ -801,6 +801,7 @@ const Customers: React.FC = () => {
             { value: 'store', label: 'المحل' },
             { value: 'address', label: 'العنوان' },
             { value: 'wilaya', label: 'الولاية' },
+            { value: 'zone', label: 'المنطقة' },
           ].map(opt => (
             <Button
               key={opt.value}
