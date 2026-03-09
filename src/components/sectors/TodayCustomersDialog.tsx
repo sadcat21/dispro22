@@ -1519,11 +1519,13 @@ const CustomerList: React.FC<{
   loadingFor?: string | null;
   searchQuery?: string;
   sectors?: any[];
+  allZones?: any[];
   salesRepStatusMap?: Map<string, string>;
   deliveryTimeMap?: Map<string, string>;
   timeMap?: Map<string, string>;
   distanceMap?: Map<string, number>;
-}> = ({ customers, emptyMessage, onCustomerClick, onVisitWithoutOrder, onClosed, onUnavailable, onDebtRefused, onNoSale, onPrint, showVisitButton, visitButtonLabel, showActionButtons, showPrintButton, showNoSaleButton, checkingLocationFor, loadingFor, searchQuery, sectors, salesRepStatusMap, deliveryTimeMap, timeMap, distanceMap }) => {
+}> = ({ customers, emptyMessage, onCustomerClick, onVisitWithoutOrder, onClosed, onUnavailable, onDebtRefused, onNoSale, onPrint, showVisitButton, visitButtonLabel, showActionButtons, showPrintButton, showNoSaleButton, checkingLocationFor, loadingFor, searchQuery, sectors, allZones, salesRepStatusMap, deliveryTimeMap, timeMap, distanceMap }) => {
+  const { language } = useLanguage();
   const filtered = useMemo(() => {
     let list = customers;
     if (searchQuery?.trim()) {
