@@ -791,6 +791,35 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
     } catch { toast.error('فشل في تسجيل الحالة'); }
   };
 
+  const handleDeliveryDebtRefused = async (customer: any) => {
+    const allowed = await checkLocationBeforeAction(customer);
+    if (!allowed) return;
+    try {
+      await trackVisit({ customerId: customer.id, operationType: 'visit', notes: `رفض الدين (توصيل) - ${customer.store_name || customer.name}` });
+      toast.success(`تم تسجيل رفض الدين لـ "${customer.store_name || customer.name}"`);
+    } catch { toast.error('فشل في تسجيل الحالة'); }
+  };
+
+  const handleDirectSaleDebtRefused = async (customer: any) => {
+    const allowed = await checkLocationBeforeAction(customer);
+    if (!allowed) return;
+    try {
+      await trackVisit({ customerId: customer.id, operationType: 'visit', notes: `رفض الدين (بيع مباشر) - ${customer.store_name || customer.name}` });
+      toast.success(`تم تسجيل رفض الدين لـ "${customer.store_name || customer.name}"`);
+    } catch { toast.error('فشل في تسجيل الحالة'); }
+  };
+
+  const handleDebtDebtRefused = async (debt: any) => {
+    const customer = debt.customer as any;
+    const customerObj = { id: debt.customer_id, latitude: customer?.latitude, longitude: customer?.longitude, store_name: customer?.store_name, name: customer?.name };
+    const allowed = await checkLocationBeforeAction(customerObj);
+    if (!allowed) return;
+    try {
+      await trackVisit({ customerId: debt.customer_id, operationType: 'visit', notes: `رفض الدين (تحصيل دين) - ${customer?.store_name || customer?.name}` });
+      toast.success(`تم تسجيل رفض الدين لـ "${customer?.store_name || customer?.name}"`);
+    } catch { toast.error('فشل في تسجيل الحالة'); }
+  };
+
   const handleDirectSaleClick = (customer: any) => {
     setDirectSaleCustomerId(customer.id);
     setShowDirectSale(true);
