@@ -213,11 +213,6 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
     enabled: !!effectiveWorkerId && open,
   });
 
-  const todayEnd = useMemo(() => {
-    const d = new Date();
-    d.setHours(23, 59, 59, 999);
-    return d.toISOString();
-  }, []);
 
   const { data: todayDeliveredOrders = [] } = useQuery({
     queryKey: ['today-delivered-dialog', effectiveWorkerId, selectedDayBounds.start, selectedDayBounds.end, isAdmin],
