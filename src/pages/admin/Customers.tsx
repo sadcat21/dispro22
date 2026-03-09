@@ -778,10 +778,11 @@ const Customers: React.FC = () => {
               </SelectTrigger>
               <SelectContent className="bg-popover z-[100]">
                 <SelectItem value="all">كل المناطق</SelectItem>
-                <SelectItem value="none">بدون منطقة</SelectItem>
-                {sectorZones.map(z => (
-                  <SelectItem key={z.id} value={z.id}>{getLocalizedName(z, language)}</SelectItem>
-                ))}
+                <SelectItem value="none">بدون منطقة ({filteredByBranch.filter(c => c.sector_id === sectorFilter && !c.zone_id).length})</SelectItem>
+                {sectorZones.map(z => {
+                  const count = filteredByBranch.filter(c => c.zone_id === z.id).length;
+                  return <SelectItem key={z.id} value={z.id}>{getLocalizedName(z, language)} ({count})</SelectItem>;
+                })}
               </SelectContent>
             </Select>
           )}
