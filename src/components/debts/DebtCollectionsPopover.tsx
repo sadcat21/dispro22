@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import CustomerLabel from '@/components/customers/CustomerLabel';
 import { Landmark, Check, X, Clock, Banknote, Eye } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
