@@ -547,6 +547,11 @@ const Customers: React.FC = () => {
                         {getSectorName(customer.sector_id)}
                       </Badge>
                     )}
+                    {getZoneName(customer.zone_id) && (
+                      <Badge className="text-[10px] px-1.5 py-0 font-semibold border-0 bg-blue-600 text-white">
+                        {getZoneName(customer.zone_id)}
+                      </Badge>
+                    )}
                   </div>
                   <p className="text-[11px] text-muted-foreground mt-0.5">
                     <User className="w-2.5 h-2.5 inline ml-0.5" />
