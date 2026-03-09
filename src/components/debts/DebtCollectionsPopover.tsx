@@ -184,7 +184,7 @@ const DebtCollectionsPopover: React.FC = () => {
               <div className="p-3 border-b font-bold text-sm">ديون مستحقة</div>
               {dayButtons}
               <p className="text-[10px] text-muted-foreground text-center py-1">{selectedDateLabel}</p>
-              <DueDebtsList debts={dueDebts} onSelect={setSelectedDebt} />
+              <DueDebtsList debts={dueDebts} onSelect={setSelectedDebt} sectorMap={sectorMap} />
             </>
           )}
         </PopoverContent>
