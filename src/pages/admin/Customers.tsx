@@ -86,6 +86,7 @@ const Customers: React.FC = () => {
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [missingFilter, setMissingFilter] = useState<string>('all');
   const [sectorZones, setSectorZones] = useState<{ id: string; name: string; name_fr: string | null; sector_id: string }[]>([]);
+  const [allZones, setAllZones] = useState<{ id: string; name: string; name_fr: string | null; sector_id: string }[]>([]);
   const [expandAllSectors, setExpandAllSectors] = useState(false);
   const isAddCustomerHidden = useIsElementHidden('button', 'add_customer');
   const isEditCustomerHidden = useIsElementHidden('action', 'edit_customer');
