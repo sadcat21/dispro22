@@ -235,7 +235,14 @@ const Customers: React.FC = () => {
         icon: AlertTriangle,
       }));
 
-    return { percent, missing };
+    const missingCompletion = completionKeys
+      .filter((key) => !fieldStatus[key])
+      .map((key) => ({
+        key,
+        label: CUSTOMER_FIELD_LABELS[key],
+      }));
+
+    return { percent, missing, missingCompletion };
   };
 
   // Then filter by search query and sector
