@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import CustomerLabel from '@/components/customers/CustomerLabel';
 import { MapPin, User, Truck, ShoppingCart, MapPinOff, Navigation, Loader2, Eye, EyeOff, CheckCircle, PackageX, PackageCheck, Landmark, Banknote, Clock, Check, X, DoorClosed, UserX, ShoppingBag, Printer, XCircle, Phone, Search } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
