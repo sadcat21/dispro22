@@ -23,7 +23,7 @@ export interface DueDebt {
   collection_type: string | null;
   collection_days: string[] | null;
   collection_amount: number | null;
-  customer?: { id: string; name: string; store_name?: string | null; phone: string | null; latitude: number | null; longitude: number | null; customer_type?: string | null };
+  customer?: { id: string; name: string; store_name?: string | null; phone: string | null; latitude: number | null; longitude: number | null; customer_type?: string | null; sector_id?: string | null };
 }
 
 export interface DebtCollection {
