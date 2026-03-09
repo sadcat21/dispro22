@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import CustomerLabel from '@/components/customers/CustomerLabel';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import ReceiptDialog from '@/components/printing/ReceiptDialog';
 import AddCustomerDialog from '@/components/promo/AddCustomerDialog';
@@ -745,9 +746,17 @@ const DirectSaleDialog: React.FC<DirectSaleDialogProps> = ({ open, onOpenChange,
                   ) : selectedCustomer ? (
                     <span className="flex items-center gap-2">
                       <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-xs font-bold">
-                        {selectedCustomer.name?.charAt(0) || '?'}
+                        {(selectedCustomer.store_name || selectedCustomer.name)?.charAt(0) || '?'}
                       </div>
-                      <span className="truncate">{selectedCustomer.name}</span>
+                      <CustomerLabel
+                        customer={{
+                          name: selectedCustomer.name,
+                          store_name: selectedCustomer.store_name,
+                          customer_type: selectedCustomer.customer_type,
+                          sector_name: sectors?.find(s => s.id === selectedCustomer.sector_id)?.name,
+                        }}
+                        compact
+                      />
                       {selectedCustomer.wilaya && (
                         <span className="text-xs text-muted-foreground">({selectedCustomer.wilaya})</span>
                       )}
@@ -785,10 +794,17 @@ const DirectSaleDialog: React.FC<DirectSaleDialogProps> = ({ open, onOpenChange,
                   <div className="p-3 bg-muted/50 rounded-lg">
                     <div className="flex items-center gap-2">
                       <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold">
-                        {selectedCustomer.name?.charAt(0) || '?'}
+                        {(selectedCustomer.store_name || selectedCustomer.name)?.charAt(0) || '?'}
                       </div>
                       <div>
-                        <p className="font-bold">{selectedCustomer.name}</p>
+                        <CustomerLabel
+                          customer={{
+                            name: selectedCustomer.name,
+                            store_name: selectedCustomer.store_name,
+                            customer_type: selectedCustomer.customer_type,
+                            sector_name: sectors?.find(s => s.id === selectedCustomer.sector_id)?.name,
+                          }}
+                        />
                         <div className="flex items-center gap-1.5 mt-0.5">
                           <p className="text-xs text-muted-foreground">
                             {selectedCustomer.wilaya}
