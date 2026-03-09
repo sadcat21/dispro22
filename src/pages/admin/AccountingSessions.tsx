@@ -44,7 +44,7 @@ const AccountingSessions: React.FC = () => {
 
   const { data: sessions, isLoading } = useAccountingSessions({ status: statusFilter });
   const deleteSession = useDeleteSession();
-
+  const cancelSession = useCancelSession();
 
   useEffect(() => {
     const fetchWorkers = async () => {
