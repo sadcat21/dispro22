@@ -312,7 +312,8 @@ const PendingCollectionsList: React.FC<{
   onApprove: (id: string) => void;
   onReject: (id: string) => void;
   isLoading: boolean;
-}> = ({ collections, onApprove, onReject, isLoading }) => {
+  sectorMap?: Map<string, string>;
+}> = ({ collections, onApprove, onReject, isLoading, sectorMap }) => {
   if (collections.length === 0) {
     return <div className="p-6 text-center text-sm text-muted-foreground">لا توجد تحصيلات في الانتظار</div>;
   }
