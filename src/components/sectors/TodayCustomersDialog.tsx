@@ -1618,17 +1618,27 @@ const CustomerList: React.FC<{
 };
 
 // Reusable DebtList component
-const DebtList: React.FC<{ debts: DueDebt[]; onCollect: (d: DueDebt) => void; onVisitNoPayment: (d: DueDebt) => void; onClosed: (d: DueDebt) => void; onUnavailable: (d: DueDebt) => void; onDebtRefused?: (d: DueDebt) => void; emptyMessage: string; searchQuery?: string }> = ({ debts, onCollect, onVisitNoPayment, onClosed, onUnavailable, onDebtRefused, emptyMessage, searchQuery }) => {
+const DebtList: React.FC<{ debts: DueDebt[]; onCollect: (d: DueDebt) => void; onVisitNoPayment: (d: DueDebt) => void; onClosed: (d: DueDebt) => void; onUnavailable: (d: DueDebt) => void; onDebtRefused?: (d: DueDebt) => void; emptyMessage: string; searchQuery?: string; timeMap?: Map<string, string> }> = ({ debts, onCollect, onVisitNoPayment, onClosed, onUnavailable, onDebtRefused, emptyMessage, searchQuery, timeMap }) => {
   const filtered = useMemo(() => {
-    if (!searchQuery?.trim()) return debts;
-    const q = searchQuery.trim().toLowerCase();
-    return debts.filter(d => {
-      const cust = d.customer as any;
-      return (cust?.name || '').toLowerCase().includes(q) ||
-        (cust?.store_name || '').toLowerCase().includes(q) ||
-        (cust?.phone || '').includes(q);
-    });
-  }, [debts, searchQuery]);
+    let list = debts;
+    if (searchQuery?.trim()) {
+      const q = searchQuery.trim().toLowerCase();
+      list = list.filter(d => {
+        const cust = d.customer as any;
+        return (cust?.name || '').toLowerCase().includes(q) ||
+          (cust?.store_name || '').toLowerCase().includes(q) ||
+          (cust?.phone || '').includes(q);
+      });
+    }
+    if (timeMap && timeMap.size > 0) {
+      list = [...list].sort((a, b) => {
+        const tA = timeMap.get(a.id) || '';
+        const tB = timeMap.get(b.id) || '';
+        return tB.localeCompare(tA);
+      });
+    }
+    return list;
+  }, [debts, searchQuery, timeMap]);
 
   if (filtered.length === 0) {
     return <div className="p-6 text-center text-sm text-muted-foreground">{searchQuery?.trim() ? 'لا توجد نتائج' : emptyMessage}</div>;
@@ -1647,6 +1657,11 @@ const DebtList: React.FC<{ debts: DueDebt[]; onCollect: (d: DueDebt) => void; on
               <Clock className="w-3 h-3" />
               <span>{debt.due_date ? format(new Date(debt.due_date + 'T00:00:00'), 'dd/MM/yyyy') : '—'}</span>
               {(debt.customer as any)?.phone && <span>• {(debt.customer as any).phone}</span>}
+              {timeMap?.has(debt.id) && (
+                <span className="flex items-center gap-0.5 text-[10px]">
+                  ⏰ {format(new Date(timeMap.get(debt.id)!), 'HH:mm')}
+                </span>
+              )}
             </div>
           </button>
           <div className="flex items-center gap-1 mt-1.5 justify-end flex-wrap">
