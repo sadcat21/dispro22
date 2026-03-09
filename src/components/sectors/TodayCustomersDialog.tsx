@@ -1491,16 +1491,28 @@ const CustomerList: React.FC<{
   sectors?: any[];
   salesRepStatusMap?: Map<string, string>;
   deliveryTimeMap?: Map<string, string>;
-}> = ({ customers, emptyMessage, onCustomerClick, onVisitWithoutOrder, onClosed, onUnavailable, onDebtRefused, onNoSale, onPrint, showVisitButton, visitButtonLabel, showActionButtons, showPrintButton, showNoSaleButton, checkingLocationFor, loadingFor, searchQuery, sectors, salesRepStatusMap, deliveryTimeMap }) => {
+  timeMap?: Map<string, string>;
+}> = ({ customers, emptyMessage, onCustomerClick, onVisitWithoutOrder, onClosed, onUnavailable, onDebtRefused, onNoSale, onPrint, showVisitButton, visitButtonLabel, showActionButtons, showPrintButton, showNoSaleButton, checkingLocationFor, loadingFor, searchQuery, sectors, salesRepStatusMap, deliveryTimeMap, timeMap }) => {
   const filtered = useMemo(() => {
-    if (!searchQuery?.trim()) return customers;
-    const q = searchQuery.trim().toLowerCase();
-    return customers.filter(c =>
-      (c.name || '').toLowerCase().includes(q) ||
-      (c.store_name || '').toLowerCase().includes(q) ||
-      (c.phone || '').includes(q)
-    );
-  }, [customers, searchQuery]);
+    let list = customers;
+    if (searchQuery?.trim()) {
+      const q = searchQuery.trim().toLowerCase();
+      list = list.filter(c =>
+        (c.name || '').toLowerCase().includes(q) ||
+        (c.store_name || '').toLowerCase().includes(q) ||
+        (c.phone || '').includes(q)
+      );
+    }
+    // Sort by timeMap descending (newest first) if available
+    if (timeMap && timeMap.size > 0) {
+      list = [...list].sort((a, b) => {
+        const tA = timeMap.get(a.id) || '';
+        const tB = timeMap.get(b.id) || '';
+        return tB.localeCompare(tA);
+      });
+    }
+    return list;
+  }, [customers, searchQuery, timeMap]);
 
   if (filtered.length === 0) {
     return <div className="p-6 text-center text-sm text-muted-foreground">{searchQuery?.trim() ? 'لا توجد نتائج' : emptyMessage}</div>;
