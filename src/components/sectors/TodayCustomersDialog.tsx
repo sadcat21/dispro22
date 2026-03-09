@@ -332,7 +332,7 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
     sectors.forEach(s => {
       const hasNewSchedule = sectorSchedules.some(sc => sc.sector_id === s.id);
       if (hasNewSchedule) return;
-      if (s.visit_day_delivery === todayName) {
+      if (s.visit_day_delivery === selectedDay) {
         if (!hasSpecificWorker && isAdmin) ids.add(s.id);
         else if (s.delivery_worker_id === effectiveWorkerId) ids.add(s.id);
       }
