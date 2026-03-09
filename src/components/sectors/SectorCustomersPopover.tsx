@@ -1298,10 +1298,15 @@ const CustomerList: React.FC<{
               {loadingFor === c.id ? <Loader2 className="w-4 h-4 animate-spin text-primary" /> : <User className="w-4 h-4 text-primary" />}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="font-bold text-sm truncate">{c.store_name || c.name}</p>
+              <CustomerLabel
+                customer={{
+                  name: c.name,
+                  store_name: c.store_name,
+                  customer_type: c.customer_type,
+                }}
+              />
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                {c.store_name && <span>{c.name}</span>}
-                {c.phone && <span>• {c.phone}</span>}
+                {c.phone && <span>{c.phone}</span>}
                 {c.wilaya && <span>• {c.wilaya}</span>}
               </div>
             </div>
