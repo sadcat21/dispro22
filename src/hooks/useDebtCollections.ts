@@ -23,7 +23,7 @@ export interface DueDebt {
   collection_type: string | null;
   collection_days: string[] | null;
   collection_amount: number | null;
-  customer?: { id: string; name: string; store_name?: string | null; phone: string | null; latitude: number | null; longitude: number | null; customer_type?: string | null };
+  customer?: { id: string; name: string; store_name?: string | null; phone: string | null; latitude: number | null; longitude: number | null; customer_type?: string | null; sector_id?: string | null };
 }
 
 export interface DebtCollection {
@@ -45,7 +45,7 @@ export interface DebtCollection {
   debt?: {
     id: string;
     remaining_amount: number;
-    customer?: { id: string; name: string };
+    customer?: { id: string; name: string; store_name?: string | null; customer_type?: string | null; sector_id?: string | null };
   };
 }
 
@@ -71,7 +71,7 @@ export const useDueDebts = (targetDate?: string) => {
         .from('customer_debts')
         .select(`
           *,
-          customer:customers(id, name, store_name, phone, latitude, longitude, customer_type)
+          customer:customers(id, name, store_name, phone, latitude, longitude, customer_type, sector_id)
         `)
         .in('status', ['active', 'partially_paid'])
         .order('due_date', { ascending: false });
@@ -179,7 +179,7 @@ export const usePendingCollections = () => {
           worker:workers!debt_collections_worker_id_fkey(id, full_name),
           debt:customer_debts!debt_collections_debt_id_fkey(
             id, remaining_amount,
-            customer:customers(id, name, store_name)
+            customer:customers(id, name, store_name, customer_type, sector_id)
           )
         `)
         .eq('status', 'pending')

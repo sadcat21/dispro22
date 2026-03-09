@@ -4,6 +4,8 @@ import { Landmark, Check, X, Clock, Banknote, Eye } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDueDebts, usePendingCollections, useApproveCollection, DueDebt } from '@/hooks/useDebtCollections';
+import { useSectors } from '@/hooks/useSectors';
+import { getLocalizedName } from '@/utils/sectorName';
 import {
   Popover, PopoverContent, PopoverTrigger,
 } from '@/components/ui/popover';
@@ -38,8 +40,14 @@ const getNextDateForJsDay = (jsDay: number): string => {
 };
 
 const DebtCollectionsPopover: React.FC = () => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { role } = useAuth();
+  const { sectors } = useSectors();
+  const sectorMap = useMemo(() => {
+    const map = new Map<string, string>();
+    sectors.forEach(s => map.set(s.id, getLocalizedName(s, language)));
+    return map;
+  }, [sectors, language]);
   // -1 = all, null = today (default), 0-5 = specific work day
   const [selectedDayNum, setSelectedDayNum] = useState<number | null>(null);
 
@@ -160,7 +168,7 @@ const DebtCollectionsPopover: React.FC = () => {
               <TabsContent value="due" className="m-0 flex-1">
                 {dayButtons}
                 <p className="text-[10px] text-muted-foreground text-center py-1">{selectedDateLabel}</p>
-                <DueDebtsList debts={dueDebts} onSelect={setSelectedDebt} />
+                <DueDebtsList debts={dueDebts} onSelect={setSelectedDebt} sectorMap={sectorMap} />
               </TabsContent>
               <TabsContent value="pending" className="m-0 flex-1">
                 <PendingCollectionsList
@@ -168,6 +176,7 @@ const DebtCollectionsPopover: React.FC = () => {
                   onApprove={handleApprove}
                   onReject={handleReject}
                   isLoading={approveCollection.isPending}
+                  sectorMap={sectorMap}
                 />
               </TabsContent>
             </Tabs>
@@ -176,7 +185,7 @@ const DebtCollectionsPopover: React.FC = () => {
               <div className="p-3 border-b font-bold text-sm">ديون مستحقة</div>
               {dayButtons}
               <p className="text-[10px] text-muted-foreground text-center py-1">{selectedDateLabel}</p>
-              <DueDebtsList debts={dueDebts} onSelect={setSelectedDebt} />
+              <DueDebtsList debts={dueDebts} onSelect={setSelectedDebt} sectorMap={sectorMap} />
             </>
           )}
         </PopoverContent>
@@ -188,7 +197,7 @@ const DebtCollectionsPopover: React.FC = () => {
           <DialogContent className="max-w-[95vw] sm:max-w-sm p-4 gap-3" dir="rtl">
             <DialogHeader className="pb-0">
               <DialogTitle className="text-base truncate">
-                <CustomerLabel customer={{ name: selectedDebt.customer?.name, store_name: selectedDebt.customer?.store_name, customer_type: selectedDebt.customer?.customer_type }} compact />
+                <CustomerLabel customer={{ name: selectedDebt.customer?.name, store_name: selectedDebt.customer?.store_name, customer_type: selectedDebt.customer?.customer_type, sector_name: selectedDebt.customer?.sector_id ? sectorMap.get(selectedDebt.customer.sector_id) : undefined }} compact />
               </DialogTitle>
             </DialogHeader>
 
@@ -268,7 +277,7 @@ const DebtCollectionsPopover: React.FC = () => {
   );
 };
 
-const DueDebtsList: React.FC<{ debts: DueDebt[]; onSelect: (d: DueDebt) => void }> = ({ debts, onSelect }) => {
+const DueDebtsList: React.FC<{ debts: DueDebt[]; onSelect: (d: DueDebt) => void; sectorMap?: Map<string, string> }> = ({ debts, onSelect, sectorMap }) => {
   if (debts.length === 0) {
     return <div className="p-6 text-center text-sm text-muted-foreground">لا توجد ديون مستحقة</div>;
   }
@@ -283,7 +292,7 @@ const DueDebtsList: React.FC<{ debts: DueDebt[]; onSelect: (d: DueDebt) => void 
             onClick={() => onSelect(debt)}
           >
             <div className="flex items-center justify-between">
-              <CustomerLabel customer={{ name: debt.customer?.name, store_name: debt.customer?.store_name, customer_type: debt.customer?.customer_type }} compact hideBadges />
+              <CustomerLabel customer={{ name: debt.customer?.name, store_name: debt.customer?.store_name, customer_type: debt.customer?.customer_type, sector_name: debt.customer?.sector_id && sectorMap ? sectorMap.get(debt.customer.sector_id) : undefined }} compact />
               <span className="text-destructive font-bold">{Number(debt.remaining_amount).toLocaleString()} DA</span>
             </div>
             <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
@@ -303,7 +312,8 @@ const PendingCollectionsList: React.FC<{
   onApprove: (id: string) => void;
   onReject: (id: string) => void;
   isLoading: boolean;
-}> = ({ collections, onApprove, onReject, isLoading }) => {
+  sectorMap?: Map<string, string>;
+}> = ({ collections, onApprove, onReject, isLoading, sectorMap }) => {
   if (collections.length === 0) {
     return <div className="p-6 text-center text-sm text-muted-foreground">لا توجد تحصيلات في الانتظار</div>;
   }
@@ -320,7 +330,7 @@ const PendingCollectionsList: React.FC<{
         {collections.map(c => (
           <div key={c.id} className="p-3 space-y-2">
             <div className="flex items-center justify-between">
-              <CustomerLabel customer={{ name: c.debt?.customer?.name, store_name: c.debt?.customer?.store_name, customer_type: c.debt?.customer?.customer_type }} compact hideBadges />
+              <CustomerLabel customer={{ name: c.debt?.customer?.name, store_name: c.debt?.customer?.store_name, customer_type: c.debt?.customer?.customer_type, sector_name: c.debt?.customer?.sector_id && sectorMap ? sectorMap.get(c.debt.customer.sector_id) : undefined }} compact hideBadges />
               <Badge variant="outline" className="text-xs">{actionLabels[c.action] || c.action}</Badge>
             </div>
             <div className="text-xs text-muted-foreground">

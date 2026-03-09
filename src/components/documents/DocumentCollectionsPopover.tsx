@@ -2,6 +2,9 @@ import React, { useState, useMemo } from 'react';
 import CustomerLabel from '@/components/customers/CustomerLabel';
 import { FileCheck, Check, X, Clock, Eye, FileWarning } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSectors } from '@/hooks/useSectors';
+import { getLocalizedName } from '@/utils/sectorName';
+import { useLanguage } from '@/contexts/LanguageContext';
 import {
   usePendingDocOrders, usePendingDocCollections, useApproveDocCollection,
   useCreateDocCollection,
@@ -58,6 +61,13 @@ const getDocColor = (type: string) => {
 
 const DocumentCollectionsPopover: React.FC = () => {
   const { role, workerId } = useAuth();
+  const { language } = useLanguage();
+  const { sectors } = useSectors();
+  const sectorMap = useMemo(() => {
+    const map = new Map<string, string>();
+    sectors.forEach(s => map.set(s.id, getLocalizedName(s, language)));
+    return map;
+  }, [sectors, language]);
   const createCollection = useCreateDocCollection();
   const [selectedDayNum, setSelectedDayNum] = useState<number | null>(null);
 
@@ -174,7 +184,7 @@ const DocumentCollectionsPopover: React.FC = () => {
               <TabsContent value="due" className="m-0 flex-1">
                 {dayButtons}
                 <p className="text-[10px] text-muted-foreground text-center py-1">{selectedDateLabel}</p>
-                <PendingDocList orders={pendingOrders} onCollect={(o) => { setSelectedOrder(o); setDialogMode('collect'); }} onVisit={(o) => { setSelectedOrder(o); setDialogMode('visit'); }} />
+                <PendingDocList orders={pendingOrders} onCollect={(o) => { setSelectedOrder(o); setDialogMode('collect'); }} onVisit={(o) => { setSelectedOrder(o); setDialogMode('visit'); }} sectorMap={sectorMap} />
               </TabsContent>
               <TabsContent value="pending" className="m-0 flex-1">
                 <PendingDocCollectionsList
@@ -182,6 +192,7 @@ const DocumentCollectionsPopover: React.FC = () => {
                   onApprove={handleApprove}
                   onReject={handleReject}
                   isLoading={approveCollection.isPending}
+                  sectorMap={sectorMap}
                 />
               </TabsContent>
             </Tabs>
@@ -190,7 +201,7 @@ const DocumentCollectionsPopover: React.FC = () => {
               <div className="p-3 border-b font-bold text-sm">مستندات معلقة للتحصيل</div>
               {dayButtons}
               <p className="text-[10px] text-muted-foreground text-center py-1">{selectedDateLabel}</p>
-              <PendingDocList orders={pendingOrders} onCollect={(o) => { setSelectedOrder(o); setDialogMode('collect'); }} onVisit={(o) => { setSelectedOrder(o); setDialogMode('visit'); }} />
+              <PendingDocList orders={pendingOrders} onCollect={(o) => { setSelectedOrder(o); setDialogMode('collect'); }} onVisit={(o) => { setSelectedOrder(o); setDialogMode('visit'); }} sectorMap={sectorMap} />
             </>
           )}
         </PopoverContent>
@@ -243,7 +254,7 @@ const DocumentCollectionsPopover: React.FC = () => {
   );
 };
 
-const PendingDocList: React.FC<{ orders: PendingDocOrder[]; onCollect: (o: PendingDocOrder) => void; onVisit: (o: PendingDocOrder) => void }> = ({ orders, onCollect, onVisit }) => {
+const PendingDocList: React.FC<{ orders: PendingDocOrder[]; onCollect: (o: PendingDocOrder) => void; onVisit: (o: PendingDocOrder) => void; sectorMap?: Map<string, string> }> = ({ orders, onCollect, onVisit, sectorMap }) => {
   if (orders.length === 0) {
     return <div className="p-6 text-center text-sm text-muted-foreground">لا توجد مستندات معلقة</div>;
   }
@@ -254,7 +265,7 @@ const PendingDocList: React.FC<{ orders: PendingDocOrder[]; onCollect: (o: Pendi
         {orders.map(order => (
           <div key={order.id} className="p-3 space-y-2">
             <div className="flex items-center justify-between">
-              <CustomerLabel customer={{ name: order.customer?.name, store_name: order.customer?.store_name, customer_type: order.customer?.customer_type }} compact hideBadges />
+              <CustomerLabel customer={{ name: order.customer?.name, store_name: order.customer?.store_name, customer_type: order.customer?.customer_type, sector_name: order.customer?.sector_id && sectorMap ? sectorMap.get(order.customer.sector_id) : undefined }} compact hideBadges />
               <Badge className={`text-[10px] ${getDocColor(order.invoice_payment_method)}`}>
                 {getDocLabel(order.invoice_payment_method)}
               </Badge>
@@ -290,7 +301,8 @@ const PendingDocCollectionsList: React.FC<{
   onApprove: (id: string) => void;
   onReject: (id: string) => void;
   isLoading: boolean;
-}> = ({ collections, onApprove, onReject, isLoading }) => {
+  sectorMap?: Map<string, string>;
+}> = ({ collections, onApprove, onReject, isLoading, sectorMap }) => {
   if (collections.length === 0) {
     return <div className="p-6 text-center text-sm text-muted-foreground">لا توجد طلبات في الانتظار</div>;
   }
@@ -306,7 +318,7 @@ const PendingDocCollectionsList: React.FC<{
         {collections.map(c => (
           <div key={c.id} className="p-3 space-y-2">
             <div className="flex items-center justify-between">
-              <CustomerLabel customer={{ name: c.order?.customer?.name, store_name: c.order?.customer?.store_name, customer_type: c.order?.customer?.customer_type }} compact hideBadges />
+              <CustomerLabel customer={{ name: c.order?.customer?.name, store_name: c.order?.customer?.store_name, customer_type: c.order?.customer?.customer_type, sector_name: c.order?.customer?.sector_id && sectorMap ? sectorMap.get(c.order.customer.sector_id) : undefined }} compact hideBadges />
               <Badge variant="outline" className="text-xs">{actionLabels[c.action] || c.action}</Badge>
             </div>
             <div className="text-xs text-muted-foreground">
