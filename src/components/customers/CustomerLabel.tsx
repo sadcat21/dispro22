@@ -1,7 +1,7 @@
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { useCustomerTypes, getCustomerTypeColor, getCustomerTypeLabel, CustomerTypeEntry } from '@/hooks/useCustomerTypes';
+import { useCustomerTypes, getCustomerTypeColor, CustomerTypeEntry } from '@/hooks/useCustomerTypes';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 export interface CustomerLabelData {
