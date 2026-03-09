@@ -30,11 +30,19 @@ interface ModifiedItem {
   product_name: string;
   original_quantity: number;
   new_quantity: number;
-  unit_price: number;
+  unit_price: number; // per-unit price (per kg, per piece, or per box)
   gift_quantity: number;
   original_gift_quantity: number;
   pieces_per_box: number;
+  pricing_unit: string; // 'box' | 'kg' | 'unit'
+  weight_per_box: number;
 }
+
+const getBoxMultiplier = (pricingUnit: string, weightPerBox: number, piecesPerBox: number): number => {
+  if (pricingUnit === 'kg') return Math.max(1, weightPerBox);
+  if (pricingUnit === 'unit') return Math.max(1, piecesPerBox);
+  return 1;
+};
 
 const ModifyOrderDialog: React.FC<ModifyOrderDialogProps> = ({
   open, onOpenChange, order, orderItems,
@@ -68,7 +76,9 @@ const ModifyOrderDialog: React.FC<ModifyOrderDialogProps> = ({
         unit_price: Number(item.unit_price || 0),
         gift_quantity: Number(item.gift_quantity || 0),
         original_gift_quantity: Number(item.gift_quantity || 0),
-        pieces_per_box: Number(item.product?.pieces_per_box || 1),
+        pieces_per_box: Number((item as any).pieces_per_box || item.product?.pieces_per_box || 1),
+        pricing_unit: (item as any).pricing_unit || item.product?.pricing_unit || 'box',
+        weight_per_box: Number((item as any).weight_per_box || item.product?.weight_per_box || 1),
       })));
       setAssignedWorkerId(order.assigned_worker_id || '');
     }
@@ -185,7 +195,10 @@ const ModifyOrderDialog: React.FC<ModifyOrderDialogProps> = ({
 
     const initialPaidQuantity = 1;
     const unitPrice = Number(product.price_gros || product.price_invoice || 0);
-    const recalculated = recalcFromPaidQuantity(product.id, initialPaidQuantity, Number(product.pieces_per_box || 1));
+    const piecesPerBox = Number(product.pieces_per_box || 1);
+    const pricingUnit = product.pricing_unit || 'box';
+    const weightPerBox = Number(product.weight_per_box || 1);
+    const recalculated = recalcFromPaidQuantity(product.id, initialPaidQuantity, piecesPerBox);
 
     setItems(prev => [...prev, {
       product_id: product.id,
@@ -195,7 +208,9 @@ const ModifyOrderDialog: React.FC<ModifyOrderDialogProps> = ({
       unit_price: unitPrice,
       gift_quantity: recalculated.gift_quantity,
       original_gift_quantity: 0,
-      pieces_per_box: Number(product.pieces_per_box || 1),
+      pieces_per_box: piecesPerBox,
+      pricing_unit: pricingUnit,
+      weight_per_box: weightPerBox,
     }]);
     setNewProductId('');
   };
@@ -210,15 +225,25 @@ const ModifyOrderDialog: React.FC<ModifyOrderDialogProps> = ({
   const hasChanges = items.some(i => i.new_quantity !== i.original_quantity) ||
     items.some(i => !i.id && i.new_quantity > 0) || workerChanged;
 
+  const getBoxPrice = useCallback((item: ModifiedItem) => {
+    const multiplier = getBoxMultiplier(item.pricing_unit, item.weight_per_box, item.pieces_per_box);
+    return item.unit_price * multiplier;
+  }, []);
+
   const originalTotal = orderItems.reduce((sum, item) => {
     const giftQty = Number((item as any).gift_quantity || 0);
     const paidQty = Math.max(0, Number(item.quantity) - giftQty);
-    return sum + (paidQty * Number(item.unit_price || 0));
+    const pricingUnit = (item as any).pricing_unit || item.product?.pricing_unit || 'box';
+    const weightPerBox = Number((item as any).weight_per_box || item.product?.weight_per_box || 1);
+    const piecesPerBox = Number((item as any).pieces_per_box || item.product?.pieces_per_box || 1);
+    const multiplier = getBoxMultiplier(pricingUnit, weightPerBox, piecesPerBox);
+    return sum + (paidQty * Number(item.unit_price || 0) * multiplier);
   }, 0);
 
   const orderTotal = items.reduce((sum, item) => {
     const paidQty = Math.max(0, item.new_quantity - (item.gift_quantity || 0));
-    return sum + (paidQty * item.unit_price);
+    const multiplier = getBoxMultiplier(item.pricing_unit, item.weight_per_box, item.pieces_per_box);
+    return sum + (paidQty * item.unit_price * multiplier);
   }, 0);
 
   const productChanges = items
@@ -287,12 +312,13 @@ const ModifyOrderDialog: React.FC<ModifyOrderDialogProps> = ({
           } else {
             // Update quantity + gift after recalculation
             const paidQty = Math.max(0, item.new_quantity - (item.gift_quantity || 0));
+            const multiplier = getBoxMultiplier(item.pricing_unit, item.weight_per_box, item.pieces_per_box);
             await supabase.from('order_items')
               .update({
                 quantity: item.new_quantity,
                 gift_quantity: item.gift_quantity || 0,
                 unit_price: item.unit_price,
-                total_price: paidQty * item.unit_price,
+                total_price: paidQty * item.unit_price * multiplier,
               })
               .eq('id', item.id);
             changes.push({
@@ -307,13 +333,17 @@ const ModifyOrderDialog: React.FC<ModifyOrderDialogProps> = ({
         } else if (!item.id && item.new_quantity > 0) {
           // New product added
           const paidQty = Math.max(0, item.new_quantity - (item.gift_quantity || 0));
+          const multiplier = getBoxMultiplier(item.pricing_unit, item.weight_per_box, item.pieces_per_box);
           await supabase.from('order_items').insert({
             order_id: order.id,
             product_id: item.product_id,
             quantity: item.new_quantity,
             gift_quantity: item.gift_quantity || 0,
             unit_price: item.unit_price,
-            total_price: paidQty * item.unit_price,
+            total_price: paidQty * item.unit_price * multiplier,
+            pricing_unit: item.pricing_unit,
+            weight_per_box: item.weight_per_box,
+            pieces_per_box: item.pieces_per_box,
           });
           changes.push({
             منتج: item.product_name,
@@ -324,15 +354,16 @@ const ModifyOrderDialog: React.FC<ModifyOrderDialogProps> = ({
         }
       }
 
-      // Recalculate total (paid qty only)
+      // Recalculate total (paid qty only, with box multiplier)
       const { data: updatedItems } = await supabase
         .from('order_items')
-        .select('quantity, unit_price, gift_quantity')
+        .select('quantity, unit_price, gift_quantity, pricing_unit, weight_per_box, pieces_per_box')
         .eq('order_id', order.id);
 
       const newTotal = updatedItems?.reduce((sum, i: any) => {
         const paidQty = Math.max(0, Number(i.quantity) - Number(i.gift_quantity || 0));
-        return sum + (paidQty * Number(i.unit_price || 0));
+        const mult = getBoxMultiplier(i.pricing_unit || 'box', Number(i.weight_per_box || 1), Number(i.pieces_per_box || 1));
+        return sum + (paidQty * Number(i.unit_price || 0) * mult);
       }, 0) || 0;
 
       const orderUpdate: Record<string, any> = {};
@@ -586,12 +617,16 @@ const ModifyOrderDialog: React.FC<ModifyOrderDialogProps> = ({
                             </Badge>
                           )}
                         </div>
-                        {item.unit_price > 0 && (
+                        {item.unit_price > 0 && (() => {
+                          const boxPrice = getBoxPrice(item);
+                          const paidQty = getPaidQuantity(item);
+                          return (
                           <p className="text-xs text-muted-foreground">
-                            {item.unit_price.toLocaleString()} دج × {getPaidQuantity(item)} = {(item.unit_price * getPaidQuantity(item)).toLocaleString()} دج
-                            {item.gift_quantity > 0 ? ` (${getPaidQuantity(item)} + ${item.gift_quantity} عرض = ${item.new_quantity})` : ''}
+                            {boxPrice.toLocaleString()} دج × {paidQty} = {(boxPrice * paidQty).toLocaleString()} دج
+                            {item.gift_quantity > 0 ? ` (${paidQty} + ${item.gift_quantity} عرض = ${item.new_quantity})` : ''}
                           </p>
-                        )}
+                          );
+                        })()}
                       </div>
                     {!item.id && (
                       <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => removeNewItem(index)}>
