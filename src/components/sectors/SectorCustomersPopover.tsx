@@ -124,7 +124,7 @@ const SectorCustomersPopover: React.FC = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('visit_tracking')
-        .select('customer_id, operation_type')
+        .select('customer_id, operation_type, notes')
         .eq('worker_id', effectiveWorkerId!)
         .gte('created_at', todayStart);
       if (error) throw error;
