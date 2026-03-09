@@ -195,7 +195,10 @@ const ModifyOrderDialog: React.FC<ModifyOrderDialogProps> = ({
 
     const initialPaidQuantity = 1;
     const unitPrice = Number(product.price_gros || product.price_invoice || 0);
-    const recalculated = recalcFromPaidQuantity(product.id, initialPaidQuantity, Number(product.pieces_per_box || 1));
+    const piecesPerBox = Number(product.pieces_per_box || 1);
+    const pricingUnit = product.pricing_unit || 'box';
+    const weightPerBox = Number(product.weight_per_box || 1);
+    const recalculated = recalcFromPaidQuantity(product.id, initialPaidQuantity, piecesPerBox);
 
     setItems(prev => [...prev, {
       product_id: product.id,
@@ -205,7 +208,9 @@ const ModifyOrderDialog: React.FC<ModifyOrderDialogProps> = ({
       unit_price: unitPrice,
       gift_quantity: recalculated.gift_quantity,
       original_gift_quantity: 0,
-      pieces_per_box: Number(product.pieces_per_box || 1),
+      pieces_per_box: piecesPerBox,
+      pricing_unit: pricingUnit,
+      weight_per_box: weightPerBox,
     }]);
     setNewProductId('');
   };
