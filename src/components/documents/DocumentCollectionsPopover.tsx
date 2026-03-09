@@ -60,6 +60,13 @@ const getDocColor = (type: string) => {
 
 const DocumentCollectionsPopover: React.FC = () => {
   const { role, workerId } = useAuth();
+  const { language } = useLanguage();
+  const { sectors } = useSectors();
+  const sectorMap = useMemo(() => {
+    const map = new Map<string, string>();
+    sectors.forEach(s => map.set(s.id, getLocalizedName(s, language)));
+    return map;
+  }, [sectors, language]);
   const createCollection = useCreateDocCollection();
   const [selectedDayNum, setSelectedDayNum] = useState<number | null>(null);
 
