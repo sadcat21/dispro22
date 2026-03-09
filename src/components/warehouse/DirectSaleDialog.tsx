@@ -745,9 +745,17 @@ const DirectSaleDialog: React.FC<DirectSaleDialogProps> = ({ open, onOpenChange,
                   ) : selectedCustomer ? (
                     <span className="flex items-center gap-2">
                       <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-xs font-bold">
-                        {selectedCustomer.name?.charAt(0) || '?'}
+                        {(selectedCustomer.store_name || selectedCustomer.name)?.charAt(0) || '?'}
                       </div>
-                      <span className="truncate">{selectedCustomer.name}</span>
+                      <CustomerLabel
+                        customer={{
+                          name: selectedCustomer.name,
+                          store_name: selectedCustomer.store_name,
+                          customer_type: selectedCustomer.customer_type,
+                          sector_name: sectors?.find(s => s.id === selectedCustomer.sector_id)?.name,
+                        }}
+                        compact
+                      />
                       {selectedCustomer.wilaya && (
                         <span className="text-xs text-muted-foreground">({selectedCustomer.wilaya})</span>
                       )}
