@@ -42,9 +42,9 @@ const CustomerLabel: React.FC<CustomerLabelProps> = ({
 
   // Customer type badge
   const typeEntry = types.find(t => t.ar === customer.customer_type);
-  const typeLabel = typeEntry
-    ? getCustomerTypeLabel(types, customer.customer_type, language)
-    : customer.customer_type;
+  const typeShort = typeEntry?.short
+    ? typeEntry.short.toUpperCase()
+    : (customer.customer_type || '');
   const typeColor = typeEntry
     ? getCustomerTypeColor(typeEntry.short, 0, typeEntry)
     : null;
