@@ -282,7 +282,7 @@ const DueDebtsList: React.FC<{ debts: DueDebt[]; onSelect: (d: DueDebt) => void 
             onClick={() => onSelect(debt)}
           >
             <div className="flex items-center justify-between">
-              <span className="font-bold text-sm">{debt.customer?.store_name || debt.customer?.name || '—'}</span>
+              <CustomerLabel customer={{ name: debt.customer?.name, store_name: debt.customer?.store_name, customer_type: debt.customer?.customer_type }} compact hideBadges />
               <span className="text-destructive font-bold">{Number(debt.remaining_amount).toLocaleString()} DA</span>
             </div>
             <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
