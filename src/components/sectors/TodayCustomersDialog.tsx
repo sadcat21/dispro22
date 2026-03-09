@@ -1373,6 +1373,7 @@ const CustomerList: React.FC<{
   onVisitWithoutOrder?: (c: any) => void;
   onClosed?: (c: any) => void;
   onUnavailable?: (c: any) => void;
+  onDebtRefused?: (c: any) => void;
   onNoSale?: (c: any) => void;
   onPrint?: (c: any) => void;
   showVisitButton?: boolean;
@@ -1385,7 +1386,7 @@ const CustomerList: React.FC<{
   searchQuery?: string;
   sectors?: any[];
   salesRepStatusMap?: Map<string, string>;
-}> = ({ customers, emptyMessage, onCustomerClick, onVisitWithoutOrder, onClosed, onUnavailable, onNoSale, onPrint, showVisitButton, visitButtonLabel, showActionButtons, showPrintButton, showNoSaleButton, checkingLocationFor, loadingFor, searchQuery, sectors, salesRepStatusMap }) => {
+}> = ({ customers, emptyMessage, onCustomerClick, onVisitWithoutOrder, onClosed, onUnavailable, onDebtRefused, onNoSale, onPrint, showVisitButton, visitButtonLabel, showActionButtons, showPrintButton, showNoSaleButton, checkingLocationFor, loadingFor, searchQuery, sectors, salesRepStatusMap }) => {
   const filtered = useMemo(() => {
     if (!searchQuery?.trim()) return customers;
     const q = searchQuery.trim().toLowerCase();
