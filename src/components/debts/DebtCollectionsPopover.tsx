@@ -40,8 +40,14 @@ const getNextDateForJsDay = (jsDay: number): string => {
 };
 
 const DebtCollectionsPopover: React.FC = () => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { role } = useAuth();
+  const { sectors } = useSectors();
+  const sectorMap = useMemo(() => {
+    const map = new Map<string, string>();
+    sectors.forEach(s => map.set(s.id, getLocalizedName(s, language)));
+    return map;
+  }, [sectors, language]);
   // -1 = all, null = today (default), 0-5 = specific work day
   const [selectedDayNum, setSelectedDayNum] = useState<number | null>(null);
 
