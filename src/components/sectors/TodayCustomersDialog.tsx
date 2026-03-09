@@ -220,15 +220,15 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
   }, []);
 
   const { data: todayDeliveredOrders = [] } = useQuery({
-    queryKey: ['today-delivered-dialog', effectiveWorkerId, todayStart, todayEnd, isAdmin],
+    queryKey: ['today-delivered-dialog', effectiveWorkerId, selectedDayBounds.start, selectedDayBounds.end, isAdmin],
     queryFn: async () => {
       // Use stock_movements to determine actual delivery time accurately
       let smQuery = supabase
         .from('stock_movements')
         .select('order_id, created_at')
         .eq('movement_type', 'delivery')
-        .gte('created_at', todayStart)
-        .lte('created_at', todayEnd);
+        .gte('created_at', selectedDayBounds.start)
+        .lte('created_at', selectedDayBounds.end);
       if (!isAdmin || hasSpecificWorker) {
         smQuery = smQuery.eq('worker_id', effectiveWorkerId!);
       }
