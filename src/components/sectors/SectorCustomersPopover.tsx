@@ -101,6 +101,15 @@ const SectorCustomersPopover: React.FC = () => {
     enabled: !!effectiveWorkerId,
   });
 
+  const { data: sectorSchedules = [] } = useQuery({
+    queryKey: ['popover-sector-schedules', scopedBranchId],
+    queryFn: async () => {
+      const { data } = await supabase.from('sector_schedules').select('*');
+      return data || [];
+    },
+    enabled: !!effectiveWorkerId && isOpen,
+  });
+
   const { data: customers = [] } = useQuery({
     queryKey: ['sector-customers', scopedBranchId],
     queryFn: async () => {
@@ -421,6 +430,39 @@ const SectorCustomersPopover: React.FC = () => {
 
   const totalCount = deliveryCustomers.length + salesCustomers.length;
   const debtBadgeCount = filteredDueDebts.length;
+
+  const popoverTodaySectorNames = useMemo(() => {
+    const ids = new Set<string>();
+
+    sectorSchedules.forEach((sc: any) => {
+      if (sc.day !== todayName) return;
+      if ((!hasSpecificWorker && isAdmin) || sc.worker_id === effectiveWorkerId) {
+        ids.add(sc.sector_id);
+      }
+    });
+
+    // Fallback: legacy sector fields when no multi-schedule exists for that sector
+    sectors.forEach((s: any) => {
+      const hasNewSchedule = sectorSchedules.some((sc: any) => sc.sector_id === s.id);
+      if (hasNewSchedule) return;
+
+      const matchesDelivery = s.visit_day_delivery === todayName && ((!hasSpecificWorker && isAdmin) || s.delivery_worker_id === effectiveWorkerId);
+      const matchesSales = s.visit_day_sales === todayName && ((!hasSpecificWorker && isAdmin) || s.sales_worker_id === effectiveWorkerId);
+
+      if (matchesDelivery || matchesSales) ids.add(s.id);
+    });
+
+    return sectors
+      .filter((s: any) => ids.has(s.id))
+      .map((s: any) => s.name)
+      .join(' / ');
+  }, [sectorSchedules, sectors, todayName, isAdmin, hasSpecificWorker, effectiveWorkerId]);
+
+  const dayLabel = DAY_NAMES[todayName] || todayName;
+  const selectedWorkerName = selectedAdminWorkerId ? workersList.find(w => w.id === selectedAdminWorkerId)?.full_name || '' : '';
+  const workerSuffix = selectedWorkerName ? ` — ${selectedWorkerName}` : '';
+  const sectorSuffix = popoverTodaySectorNames ? ` — ${popoverTodaySectorNames}` : '';
+  const popoverTitle = `عملاء اليوم — ${dayLabel}${workerSuffix}${sectorSuffix}`;
 
   if (mySectors.length === 0 && dueDebts.length === 0 && allDebts.length === 0) return null;
 
@@ -749,7 +791,7 @@ const SectorCustomersPopover: React.FC = () => {
       <PopoverContent align="end" className="w-[360px] p-0 max-h-[80vh] flex flex-col" dir="rtl">
         <div className="p-3 border-b font-bold text-sm flex items-center gap-2">
           <MapPin className="w-4 h-4 text-primary" />
-          عملاء اليوم — {selectedAdminWorkerId ? workersList.find(w => w.id === selectedAdminWorkerId)?.full_name || '' : DAY_NAMES[todayName] || todayName}
+          {popoverTitle}
         </div>
 
         {/* Admin worker picker strip */}
