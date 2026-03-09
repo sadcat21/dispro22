@@ -276,7 +276,7 @@ const DebtCollectionsPopover: React.FC = () => {
   );
 };
 
-const DueDebtsList: React.FC<{ debts: DueDebt[]; onSelect: (d: DueDebt) => void }> = ({ debts, onSelect }) => {
+const DueDebtsList: React.FC<{ debts: DueDebt[]; onSelect: (d: DueDebt) => void; sectorMap?: Map<string, string> }> = ({ debts, onSelect, sectorMap }) => {
   if (debts.length === 0) {
     return <div className="p-6 text-center text-sm text-muted-foreground">لا توجد ديون مستحقة</div>;
   }
@@ -291,7 +291,7 @@ const DueDebtsList: React.FC<{ debts: DueDebt[]; onSelect: (d: DueDebt) => void 
             onClick={() => onSelect(debt)}
           >
             <div className="flex items-center justify-between">
-              <CustomerLabel customer={{ name: debt.customer?.name, store_name: debt.customer?.store_name, customer_type: debt.customer?.customer_type }} compact hideBadges />
+              <CustomerLabel customer={{ name: debt.customer?.name, store_name: debt.customer?.store_name, customer_type: debt.customer?.customer_type, sector_name: debt.customer?.sector_id && sectorMap ? sectorMap.get(debt.customer.sector_id) : undefined }} compact />
               <span className="text-destructive font-bold">{Number(debt.remaining_amount).toLocaleString()} DA</span>
             </div>
             <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
