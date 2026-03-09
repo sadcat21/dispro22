@@ -519,7 +519,7 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
     const combined = new Map<string, typeof customers[0]>();
     [...cashVanCustomers, ...preventeAllCustomers].forEach(c => combined.set(c.id, c));
     return Array.from(combined.values());
-  }, [todayDeliverySectors, preventeDeliverySectors, customers, deliveredCustomerIds, deliveryCustomerIdsWithOrders, salesWorkerOrderedCustomerIds]);
+  }, [todayDeliverySectors, preventeDeliverySectors, customers, deliveredCustomerIds, deliveryCustomerIdsWithOrders, salesWorkerOrderedCustomerIds, salesRepStatusMap]);
 
   // Direct sale sub-categorization
   const directSoldCustomerIds = useMemo(() => new Set(todayDirectSales.map(s => s.customer_id).filter(Boolean)), [todayDirectSales]);
