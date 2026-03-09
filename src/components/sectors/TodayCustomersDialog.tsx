@@ -1322,22 +1322,18 @@ const CustomerList: React.FC<{
               {loadingFor === c.id ? <Loader2 className="w-4 h-4 animate-spin text-primary" /> : <User className="w-4 h-4 text-primary" />}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="font-bold text-sm truncate">{c.store_name || c.name}</p>
+              <CustomerLabel
+                customer={{
+                  name: c.name,
+                  store_name: c.store_name,
+                  customer_type: c.customer_type,
+                  sector_name: sector?.name,
+                }}
+              />
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                {c.store_name && <span>{c.name}</span>}
-                {c.phone && <span>• {c.phone}</span>}
+                {c.phone && <span>{c.phone}</span>}
                 {c.wilaya && <span>• {c.wilaya}</span>}
               </div>
-              {sector && (
-                <div className="flex items-center gap-1 text-[10px] text-muted-foreground mt-0.5">
-                  {sector.delivery_worker_id && sector.sales_worker_id
-                    ? <span>📍 {sector.name}</span>
-                    : sector.delivery_worker_id
-                    ? <span>🚚 {sector.name}</span>
-                    : <span>🛒 {sector.name}</span>
-                  }
-                </div>
-              )}
             </div>
           </button>
           <div className="flex items-center gap-1 mt-1.5 justify-end flex-wrap">
