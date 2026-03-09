@@ -1361,7 +1361,15 @@ const CustomerList: React.FC<{
                   customer_type: c.customer_type,
                   sector_name: sector?.name,
                 }}
-              />
+               />
+               {salesRepStatusMap && salesRepStatusMap.has(c.id) && (() => {
+                 const status = salesRepStatusMap.get(c.id);
+                 if (status === 'not_visited') return <Badge className="text-[9px] px-1.5 py-0 h-4 bg-amber-100 text-amber-700 border-0">بدون زيارة</Badge>;
+                 if (status === 'closed') return <Badge className="text-[9px] px-1.5 py-0 h-4 bg-red-100 text-red-700 border-0">مغلق</Badge>;
+                 if (status === 'unavailable') return <Badge className="text-[9px] px-1.5 py-0 h-4 bg-gray-100 text-gray-600 border-0">غير متاح</Badge>;
+                 if (status === 'visited') return <Badge className="text-[9px] px-1.5 py-0 h-4 bg-blue-100 text-blue-700 border-0">تمت الزيارة</Badge>;
+                 return null;
+               })()}
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 {c.phone && <span>{c.phone}</span>}
                 {c.wilaya && <span>• {c.wilaya}</span>}
