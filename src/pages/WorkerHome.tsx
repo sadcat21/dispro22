@@ -71,6 +71,44 @@ const WorkerHome: React.FC = () => {
   const isWorkerActionsHidden = useIsElementHidden('page', '/worker-actions');
   const isSupervisor = role === 'supervisor';
 
+  const JS_DAY_TO_NAME: Record<number, string> = {
+    6: 'saturday', 0: 'sunday', 1: 'monday', 2: 'tuesday', 3: 'wednesday', 4: 'thursday',
+  };
+  const DAY_NAMES_AR: Record<string, string> = {
+    saturday: 'السبت', sunday: 'الأحد', monday: 'الإثنين',
+    tuesday: 'الثلاثاء', wednesday: 'الأربعاء', thursday: 'الخميس',
+  };
+  const todayName = JS_DAY_TO_NAME[new Date().getDay()] || '';
+  const todayDayAr = DAY_NAMES_AR[todayName] || todayName;
+
+  // Fetch today's scheduled sectors for current worker
+  const { data: todaySectorNames = [] } = useQuery({
+    queryKey: ['home-today-sector-names', workerId, todayName],
+    queryFn: async () => {
+      // Get sector_schedules for today
+      const { data: schedules } = await supabase
+        .from('sector_schedules')
+        .select('sector_id')
+        .eq('worker_id', workerId!)
+        .eq('day', todayName);
+      const sectorIds = (schedules || []).map(s => s.sector_id);
+      if (sectorIds.length === 0) return [];
+      const { data: sectors } = await supabase
+        .from('sectors')
+        .select('name')
+        .in('id', sectorIds);
+      return (sectors || []).map(s => s.name);
+    },
+    enabled: !!workerId && !!todayName,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const todayCustomersLabel = useMemo(() => {
+    const parts = ['عملاء اليوم', todayDayAr];
+    if (todaySectorNames.length > 0) parts.push(todaySectorNames.join(' / '));
+    return parts.join(' — ');
+  }, [todayDayAr, todaySectorNames]);
+
   const { data: stockItems } = useQuery({
     queryKey: ['my-worker-stock', workerId],
     queryFn: async () => {
