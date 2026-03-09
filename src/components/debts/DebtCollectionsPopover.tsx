@@ -317,8 +317,10 @@ const PendingCollectionsList: React.FC<{
   return (
     <ScrollArea className="max-h-[50vh]">
       <div className="divide-y">
-      CustomerLabel customer={{ name: c.debt?.customer?.name, store_name: c.debt?.customer?.store_name, customer_type: c.debt?.customer?.customer_type }} compact hideBadges /"flex items-center justify-between">
-              <span className="font-bold text-sm">{c.debt?.customer?.store_name || c.debt?.customer?.name || '—'}</span>
+        {collections.map(c => (
+          <div key={c.id} className="p-3 space-y-2">
+            <div className="flex items-center justify-between">
+              <CustomerLabel customer={{ name: c.debt?.customer?.name, store_name: c.debt?.customer?.store_name, customer_type: c.debt?.customer?.customer_type }} compact hideBadges />
               <Badge variant="outline" className="text-xs">{actionLabels[c.action] || c.action}</Badge>
             </div>
             <div className="text-xs text-muted-foreground">
