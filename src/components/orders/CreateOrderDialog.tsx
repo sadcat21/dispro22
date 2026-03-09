@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import CustomerLabel from '@/components/customers/CustomerLabel';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { addDays, format } from 'date-fns';
 import { Button } from '@/components/ui/button';
@@ -626,7 +627,16 @@ const CreateOrderDialog: React.FC<CreateOrderDialogProps> = ({ open, onOpenChang
                       <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-xs font-bold">
                         {(selectedCustomer.store_name || selectedCustomer.name)?.charAt(0) || '?'}
                       </div>
-                      <span className="truncate">{selectedCustomer.store_name || selectedCustomer.name}</span>
+                      <CustomerLabel
+                        customer={{
+                          name: selectedCustomer.name,
+                          store_name: selectedCustomer.store_name,
+                          customer_type: selectedCustomer.customer_type,
+                          sector_name: selectedCustomer.sector_id ? sectors.find(s => s.id === selectedCustomer.sector_id)?.name : undefined,
+                        }}
+                        compact
+                        hideBadges
+                      />
                       {selectedCustomer.wilaya && (
                         <span className="text-xs text-muted-foreground">({selectedCustomer.wilaya})</span>
                       )}
@@ -667,8 +677,14 @@ const CreateOrderDialog: React.FC<CreateOrderDialogProps> = ({ open, onOpenChang
                           {(selectedCustomer.store_name || selectedCustomer.name)?.charAt(0) || '?'}
                         </div>
                         <div>
-                          <p className="font-bold">{selectedCustomer.store_name || selectedCustomer.name}</p>
-                          {selectedCustomer.store_name && <p className="text-xs text-muted-foreground">{selectedCustomer.name}</p>}
+                          <CustomerLabel
+                            customer={{
+                              name: selectedCustomer.name,
+                              store_name: selectedCustomer.store_name,
+                              customer_type: selectedCustomer.customer_type,
+                              sector_name: selectedCustomer.sector_id ? sectors.find(s => s.id === selectedCustomer.sector_id)?.name : undefined,
+                            }}
+                          />
                           <div className="flex items-center gap-1.5 mt-0.5">
                             <p className="text-xs text-muted-foreground">
                               {selectedCustomer.wilaya}
