@@ -69,7 +69,7 @@ export const usePendingDocOrders = (targetDate?: string) => {
           id, customer_id, total_amount, document_status, invoice_payment_method,
           doc_due_date, doc_collection_type, doc_collection_days,
           created_at, assigned_worker_id,
-          customer:customers!orders_customer_id_fkey(id, name, store_name, phone, latitude, longitude)
+          customer:customers!orders_customer_id_fkey(id, name, store_name, phone, latitude, longitude, customer_type)
         `)
         .eq('document_status', 'pending')
         .eq('status', 'delivered')
