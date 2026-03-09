@@ -823,9 +823,14 @@ const MyDeliveries: React.FC = () => {
       {/* Order Search Dialog */}
       <OrderSearchDialog open={showSearchDialog} onOpenChange={setShowSearchDialog} />
       
+      {/* Admin Worker Bar */}
+      {isAdminOrBranchAdmin && <AdminWorkerBar />}
+
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-bold">{t('deliveries.title')}</h2>
+        <h2 className="text-xl font-bold">
+          {t('deliveries.title')}{contextWorkerId && contextWorkerName && <span className="text-primary"> - {contextWorkerName}</span>}
+        </h2>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" className="border-primary/30 text-primary" onClick={() => setShowLoadRequestDialog(true)}>
             <Truck className="w-4 h-4 me-1" />
