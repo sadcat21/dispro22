@@ -306,7 +306,7 @@ const PendingDocCollectionsList: React.FC<{
         {collections.map(c => (
           <div key={c.id} className="p-3 space-y-2">
             <div className="flex items-center justify-between">
-              <span className="font-bold text-sm">{c.order?.customer?.store_name || c.order?.customer?.name || '—'}</span>
+              <CustomerLabel customer={{ name: c.order?.customer?.name, store_name: c.order?.customer?.store_name, customer_type: c.order?.customer?.customer_type }} compact hideBadges />
               <Badge variant="outline" className="text-xs">{actionLabels[c.action] || c.action}</Badge>
             </div>
             <div className="text-xs text-muted-foreground">
