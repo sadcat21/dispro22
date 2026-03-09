@@ -101,6 +101,15 @@ const SectorCustomersPopover: React.FC = () => {
     enabled: !!effectiveWorkerId,
   });
 
+  const { data: sectorSchedules = [] } = useQuery({
+    queryKey: ['popover-sector-schedules', scopedBranchId],
+    queryFn: async () => {
+      const { data } = await supabase.from('sector_schedules').select('*');
+      return data || [];
+    },
+    enabled: !!effectiveWorkerId && isOpen,
+  });
+
   const { data: customers = [] } = useQuery({
     queryKey: ['sector-customers', scopedBranchId],
     queryFn: async () => {
