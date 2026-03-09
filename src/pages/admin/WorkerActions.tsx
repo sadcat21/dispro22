@@ -713,6 +713,12 @@ const WorkerActions: React.FC = () => {
         workerName={selectedWorker?.full_name}
         workerType={sectorScheduleType}
       />
+      <WorkerOrdersSummaryDialog
+        open={ordersSummaryOpen}
+        onOpenChange={setOrdersSummaryOpen}
+        workerId={selectedWorker?.id}
+        workerName={selectedWorker?.full_name}
+      />
     </div>
   );
 };
