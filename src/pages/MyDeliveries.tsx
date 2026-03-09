@@ -33,6 +33,8 @@ import { useIsElementHidden } from '@/hooks/useUIOverrides';
 import { getLocalizedName } from '@/utils/sectorName';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSelectedWorker } from '@/contexts/SelectedWorkerContext';
+import AdminWorkerBar from '@/components/workers/AdminWorkerBar';
 import ReceiptDialog from '@/components/printing/ReceiptDialog';
 import { ReceiptItem, ReceiptType } from '@/types/receipt';
 import { useWorkerPrintInfo } from '@/hooks/useWorkerPrintInfo';
