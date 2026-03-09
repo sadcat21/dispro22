@@ -328,7 +328,7 @@ const PendingCollectionsList: React.FC<{
         {collections.map(c => (
           <div key={c.id} className="p-3 space-y-2">
             <div className="flex items-center justify-between">
-              <CustomerLabel customer={{ name: c.debt?.customer?.name, store_name: c.debt?.customer?.store_name, customer_type: c.debt?.customer?.customer_type }} compact hideBadges />
+              <CustomerLabel customer={{ name: c.debt?.customer?.name, store_name: c.debt?.customer?.store_name, customer_type: c.debt?.customer?.customer_type, sector_name: c.debt?.customer?.sector_id && sectorMap ? sectorMap.get(c.debt.customer.sector_id) : undefined }} compact hideBadges />
               <Badge variant="outline" className="text-xs">{actionLabels[c.action] || c.action}</Badge>
             </div>
             <div className="text-xs text-muted-foreground">
