@@ -11,8 +11,9 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Truck, Plus, Minus, Loader2,
-  XCircle, Package, PlusCircle, Stamp, CheckCircle, PackageX, Gift, AlertTriangle, Copy, DollarSign, Banknote
+  XCircle, Package, PlusCircle, Stamp, CheckCircle, PackageX, Gift, AlertTriangle, Copy, DollarSign, Banknote, Clock
 } from 'lucide-react';
+import { format } from 'date-fns';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
@@ -962,6 +963,19 @@ const DeliverySaleDialog: React.FC<DeliverySaleDialogProps> = ({ open, onOpenCha
                   customerLatitude={order.customer?.latitude}
                   customerLongitude={order.customer?.longitude}
                 />
+                {/* Order timestamps */}
+                <div className="flex items-center gap-3 text-[11px] text-muted-foreground mt-2 flex-wrap">
+                  <span className="flex items-center gap-1">
+                    <Clock className="w-3 h-3" />
+                    تسجيل: {format(new Date(order.created_at), 'dd/MM HH:mm')}
+                  </span>
+                  {order.delivery_date && (
+                    <span className="flex items-center gap-1">
+                      <Truck className="w-3 h-3" />
+                      توصيل: {format(new Date(order.delivery_date), 'dd/MM HH:mm')}
+                    </span>
+                  )}
+                </div>
               </div>
 
               {/* Prominent prepaid alert banner */}
