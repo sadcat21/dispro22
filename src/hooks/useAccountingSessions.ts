@@ -259,24 +259,41 @@ export const useUpdateFullSession = () => {
   });
 };
 
+export const useCancelSession = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (sessionId: string) => {
+      // Cancel = full revert: delete treasury entries, items, then session
+      await supabase.from('manager_treasury').delete().eq('session_id', sessionId);
+      await supabase.from('accounting_session_items').delete().eq('session_id', sessionId);
+      const { error } = await supabase.from('accounting_sessions').delete().eq('id', sessionId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['accounting-sessions'] });
+      queryClient.invalidateQueries({ queryKey: ['manager-treasury'] });
+      queryClient.invalidateQueries({ queryKey: ['treasury-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['worker-last-accounting-session'] });
+      queryClient.invalidateQueries({ queryKey: ['assigned-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+      queryClient.invalidateQueries({ queryKey: ['my-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['my-deliveries'] });
+    },
+  });
+};
+
 export const useDeleteSession = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (sessionId: string) => {
-      // Delete treasury entries created by this session
-      await supabase.from('manager_treasury').delete().eq('session_id', sessionId);
-      // Delete session items
+      // Delete = remove session record only (no treasury revert)
       await supabase.from('accounting_session_items').delete().eq('session_id', sessionId);
-      // Delete the session itself
       const { error } = await supabase.from('accounting_sessions').delete().eq('id', sessionId);
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['accounting-sessions'] });
       queryClient.invalidateQueries({ queryKey: ['worker-last-accounting-session'] });
-      queryClient.invalidateQueries({ queryKey: ['orders'] });
-      queryClient.invalidateQueries({ queryKey: ['my-orders'] });
-      queryClient.invalidateQueries({ queryKey: ['my-deliveries'] });
     },
   });
 };
