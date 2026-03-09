@@ -20,6 +20,8 @@ interface CustomerBreakdown {
   customerId: string;
   customerName: string;
   storeName: string | null;
+  phone: string | null;
+  orderTime: string | null;
   quantity: number;
 }
 
@@ -31,6 +33,130 @@ interface ProductAgg {
   customerCount: number;
   customers: CustomerBreakdown[];
 }
+
+/** Carousel overlay for orders – mirrors the sales summary carousel */
+const OrdersCarousel: React.FC<{
+  items: ProductAgg[];
+  expandedProduct: string;
+  onNavigate: (id: string) => void;
+  onClose: () => void;
+}> = ({ items, expandedProduct, onNavigate, onClose }) => {
+  const currentIdx = items.findIndex(i => i.productId === expandedProduct);
+  const item = items[currentIdx];
+  if (!item) return null;
+
+  const goPrev = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (currentIdx > 0) onNavigate(items[currentIdx - 1].productId);
+  };
+  const goNext = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (currentIdx < items.length - 1) onNavigate(items[currentIdx + 1].productId);
+  };
+
+  return (
+    <div className="flex flex-col gap-2 pb-2">
+      {/* Navigation with thumbnails */}
+      <div className="flex items-center justify-between px-1 py-1.5 gap-2">
+        {currentIdx > 0 ? (
+          <button onClick={goPrev} className="w-10 h-10 rounded-lg overflow-hidden border border-border hover:border-primary/50 transition-colors shrink-0">
+            {items[currentIdx - 1].imageUrl ? (
+              <img src={items[currentIdx - 1].imageUrl!} alt="" className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full bg-muted flex items-center justify-center">
+                <Package className="w-4 h-4 text-muted-foreground" />
+              </div>
+            )}
+          </button>
+        ) : (
+          <div className="w-10 h-10 shrink-0" />
+        )}
+
+        <span className="text-xs text-muted-foreground">
+          {currentIdx + 1} / {items.length}
+        </span>
+
+        {currentIdx < items.length - 1 ? (
+          <button onClick={goNext} className="w-10 h-10 rounded-lg overflow-hidden border border-border hover:border-primary/50 transition-colors shrink-0">
+            {items[currentIdx + 1].imageUrl ? (
+              <img src={items[currentIdx + 1].imageUrl!} alt="" className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full bg-muted flex items-center justify-center">
+                <Package className="w-4 h-4 text-muted-foreground" />
+              </div>
+            )}
+          </button>
+        ) : (
+          <div className="w-10 h-10 shrink-0" />
+        )}
+      </div>
+
+      {/* Product card */}
+      <div
+        className="flex flex-col rounded-2xl overflow-hidden shadow-lg border-2 border-primary ring-2 ring-primary/30 cursor-pointer"
+        onClick={onClose}
+      >
+        {/* Product name */}
+        <div className="px-3 py-2 text-center bg-primary">
+          <span className="font-bold text-sm block truncate text-primary-foreground">
+            {item.name}
+          </span>
+        </div>
+
+        {/* Image area with customer overlay */}
+        <div className="relative w-full overflow-hidden bg-muted h-[38vh] min-h-[200px] max-h-[400px]">
+          {item.imageUrl ? (
+            <img src={item.imageUrl} alt={item.name} className="absolute inset-0 w-full h-full object-cover" />
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <Package className="w-16 h-16 text-primary/30" />
+            </div>
+          )}
+
+          {item.customers.length > 0 && (
+            <>
+              <div className="absolute inset-0 bg-background/40 backdrop-blur-[2px]" />
+              <div className="absolute inset-0 z-10 p-3 overflow-y-auto space-y-1.5">
+                {item.customers.map((c) => (
+                  <div
+                    key={c.customerId}
+                    className="flex items-center justify-between py-2 px-3 rounded-lg bg-card/80 border border-border/60 text-sm"
+                    dir="rtl"
+                  >
+                    <div className="flex flex-col min-w-0 gap-0.5">
+                      <div className="flex items-center gap-1.5">
+                        <User className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                        <span className="truncate font-medium">{c.storeName || c.customerName}</span>
+                        {c.orderTime && (
+                          <span className="text-[10px] text-muted-foreground shrink-0">
+                            {new Date(c.orderTime).toLocaleTimeString('ar-DZ', { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                        {c.storeName && <span className="truncate">{c.customerName}</span>}
+                        {c.phone && <span dir="ltr" className="shrink-0">{c.phone}</span>}
+                      </div>
+                    </div>
+                    <span className="font-bold text-primary text-base shrink-0">{c.quantity}</span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="px-2 py-2 bg-card flex items-center gap-1.5">
+          <div className="flex-1 flex items-center justify-center gap-1 rounded-md bg-primary/10 text-primary py-1.5 text-sm font-bold">
+            <Package className="w-3.5 h-3.5" />
+            {item.quantity}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const WorkerOrdersSummaryDialog: React.FC<Props> = ({ open, onOpenChange, workerId, workerName }) => {
   const [activeTab, setActiveTab] = useState<'created' | 'assigned'>('assigned');
@@ -45,19 +171,17 @@ const WorkerOrdersSummaryDialog: React.FC<Props> = ({ open, onOpenChange, worker
       const dayStart = `${selectedDate}T00:00:00+01:00`;
       const dayEnd = `${selectedDate}T23:59:59+01:00`;
 
-      // Orders created by this worker
       const { data: createdOrders } = await supabase
         .from('orders')
-        .select('id, customer_id, customer:customers(name, store_name)')
+        .select('id, customer_id, created_at, customer:customers(name, store_name, phone)')
         .eq('created_by', workerId)
         .gte('created_at', dayStart)
         .lte('created_at', dayEnd)
         .in('status', ['pending', 'assigned', 'in_progress', 'delivered', 'completed', 'confirmed']);
 
-      // Orders assigned to this worker
       const { data: assignedOrders } = await supabase
         .from('orders')
-        .select('id, customer_id, created_by, customer:customers(name, store_name)')
+        .select('id, customer_id, created_at, customer:customers(name, store_name, phone)')
         .eq('assigned_worker_id', workerId)
         .gte('created_at', dayStart)
         .lte('created_at', dayEnd)
@@ -102,6 +226,8 @@ const WorkerOrdersSummaryDialog: React.FC<Props> = ({ open, onOpenChange, worker
                 customerId: custId,
                 customerName: (order.customer as any)?.name || '—',
                 storeName: (order.customer as any)?.store_name || null,
+                phone: (order.customer as any)?.phone || null,
+                orderTime: order.created_at || null,
                 quantity: item.quantity || 0,
               });
             }
@@ -204,70 +330,45 @@ const WorkerOrdersSummaryDialog: React.FC<Props> = ({ open, onOpenChange, worker
                 <ClipboardList className="w-12 h-12 opacity-30 mb-2" />
                 <p className="text-sm">لا توجد طلبيات في هذا التاريخ</p>
               </div>
+            ) : expandedProduct ? (
+              <ScrollArea className="h-full px-3">
+                <OrdersCarousel
+                  items={currentData}
+                  expandedProduct={expandedProduct}
+                  onNavigate={setExpandedProduct}
+                  onClose={() => setExpandedProduct(null)}
+                />
+              </ScrollArea>
             ) : (
               <ScrollArea className="h-full">
                 <div className="grid grid-cols-3 gap-2 px-3 pb-4">
-                  {currentData.map(product => {
-                    const isExpanded = expandedProduct === product.productId;
-                    return (
-                      <div key={product.productId} className="col-span-1">
-                        <div
-                          onClick={() => setExpandedProduct(isExpanded ? null : product.productId)}
-                          className={`rounded-xl border cursor-pointer transition-all active:scale-[0.97] overflow-hidden ${
-                            isExpanded ? 'ring-2 ring-primary/40 shadow-md' : 'hover:shadow-sm'
-                          }`}
-                        >
-                          {/* Product image */}
-                          <div className="aspect-square bg-muted/30 relative overflow-hidden">
-                            {product.imageUrl ? (
-                              <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center">
-                                <Package className="w-8 h-8 text-muted-foreground/30" />
-                              </div>
-                            )}
-                            {/* Quantity badge */}
-                            <Badge className="absolute top-1 end-1 text-[10px] px-1.5 py-0 h-5 bg-primary text-primary-foreground shadow">
-                              {product.quantity}
-                            </Badge>
-                          </div>
-                          {/* Info */}
-                          <div className="p-1.5 text-center">
-                            <p className="text-[10px] font-semibold leading-tight line-clamp-2">{product.name}</p>
-                            <p className="text-[9px] text-muted-foreground mt-0.5">
-                              <User className="w-2.5 h-2.5 inline me-0.5" />
-                              {product.customerCount} عميل
-                            </p>
-                          </div>
-                        </div>
-
-                        {/* Expanded customer list */}
-                        {isExpanded && (
-                          <div className="mt-1 rounded-lg border bg-background p-2 shadow-sm col-span-3">
-                            <p className="text-[10px] font-semibold text-muted-foreground mb-1.5 flex items-center gap-1">
-                              <User className="w-3 h-3" />
-                              العملاء ({product.customerCount})
-                            </p>
-                            <div className="space-y-1 max-h-[25vh] overflow-y-auto">
-                              {product.customers.sort((a, b) => b.quantity - a.quantity).map(c => (
-                                <div key={c.customerId} className="flex items-center justify-between text-[11px] bg-muted/30 rounded-lg px-2 py-1.5">
-                                  <div className="min-w-0 flex-1">
-                                    {c.storeName && <span className="font-semibold block truncate">{c.storeName}</span>}
-                                    <span className={`truncate block ${c.storeName ? 'text-[10px] text-muted-foreground' : 'font-medium'}`}>
-                                      {c.customerName}
-                                    </span>
-                                  </div>
-                                  <Badge variant="secondary" className="text-[10px] ms-2 shrink-0 tabular-nums font-bold">
-                                    {c.quantity}
-                                  </Badge>
-                                </div>
-                              ))}
-                            </div>
+                  {currentData.map(product => (
+                    <div
+                      key={product.productId}
+                      onClick={() => setExpandedProduct(product.productId)}
+                      className="rounded-xl border cursor-pointer transition-all active:scale-[0.97] hover:shadow-sm overflow-hidden"
+                    >
+                      <div className="aspect-square bg-muted/30 relative overflow-hidden">
+                        {product.imageUrl ? (
+                          <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <Package className="w-8 h-8 text-muted-foreground/30" />
                           </div>
                         )}
+                        <Badge className="absolute top-1 end-1 text-[10px] px-1.5 py-0 h-5 bg-primary text-primary-foreground shadow">
+                          {product.quantity}
+                        </Badge>
                       </div>
-                    );
-                  })}
+                      <div className="p-1.5 text-center">
+                        <p className="text-[10px] font-semibold leading-tight line-clamp-2">{product.name}</p>
+                        <p className="text-[9px] text-muted-foreground mt-0.5">
+                          <User className="w-2.5 h-2.5 inline me-0.5" />
+                          {product.customerCount} عميل
+                        </p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </ScrollArea>
             )}
