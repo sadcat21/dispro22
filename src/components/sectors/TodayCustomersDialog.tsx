@@ -354,7 +354,7 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
   });
 
   // Sector coverage (substitution system)
-  const { getCoveredSectorsForWorker } = useSectorCoverage();
+  const { getActiveCoveragesForDate } = useSectorCoverage();
   const selectedDateStr = useMemo(() => {
     const now = new Date();
     const currentJsDay = now.getDay();
@@ -368,9 +368,35 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
     return targetDate.toISOString().split('T')[0];
   }, [selectedDay]);
 
+  const activeCoveragesForSelectedDay = useMemo(() => {
+    const activeCoverages = getActiveCoveragesForDate(selectedDateStr);
+
+    return activeCoverages.filter((coverage) => {
+      const scopedSchedules = sectorSchedules.filter(
+        (sc) => sc.sector_id === coverage.sector_id && sc.schedule_type === coverage.schedule_type
+      );
+
+      if (scopedSchedules.length > 0) {
+        return scopedSchedules.some(
+          (sc) => sc.day === selectedDay && sc.worker_id === coverage.absent_worker_id
+        );
+      }
+
+      const sector = sectors.find((s) => s.id === coverage.sector_id);
+      if (!sector) return false;
+
+      if (coverage.schedule_type === 'sales') {
+        return sector.visit_day_sales === selectedDay && sector.sales_worker_id === coverage.absent_worker_id;
+      }
+
+      return sector.visit_day_delivery === selectedDay && sector.delivery_worker_id === coverage.absent_worker_id;
+    });
+  }, [getActiveCoveragesForDate, selectedDateStr, sectorSchedules, selectedDay, sectors]);
+
   // Computed data - use sector_schedules for determining today's sectors
   const todaySalesSectorIds = useMemo(() => {
     const ids = new Set<string>();
+
     // From sector_schedules
     sectorSchedules.forEach(sc => {
       if (sc.day === selectedDay && sc.schedule_type === 'sales') {
@@ -381,25 +407,33 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
         }
       }
     });
+
     // Fallback: legacy fields for sectors without schedules
     sectors.forEach(s => {
-      const hasNewSchedule = sectorSchedules.some(sc => sc.sector_id === s.id);
-      if (hasNewSchedule) return;
+      const hasSalesSchedule = sectorSchedules.some(sc => sc.sector_id === s.id && sc.schedule_type === 'sales');
+      if (hasSalesSchedule) return;
+
       if (s.visit_day_sales === selectedDay) {
         if (!hasSpecificWorker && isAdmin) ids.add(s.id);
         else if (s.sales_worker_id === effectiveWorkerId) ids.add(s.id);
       }
     });
-    // Add covered sectors from substitution system
+
+    // Apply substitution transfers for this selected day
     if (effectiveWorkerId) {
-      const coveredSales = getCoveredSectorsForWorker(effectiveWorkerId, 'sales', selectedDateStr);
-      coveredSales.forEach(c => ids.add(c.sector_id));
+      activeCoveragesForSelectedDay.forEach(c => {
+        if (c.schedule_type !== 'sales') return;
+        if (c.absent_worker_id === effectiveWorkerId) ids.delete(c.sector_id);
+        if (c.substitute_worker_id === effectiveWorkerId) ids.add(c.sector_id);
+      });
     }
+
     return ids;
-  }, [sectorSchedules, sectors, selectedDay, effectiveWorkerId, isAdmin, hasSpecificWorker, getCoveredSectorsForWorker, selectedDateStr]);
+  }, [sectorSchedules, sectors, selectedDay, effectiveWorkerId, isAdmin, hasSpecificWorker, activeCoveragesForSelectedDay]);
 
   const todayDeliverySectorIds = useMemo(() => {
     const ids = new Set<string>();
+
     sectorSchedules.forEach(sc => {
       if (sc.day === selectedDay && sc.schedule_type === 'delivery') {
         if (!hasSpecificWorker && isAdmin) {
@@ -409,21 +443,79 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
         }
       }
     });
+
     sectors.forEach(s => {
-      const hasNewSchedule = sectorSchedules.some(sc => sc.sector_id === s.id);
-      if (hasNewSchedule) return;
+      const hasDeliverySchedule = sectorSchedules.some(sc => sc.sector_id === s.id && sc.schedule_type === 'delivery');
+      if (hasDeliverySchedule) return;
+
       if (s.visit_day_delivery === selectedDay) {
         if (!hasSpecificWorker && isAdmin) ids.add(s.id);
         else if (s.delivery_worker_id === effectiveWorkerId) ids.add(s.id);
       }
     });
-    // Add covered sectors from substitution system
+
+    // Apply substitution transfers for this selected day
     if (effectiveWorkerId) {
-      const coveredDelivery = getCoveredSectorsForWorker(effectiveWorkerId, 'delivery', selectedDateStr);
-      coveredDelivery.forEach(c => ids.add(c.sector_id));
+      activeCoveragesForSelectedDay.forEach(c => {
+        if (c.schedule_type !== 'delivery') return;
+        if (c.absent_worker_id === effectiveWorkerId) ids.delete(c.sector_id);
+        if (c.substitute_worker_id === effectiveWorkerId) ids.add(c.sector_id);
+      });
     }
+
     return ids;
-  }, [sectorSchedules, sectors, selectedDay, effectiveWorkerId, isAdmin, hasSpecificWorker, getCoveredSectorsForWorker, selectedDateStr]);
+  }, [sectorSchedules, sectors, selectedDay, effectiveWorkerId, isAdmin, hasSpecificWorker, activeCoveragesForSelectedDay]);
+
+  const availableWorkerIdsForSelectedDay = useMemo(() => {
+    const workerAssignments = new Map<string, Set<string>>();
+
+    const addAssignment = (workerId: string | null, key: string) => {
+      if (!workerId) return;
+      if (!workerAssignments.has(workerId)) workerAssignments.set(workerId, new Set<string>());
+      workerAssignments.get(workerId)!.add(key);
+    };
+
+    const removeAssignment = (workerId: string | null, key: string) => {
+      if (!workerId) return;
+      const current = workerAssignments.get(workerId);
+      if (!current) return;
+      current.delete(key);
+      if (current.size === 0) workerAssignments.delete(workerId);
+    };
+
+    // Base assignments from new schedule system
+    sectorSchedules.forEach((sc) => {
+      if (sc.day !== selectedDay || !sc.worker_id) return;
+      addAssignment(sc.worker_id, `${sc.schedule_type}:${sc.sector_id}`);
+    });
+
+    // Fallback assignments from legacy day fields
+    sectors.forEach((s) => {
+      const hasSalesSchedule = sectorSchedules.some((sc) => sc.sector_id === s.id && sc.schedule_type === 'sales');
+      const hasDeliverySchedule = sectorSchedules.some((sc) => sc.sector_id === s.id && sc.schedule_type === 'delivery');
+
+      if (!hasSalesSchedule && s.visit_day_sales === selectedDay) {
+        addAssignment(s.sales_worker_id, `sales:${s.id}`);
+      }
+
+      if (!hasDeliverySchedule && s.visit_day_delivery === selectedDay) {
+        addAssignment(s.delivery_worker_id, `delivery:${s.id}`);
+      }
+    });
+
+    // Apply transfers from coverage records
+    activeCoveragesForSelectedDay.forEach((coverage) => {
+      const key = `${coverage.schedule_type}:${coverage.sector_id}`;
+      removeAssignment(coverage.absent_worker_id, key);
+      addAssignment(coverage.substitute_worker_id, key);
+    });
+
+    return new Set(
+      Array.from(workerAssignments.entries())
+        .filter(([, assignments]) => assignments.size > 0)
+        .map(([workerId]) => workerId)
+    );
+  }, [sectorSchedules, sectors, selectedDay, activeCoveragesForSelectedDay]);
 
   // IMPORTANT: filter from all sectors using the computed IDs (which already include coverage substitutions)
   // so covered sectors appear immediately in direct-sale/delivery lists for substitute workers.
@@ -1040,14 +1132,7 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
             <div className="border-b px-2 py-1.5 shrink-0">
               <ScrollArea className="w-full" dir="rtl">
                 <div className="flex gap-1.5 pb-1">
-                  {workersList.filter(w => {
-                    return sectors.some(s =>
-                      (s.delivery_worker_id === w.id && s.visit_day_delivery === selectedDay) ||
-                      (s.sales_worker_id === w.id && s.visit_day_sales === selectedDay)
-                    ) || sectorSchedules.some(sc =>
-                      sc.day === selectedDay && sc.worker_id === w.id
-                    );
-                  }).map(w => {
+                  {workersList.filter(w => availableWorkerIdsForSelectedDay.has(w.id)).map(w => {
                     const isSelected = w.id === selectedAdminWorkerId;
                     return (
                       <button
