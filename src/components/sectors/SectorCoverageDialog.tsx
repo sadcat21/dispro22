@@ -53,6 +53,8 @@ const SectorCoverageDialog: React.FC<SectorCoverageDialogProps> = ({ open, onOpe
   const [reason, setReason] = useState('');
   const [assignments, setAssignments] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editSubstituteId, setEditSubstituteId] = useState<string>('');
 
   // Fetch workers
   const { data: workers = [] } = useQuery({
