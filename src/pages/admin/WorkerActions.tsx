@@ -464,6 +464,8 @@ const WorkerActions: React.FC = () => {
       } else if (action.key === 'sector_schedule') {
         setSectorScheduleType('delivery');
         setSectorScheduleOpen(true);
+      } else if (action.key === 'sector_coverage') {
+        setSectorCoverageOpen(true);
       } else if (action.key === 'orders_summary') {
         setOrdersSummaryOpen(true);
       }
