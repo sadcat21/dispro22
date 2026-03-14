@@ -17,7 +17,7 @@ import { getLocalizedName } from '@/utils/sectorName';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
-import { UserX, UserCheck, ArrowRight, Trash2, Plus, Calendar, Truck, ShoppingCart, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
+import { UserX, UserCheck, ArrowRight, Trash2, Plus, Calendar, Truck, ShoppingCart, Loader2, AlertCircle, RefreshCw, Pencil, UserCog } from 'lucide-react';
 
 interface SectorCoverageDialogProps {
   open: boolean;
