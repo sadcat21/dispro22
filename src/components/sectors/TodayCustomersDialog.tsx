@@ -447,6 +447,17 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
 
     // Apply substitution transfers for this selected day
     if (effectiveWorkerId) {
+      // Check if any coverage with 'replace' mode exists for this worker as substitute
+      const hasReplaceMode = activeCoveragesForSelectedDay.some(
+        c => c.substitute_worker_id === effectiveWorkerId && c.schedule_type === 'sales' && c.coverage_mode === 'replace'
+      );
+
+      if (hasReplaceMode) {
+        // In replace mode: remove worker's own sectors, only keep covered ones
+        const ownSectorIds = new Set(ids);
+        ownSectorIds.forEach(id => ids.delete(id));
+      }
+
       activeCoveragesForSelectedDay.forEach(c => {
         if (c.schedule_type !== 'sales') return;
         if (c.absent_worker_id === effectiveWorkerId) ids.delete(c.sector_id);
