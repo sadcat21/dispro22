@@ -338,6 +338,9 @@ const SectorCoverageDialog: React.FC<SectorCoverageDialogProps> = ({ open, onOpe
                                 {DAY_NAMES[d] || d}
                               </Badge>
                             ))}
+                            <Badge variant={c.coverage_mode === 'replace' ? 'destructive' : 'default'} className="text-[10px]">
+                              {c.coverage_mode === 'replace' ? 'استبدال' : 'دمج'}
+                            </Badge>
                           </div>
                           <div className="flex items-center gap-1">
                             <Button variant="ghost" size="sm" onClick={() => {
