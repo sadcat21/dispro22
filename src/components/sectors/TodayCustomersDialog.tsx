@@ -466,6 +466,57 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
     return ids;
   }, [sectorSchedules, sectors, selectedDay, effectiveWorkerId, isAdmin, hasSpecificWorker, activeCoveragesForSelectedDay]);
 
+  const availableWorkerIdsForSelectedDay = useMemo(() => {
+    const workerAssignments = new Map<string, Set<string>>();
+
+    const addAssignment = (workerId: string | null, key: string) => {
+      if (!workerId) return;
+      if (!workerAssignments.has(workerId)) workerAssignments.set(workerId, new Set<string>());
+      workerAssignments.get(workerId)!.add(key);
+    };
+
+    const removeAssignment = (workerId: string | null, key: string) => {
+      if (!workerId) return;
+      const current = workerAssignments.get(workerId);
+      if (!current) return;
+      current.delete(key);
+      if (current.size === 0) workerAssignments.delete(workerId);
+    };
+
+    // Base assignments from new schedule system
+    sectorSchedules.forEach((sc) => {
+      if (sc.day !== selectedDay || !sc.worker_id) return;
+      addAssignment(sc.worker_id, `${sc.schedule_type}:${sc.sector_id}`);
+    });
+
+    // Fallback assignments from legacy day fields
+    sectors.forEach((s) => {
+      const hasSalesSchedule = sectorSchedules.some((sc) => sc.sector_id === s.id && sc.schedule_type === 'sales');
+      const hasDeliverySchedule = sectorSchedules.some((sc) => sc.sector_id === s.id && sc.schedule_type === 'delivery');
+
+      if (!hasSalesSchedule && s.visit_day_sales === selectedDay) {
+        addAssignment(s.sales_worker_id, `sales:${s.id}`);
+      }
+
+      if (!hasDeliverySchedule && s.visit_day_delivery === selectedDay) {
+        addAssignment(s.delivery_worker_id, `delivery:${s.id}`);
+      }
+    });
+
+    // Apply transfers from coverage records
+    activeCoveragesForSelectedDay.forEach((coverage) => {
+      const key = `${coverage.schedule_type}:${coverage.sector_id}`;
+      removeAssignment(coverage.absent_worker_id, key);
+      addAssignment(coverage.substitute_worker_id, key);
+    });
+
+    return new Set(
+      Array.from(workerAssignments.entries())
+        .filter(([, assignments]) => assignments.size > 0)
+        .map(([workerId]) => workerId)
+    );
+  }, [sectorSchedules, sectors, selectedDay, activeCoveragesForSelectedDay]);
+
   // IMPORTANT: filter from all sectors using the computed IDs (which already include coverage substitutions)
   // so covered sectors appear immediately in direct-sale/delivery lists for substitute workers.
   const todaySalesSectors = useMemo(() => sectors.filter(s => todaySalesSectorIds.has(s.id)), [sectors, todaySalesSectorIds]);
