@@ -8,6 +8,7 @@ export interface SectorCoverage {
   absent_worker_id: string;
   substitute_worker_id: string;
   coverage_type: 'full' | 'split';
+  coverage_mode: 'merge' | 'replace';
   schedule_type: 'sales' | 'delivery';
   start_date: string;
   end_date: string;
@@ -68,6 +69,7 @@ export const useSectorCoverage = () => {
     absent_worker_id: string;
     substitute_worker_id: string;
     coverage_type: 'full' | 'split';
+    coverage_mode?: 'merge' | 'replace';
     schedule_type: 'sales' | 'delivery';
     start_date: string;
     end_date: string;
@@ -80,6 +82,7 @@ export const useSectorCoverage = () => {
       absent_worker_id: data.absent_worker_id,
       substitute_worker_id: data.substitute_worker_id,
       coverage_type: data.coverage_type,
+      coverage_mode: data.coverage_mode || 'merge',
       schedule_type: data.schedule_type,
       start_date: data.start_date,
       end_date: data.end_date,

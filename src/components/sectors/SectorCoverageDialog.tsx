@@ -8,6 +8,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel } from '@/components/ui/alert-dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQuery } from '@tanstack/react-query';
@@ -56,7 +57,10 @@ const SectorCoverageDialog: React.FC<SectorCoverageDialogProps> = ({ open, onOpe
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editSubstituteId, setEditSubstituteId] = useState<string>('');
-  const [mergeAssignments, setMergeAssignments] = useState(true);
+  const [showModeDialog, setShowModeDialog] = useState(false);
+  const [pendingEntries, setPendingEntries] = useState<[string, string][]>([]);
+  const [conflictingWorkerNames, setConflictingWorkerNames] = useState<string[]>([]);
+  const [mergeSettingValue, setMergeSettingValue] = useState(true);
   const [loadingMergeSetting, setLoadingMergeSetting] = useState(true);
 
   // Load merge setting from app_settings
@@ -68,13 +72,13 @@ const SectorCoverageDialog: React.FC<SectorCoverageDialogProps> = ({ open, onOpe
         .select('value')
         .eq('key', 'coverage_merge_assignments')
         .maybeSingle();
-      setMergeAssignments(data ? data.value !== 'false' : true);
+      setMergeSettingValue(data ? data.value !== 'false' : true);
       setLoadingMergeSetting(false);
     })();
   }, [open]);
 
   const handleToggleMerge = async (checked: boolean) => {
-    setMergeAssignments(checked);
+    setMergeSettingValue(checked);
     const { data: existing } = await supabase
       .from('app_settings')
       .select('id')
@@ -141,15 +145,49 @@ const SectorCoverageDialog: React.FC<SectorCoverageDialogProps> = ({ open, onOpe
     setAssignments(prev => ({ ...prev, [sectorId]: substituteId }));
   };
 
+  // Check if substitute workers have their own tasks on the coverage days
+  const checkSubstituteConflicts = (entries: [string, string][]) => {
+    const substituteIds = [...new Set(entries.map(([, wId]) => wId))];
+    const actualStart = startDate <= endDate ? startDate : endDate;
+    const actualEnd = startDate <= endDate ? endDate : startDate;
+
+    const conflicting: string[] = [];
+    for (const subId of substituteIds) {
+      // Check if substitute has any schedules in the date range for the same schedule_type
+      const subSchedules = schedules.filter(
+        s => s.worker_id === subId && s.schedule_type === scheduleType
+      );
+      if (subSchedules.length > 0) {
+        const name = workers.find(w => w.id === subId)?.full_name || subId;
+        conflicting.push(name);
+      }
+    }
+    return conflicting;
+  };
+
   const handleSave = async () => {
-    const entries = Object.entries(assignments).filter(([, wId]) => wId);
+    const entries = Object.entries(assignments).filter(([, wId]) => wId) as [string, string][];
     if (entries.length === 0) {
       toast.error('يرجى تعيين بديل واحد على الأقل');
       return;
     }
+
+    // Check for conflicts
+    const conflicts = checkSubstituteConflicts(entries);
+    if (conflicts.length > 0) {
+      setPendingEntries(entries);
+      setConflictingWorkerNames(conflicts);
+      setShowModeDialog(true);
+      return;
+    }
+
+    // No conflicts, save with merge mode by default
+    await executeSave(entries, 'merge');
+  };
+
+  const executeSave = async (entries: [string, string][], mode: 'merge' | 'replace') => {
     setSaving(true);
     try {
-      // Ensure dates are in correct order (swap if user entered them backwards)
       const actualStart = startDate <= endDate ? startDate : endDate;
       const actualEnd = startDate <= endDate ? endDate : startDate;
       for (const [sectorId, substituteId] of entries) {
@@ -158,6 +196,7 @@ const SectorCoverageDialog: React.FC<SectorCoverageDialogProps> = ({ open, onOpe
           absent_worker_id: absentWorkerId,
           substitute_worker_id: substituteId,
           coverage_type: entries.length === 1 && absentWorkerSectors.length === 1 ? 'full' : 'split',
+          coverage_mode: mode,
           schedule_type: scheduleType,
           start_date: actualStart,
           end_date: actualEnd,
@@ -166,7 +205,7 @@ const SectorCoverageDialog: React.FC<SectorCoverageDialogProps> = ({ open, onOpe
           branch_id: activeBranch?.id || undefined,
         });
       }
-      toast.success(`تم إنشاء ${entries.length} تعويض(ات) بنجاح`);
+      toast.success(`تم إنشاء ${entries.length} تعويض(ات) بنجاح - ${mode === 'merge' ? 'دمج المهام' : 'استبدال المهام'}`);
       setAssignments({});
       setAbsentWorkerId('');
       setReason('');
@@ -177,6 +216,13 @@ const SectorCoverageDialog: React.FC<SectorCoverageDialogProps> = ({ open, onOpe
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleModeSelect = async (mode: 'merge' | 'replace') => {
+    setShowModeDialog(false);
+    await executeSave(pendingEntries, mode);
+    setPendingEntries([]);
+    setConflictingWorkerNames([]);
   };
 
   const handleCancel = async (id: string) => {
@@ -228,6 +274,7 @@ const SectorCoverageDialog: React.FC<SectorCoverageDialogProps> = ({ open, onOpe
   };
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg max-h-[90vh]" dir="rtl">
         <DialogHeader>
@@ -244,7 +291,7 @@ const SectorCoverageDialog: React.FC<SectorCoverageDialogProps> = ({ open, onOpe
             <span>دمج التعيينات مع التعويضات</span>
           </div>
           <Switch
-            checked={mergeAssignments}
+            checked={mergeSettingValue}
             onCheckedChange={handleToggleMerge}
             disabled={loadingMergeSetting}
           />
@@ -291,6 +338,9 @@ const SectorCoverageDialog: React.FC<SectorCoverageDialogProps> = ({ open, onOpe
                                 {DAY_NAMES[d] || d}
                               </Badge>
                             ))}
+                            <Badge variant={c.coverage_mode === 'replace' ? 'destructive' : 'default'} className="text-[10px]">
+                              {c.coverage_mode === 'replace' ? 'استبدال' : 'دمج'}
+                            </Badge>
                           </div>
                           <div className="flex items-center gap-1">
                             <Button variant="ghost" size="sm" onClick={() => {
@@ -475,6 +525,49 @@ const SectorCoverageDialog: React.FC<SectorCoverageDialogProps> = ({ open, onOpe
         </Tabs>
       </DialogContent>
     </Dialog>
+
+    {/* Mode selection dialog for conflicts */}
+    <AlertDialog open={showModeDialog} onOpenChange={setShowModeDialog}>
+      <AlertDialogContent dir="rtl" className="max-w-sm">
+        <AlertDialogHeader>
+          <AlertDialogTitle className="flex items-center gap-2">
+            <AlertCircle className="w-5 h-5 text-amber-500" />
+            العامل البديل لديه مهام حالية
+          </AlertDialogTitle>
+          <AlertDialogDescription className="text-right">
+            العامل ({conflictingWorkerNames.join('، ')}) لديه سيكتورات ومهام {scheduleType === 'delivery' ? 'توصيل' : 'مبيعات'} خاصة به. كيف تريد التعامل مع هذا؟
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <div className="space-y-2 py-2">
+          <Button
+            variant="default"
+            className="w-full justify-start gap-2"
+            onClick={() => handleModeSelect('merge')}
+          >
+            <UserCheck className="w-4 h-4" />
+            <div className="text-right">
+              <div className="font-medium">دمج المهام</div>
+              <div className="text-xs text-primary-foreground/70">ينفذ مهامه الأصلية + مهام العامل الغائب</div>
+            </div>
+          </Button>
+          <Button
+            variant="outline"
+            className="w-full justify-start gap-2"
+            onClick={() => handleModeSelect('replace')}
+          >
+            <RefreshCw className="w-4 h-4" />
+            <div className="text-right">
+              <div className="font-medium">استبدال المهام</div>
+              <div className="text-xs text-muted-foreground">ينفذ فقط مهام العامل الغائب (يتجاهل مهامه)</div>
+            </div>
+          </Button>
+        </div>
+        <AlertDialogFooter>
+          <AlertDialogCancel>إلغاء</AlertDialogCancel>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 };
 

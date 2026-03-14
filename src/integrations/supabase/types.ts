@@ -4298,6 +4298,7 @@ export type Database = {
         Row: {
           absent_worker_id: string
           branch_id: string | null
+          coverage_mode: string
           coverage_type: string
           created_at: string
           created_by: string | null
@@ -4314,6 +4315,7 @@ export type Database = {
         Insert: {
           absent_worker_id: string
           branch_id?: string | null
+          coverage_mode?: string
           coverage_type?: string
           created_at?: string
           created_by?: string | null
@@ -4330,6 +4332,7 @@ export type Database = {
         Update: {
           absent_worker_id?: string
           branch_id?: string | null
+          coverage_mode?: string
           coverage_type?: string
           created_at?: string
           created_by?: string | null
