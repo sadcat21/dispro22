@@ -227,16 +227,39 @@ const SectorCoverageDialog: React.FC<SectorCoverageDialogProps> = ({ open, onOpe
                 </div>
               ) : (
                 <div className="space-y-3 p-1">
-                  {activeCoverages.map(c => (
+                  {activeCoverages.map(c => {
+                    const days = getCoverageDays(c);
+                    const isEditing = editingId === c.id;
+                    return (
                     <Card key={c.id} className="border-border">
                       <CardContent className="p-3 space-y-2">
                         <div className="flex items-center justify-between">
-                          <Badge variant="outline" className="text-xs">
-                            {c.schedule_type === 'delivery' ? '🚚 توصيل' : '🛒 مبيعات'}
-                          </Badge>
-                          <Button variant="ghost" size="sm" onClick={() => handleCancel(c.id)}>
-                            <Trash2 className="w-4 h-4 text-destructive" />
-                          </Button>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <Badge variant="outline" className="text-xs">
+                              {c.schedule_type === 'delivery' ? '🚚 توصيل' : '🛒 مبيعات'}
+                            </Badge>
+                            {days.map(d => (
+                              <Badge key={d} variant="secondary" className="text-[10px]">
+                                {DAY_NAMES[d] || d}
+                              </Badge>
+                            ))}
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Button variant="ghost" size="sm" onClick={() => {
+                              if (isEditing) {
+                                setEditingId(null);
+                                setEditSubstituteId('');
+                              } else {
+                                setEditingId(c.id);
+                                setEditSubstituteId(c.substitute_worker_id);
+                              }
+                            }}>
+                              <Pencil className="w-4 h-4 text-muted-foreground" />
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => handleCancel(c.id)}>
+                              <Trash2 className="w-4 h-4 text-destructive" />
+                            </Button>
+                          </div>
                         </div>
                         <div className="text-sm font-medium">{getSectorName(c.sector_id)}</div>
                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -255,9 +278,33 @@ const SectorCoverageDialog: React.FC<SectorCoverageDialogProps> = ({ open, onOpe
                             {c.reason}
                           </div>
                         )}
+                        {isEditing && (
+                          <div className="flex items-center gap-2 pt-1 border-t border-border">
+                            <UserCog className="w-4 h-4 text-muted-foreground shrink-0" />
+                            <Select value={editSubstituteId} onValueChange={setEditSubstituteId}>
+                              <SelectTrigger className="h-8 flex-1">
+                                <SelectValue placeholder="اختر البديل الجديد" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {workers.filter(w => w.id !== c.absent_worker_id).map(w => (
+                                  <SelectItem key={w.id} value={w.id}>{w.full_name}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <Button
+                              size="sm"
+                              className="h-8"
+                              disabled={!editSubstituteId || editSubstituteId === c.substitute_worker_id}
+                              onClick={() => handleEditSubstitute(c.id, editSubstituteId)}
+                            >
+                              حفظ
+                            </Button>
+                          </div>
+                        )}
                       </CardContent>
                     </Card>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </ScrollArea>
