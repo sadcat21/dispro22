@@ -69,6 +69,7 @@ export const useSectorCoverage = () => {
     absent_worker_id: string;
     substitute_worker_id: string;
     coverage_type: 'full' | 'split';
+    coverage_mode?: 'merge' | 'replace';
     schedule_type: 'sales' | 'delivery';
     start_date: string;
     end_date: string;
