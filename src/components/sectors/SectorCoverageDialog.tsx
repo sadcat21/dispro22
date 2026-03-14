@@ -56,6 +56,37 @@ const SectorCoverageDialog: React.FC<SectorCoverageDialogProps> = ({ open, onOpe
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editSubstituteId, setEditSubstituteId] = useState<string>('');
+  const [mergeAssignments, setMergeAssignments] = useState(true);
+  const [loadingMergeSetting, setLoadingMergeSetting] = useState(true);
+
+  // Load merge setting from app_settings
+  React.useEffect(() => {
+    if (!open) return;
+    (async () => {
+      const { data } = await supabase
+        .from('app_settings')
+        .select('value')
+        .eq('key', 'coverage_merge_assignments')
+        .maybeSingle();
+      setMergeAssignments(data ? data.value !== 'false' : true);
+      setLoadingMergeSetting(false);
+    })();
+  }, [open]);
+
+  const handleToggleMerge = async (checked: boolean) => {
+    setMergeAssignments(checked);
+    const { data: existing } = await supabase
+      .from('app_settings')
+      .select('id')
+      .eq('key', 'coverage_merge_assignments')
+      .maybeSingle();
+    if (existing) {
+      await supabase.from('app_settings').update({ value: String(checked), updated_by: workerId }).eq('id', existing.id);
+    } else {
+      await supabase.from('app_settings').insert({ key: 'coverage_merge_assignments', value: String(checked), updated_by: workerId });
+    }
+    toast.success(checked ? 'تم تفعيل دمج التعيينات مع التعويضات' : 'تم إلغاء دمج التعيينات');
+  };
 
   // Fetch workers
   const { data: workers = [] } = useQuery({
