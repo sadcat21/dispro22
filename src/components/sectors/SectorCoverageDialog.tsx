@@ -90,7 +90,13 @@ const SectorCoverageDialog: React.FC<SectorCoverageDialogProps> = ({ open, onOpe
     return sectorIds.map(sid => {
       const sector = sectors.find(s => s.id === sid);
       const days = workerSchedules.filter(ws => ws.sector_id === sid).map(ws => ws.day);
+      // Sort days by DAY_ORDER
+      days.sort((a, b) => DAY_ORDER.indexOf(a) - DAY_ORDER.indexOf(b));
       return { sectorId: sid, sectorName: sector ? getLocalizedName(sector, language) : sid, days };
+    }).sort((a, b) => {
+      const aMin = Math.min(...a.days.map(d => DAY_ORDER.indexOf(d)));
+      const bMin = Math.min(...b.days.map(d => DAY_ORDER.indexOf(d)));
+      return aMin - bMin;
     });
   }, [absentWorkerId, scheduleType, schedules, sectors, language]);
 
