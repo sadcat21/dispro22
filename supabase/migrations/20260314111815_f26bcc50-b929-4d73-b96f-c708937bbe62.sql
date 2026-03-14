@@ -1,0 +1,1 @@
+ALTER TABLE public.sector_coverage ADD COLUMN IF NOT EXISTS coverage_mode text NOT NULL DEFAULT 'merge';
