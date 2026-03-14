@@ -3,7 +3,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { useSearchParams } from 'react-router-dom';
 import WorkerTrackingMap from '@/components/map/WorkerTrackingMap';
 import { Switch } from '@/components/ui/switch';
-import { Users, Settings } from 'lucide-react';
+import { Users, Settings, Store, Plus, Minus } from 'lucide-react';
 import { useWorkerLocations } from '@/hooks/useWorkerLocation';
 import { useTrackableWorkers } from '@/components/map/TrackingSettingsDialog';
 import TrackingSettingsDialog from '@/components/map/TrackingSettingsDialog';
