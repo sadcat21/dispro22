@@ -60,6 +60,7 @@ const SectorCoverageDialog: React.FC<SectorCoverageDialogProps> = ({ open, onOpe
   const [showModeDialog, setShowModeDialog] = useState(false);
   const [pendingEntries, setPendingEntries] = useState<[string, string][]>([]);
   const [conflictingWorkerNames, setConflictingWorkerNames] = useState<string[]>([]);
+  const [mergeSettingValue, setMergeSettingValue] = useState(true);
   const [loadingMergeSetting, setLoadingMergeSetting] = useState(true);
 
   // Load merge setting from app_settings
@@ -71,13 +72,13 @@ const SectorCoverageDialog: React.FC<SectorCoverageDialogProps> = ({ open, onOpe
         .select('value')
         .eq('key', 'coverage_merge_assignments')
         .maybeSingle();
-      setMergeAssignments(data ? data.value !== 'false' : true);
+      setMergeSettingValue(data ? data.value !== 'false' : true);
       setLoadingMergeSetting(false);
     })();
   }, [open]);
 
   const handleToggleMerge = async (checked: boolean) => {
-    setMergeAssignments(checked);
+    setMergeSettingValue(checked);
     const { data: existing } = await supabase
       .from('app_settings')
       .select('id')
