@@ -390,6 +390,35 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
     });
   }, [getActiveCoveragesForDate, selectedDateStr, sectorSchedules, selectedDay, sectors]);
 
+  // Get absent worker IDs that effectiveWorker is covering today
+  const coveredAbsentWorkerIds = useMemo(() => {
+    if (!shouldMergeAssignments || !effectiveWorkerId) return [];
+    return [...new Set(
+      activeCoveragesForSelectedDay
+        .filter(c => c.substitute_worker_id === effectiveWorkerId)
+        .map(c => c.absent_worker_id)
+    )];
+  }, [shouldMergeAssignments, effectiveWorkerId, activeCoveragesForSelectedDay]);
+
+  const { data: assignedOrders = [] } = useQuery({
+    queryKey: ['today-cust-assigned-orders-full', effectiveWorkerId, todayDateStr, scopedBranchId, coveredAbsentWorkerIds],
+    queryFn: async () => {
+      const workerIds = [effectiveWorkerId!, ...coveredAbsentWorkerIds];
+      let query = supabase
+        .from('orders')
+        .select('*, customer:customers(*), items:order_items(*, product:products(*))')
+        .in('status', ['pending', 'assigned', 'in_progress']);
+      if (!isAdmin || hasSpecificWorker) {
+        query = query.in('assigned_worker_id', workerIds);
+      } else if (scopedBranchId) {
+        query = query.eq('branch_id', scopedBranchId);
+      }
+      const { data } = await query;
+      return (data || []) as OrderWithDetails[];
+    },
+    enabled: !!effectiveWorkerId && open,
+  });
+
   // Computed data - use sector_schedules for determining today's sectors
   const todaySalesSectorIds = useMemo(() => {
     const ids = new Set<string>();
