@@ -380,13 +380,13 @@ const SectorCoverageDialog: React.FC<SectorCoverageDialogProps> = ({ open, onOpe
                           <CardContent className="p-3 space-y-2">
                             <div className="flex items-center justify-between">
                               <span className="text-sm font-medium">{s.sectorName}</span>
-                              <div className="flex gap-1">
+                             <div className="flex gap-1 flex-wrap">
                                 {s.days.map(d => (
                                   <Badge key={d} variant="secondary" className="text-[10px]">
-                                    {d === 'saturday' ? 'سب' : d === 'sunday' ? 'أح' : d === 'monday' ? 'إث' : d === 'tuesday' ? 'ثل' : d === 'wednesday' ? 'أر' : 'خم'}
+                                    {DAY_NAMES[d] || d}
                                   </Badge>
                                 ))}
-                              </div>
+                               </div>
                             </div>
                             <Select value={assignments[s.sectorId] || ''} onValueChange={v => handleAssign(s.sectorId, v)}>
                               <SelectTrigger className="h-9">
