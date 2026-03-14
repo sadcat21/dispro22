@@ -72,6 +72,7 @@ const workerActions = [
   { key: 'gifts_summary', icon: Gift, path: '', labelKey: 'تجميع العروض', color: 'bg-purple-50 border-purple-200 text-purple-700', isDialog: true },
   { key: 'achievements', icon: Trophy, path: '', labelKey: 'المنجزات', color: 'bg-emerald-50 border-emerald-200 text-emerald-700', isDialog: true },
   { key: 'sector_schedule', icon: MapPin, path: '', labelKey: 'جدول السيكتور', color: 'bg-sky-50 border-sky-200 text-sky-700', isDialog: true },
+  { key: 'sector_coverage', icon: RefreshCw, path: '', labelKey: 'تعويض السيكتورات', color: 'bg-orange-50 border-orange-200 text-orange-700', isDialog: true },
   { key: 'orders_summary', icon: ClipboardList, path: '', labelKey: 'تجميع الطلبيات', color: 'bg-blue-50 border-blue-200 text-blue-700', isDialog: true },
 ];
 
