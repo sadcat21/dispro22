@@ -251,6 +251,10 @@ const SectorCoverageDialog: React.FC<SectorCoverageDialogProps> = ({ open, onOpe
         </div>
 
         <Tabs value={tab} onValueChange={v => setTab(v as any)}>
+          <TabsList className="w-full">
+            <TabsTrigger value="active" className="flex-1">
+              التعويضات النشطة ({activeCoverages.length})
+            </TabsTrigger>
             <TabsTrigger value="create" className="flex-1">
               <Plus className="w-4 h-4 ml-1" />
               تعويض جديد
