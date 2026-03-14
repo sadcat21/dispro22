@@ -57,7 +57,9 @@ const SectorCoverageDialog: React.FC<SectorCoverageDialogProps> = ({ open, onOpe
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editSubstituteId, setEditSubstituteId] = useState<string>('');
-  const [mergeAssignments, setMergeAssignments] = useState(true);
+  const [showModeDialog, setShowModeDialog] = useState(false);
+  const [pendingEntries, setPendingEntries] = useState<[string, string][]>([]);
+  const [conflictingWorkerNames, setConflictingWorkerNames] = useState<string[]>([]);
   const [loadingMergeSetting, setLoadingMergeSetting] = useState(true);
 
   // Load merge setting from app_settings
