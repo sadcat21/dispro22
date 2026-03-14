@@ -76,13 +76,24 @@ const WorkerTrackingMap: React.FC<WorkerTrackingMapProps> = ({ highlightWorkerId
     queryFn: async () => {
       const { data } = await supabase
         .from('customers')
-        .select('id, name, store_name, latitude, longitude')
+        .select('id, name, store_name, latitude, longitude, customer_type')
         .not('latitude', 'is', null)
         .not('longitude', 'is', null);
       return data || [];
     },
     enabled: !!showNearbyCustomers,
   });
+
+  const { customerTypes } = useCustomerTypes();
+
+  // Build a map of customer_type (ar) -> colors
+  const typeColorMap = useMemo(() => {
+    const map: Record<string, { bg: string; text: string }> = {};
+    customerTypes.forEach((entry, idx) => {
+      map[entry.ar] = getCustomerTypeColor(entry.short, idx, entry);
+    });
+    return map;
+  }, [customerTypes]);
 
   // Add/remove customer markers based on nearby toggle
   useEffect(() => {
@@ -107,12 +118,13 @@ const WorkerTrackingMap: React.FC<WorkerTrackingMapProps> = ({ highlightWorkerId
 
     nearbyCustomers.forEach(customer => {
       const displayName = customer.store_name || customer.name;
+      const colors = customer.customer_type ? (typeColorMap[customer.customer_type] || { bg: '#f59e0b', text: '#ffffff' }) : { bg: '#f59e0b', text: '#ffffff' };
       const icon = L.divIcon({
         html: `<div style="position:relative;">
-          <div style="background:#f59e0b;width:24px;height:24px;border-radius:50%;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="1"><path d="M3 21V7l9-4 9 4v14"/><path d="M9 21V13h6v8"/></svg>
+          <div style="background:${colors.bg};width:24px;height:24px;border-radius:50%;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="${colors.text}" stroke="${colors.text}" stroke-width="1"><path d="M3 21V7l9-4 9 4v14"/><path d="M9 21V13h6v8"/></svg>
           </div>
-          <div style="position:absolute;top:28px;left:50%;transform:translateX(-50%);white-space:nowrap;background:rgba(245,158,11,0.9);color:white;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:bold;">
+          <div style="position:absolute;top:28px;left:50%;transform:translateX(-50%);white-space:nowrap;background:${colors.bg};color:${colors.text};padding:2px 6px;border-radius:4px;font-size:10px;font-weight:bold;">
             ${displayName}
           </div>
         </div>`,
@@ -121,12 +133,13 @@ const WorkerTrackingMap: React.FC<WorkerTrackingMapProps> = ({ highlightWorkerId
         iconAnchor: [12, 12],
       });
 
+      const typeLabel = customer.customer_type || '';
       const marker = L.marker([customer.latitude!, customer.longitude!], { icon })
         .addTo(mapRef.current!)
-        .bindPopup(`<div class="text-center p-1" dir="rtl"><p class="font-bold text-sm">🏪 ${displayName}</p><p class="text-xs text-gray-500">${customer.name}</p></div>`);
+        .bindPopup(`<div class="text-center p-1" dir="rtl"><p class="font-bold text-sm">🏪 ${displayName}</p>${typeLabel ? `<p class="text-xs" style="color:${colors.bg};font-weight:bold;">${typeLabel}</p>` : ''}<p class="text-xs text-gray-500">${customer.name}</p></div>`);
       customerMarkersRef.current.set(customer.id, marker);
     });
-  }, [showNearbyCustomers, highlightWorkerId, allCustomers, locations, nearbyDistanceMeters]);
+  }, [showNearbyCustomers, highlightWorkerId, allCustomers, locations, nearbyDistanceMeters, typeColorMap]);
 
   // Initialize map with robust sizing
   useEffect(() => {
