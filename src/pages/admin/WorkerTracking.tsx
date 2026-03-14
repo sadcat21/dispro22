@@ -3,7 +3,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { useSearchParams } from 'react-router-dom';
 import WorkerTrackingMap from '@/components/map/WorkerTrackingMap';
 import { Switch } from '@/components/ui/switch';
-import { Users, Settings } from 'lucide-react';
+import { Users, Settings, Store, Plus, Minus } from 'lucide-react';
 import { useWorkerLocations } from '@/hooks/useWorkerLocation';
 import { useTrackableWorkers } from '@/components/map/TrackingSettingsDialog';
 import TrackingSettingsDialog from '@/components/map/TrackingSettingsDialog';
@@ -16,6 +16,8 @@ const WorkerTracking: React.FC = () => {
   const highlightWorkerId = searchParams.get('worker') || undefined;
   const [showAll, setShowAll] = useState(!highlightWorkerId);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [showNearbyCustomers, setShowNearbyCustomers] = useState(false);
+  const [nearbyDistance, setNearbyDistance] = useState(500); // meters
   const { data: allWorkers } = useWorkerLocations();
   const { data: trackableIds } = useTrackableWorkers();
 
@@ -52,6 +54,40 @@ const WorkerTracking: React.FC = () => {
         </div>
       </div>
 
+      {/* Nearby customers toggle */}
+      {highlightWorkerId && (
+        <div className="flex items-center gap-2 flex-wrap" dir={dir}>
+          <div className="flex items-center gap-2">
+            <Store className="w-4 h-4 text-muted-foreground" />
+            <span className="text-sm text-muted-foreground">عملاء قريبون</span>
+            <Switch checked={showNearbyCustomers} onCheckedChange={setShowNearbyCustomers} />
+          </div>
+          {showNearbyCustomers && (
+            <div className="flex items-center gap-1.5 bg-muted rounded-full px-2 py-1">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 rounded-full"
+                onClick={() => setNearbyDistance(d => Math.max(100, d - 100))}
+                disabled={nearbyDistance <= 100}
+              >
+                <Minus className="w-3 h-3" />
+              </Button>
+              <span className="text-xs font-bold min-w-[40px] text-center">{nearbyDistance} م</span>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 rounded-full"
+                onClick={() => setNearbyDistance(d => Math.min(2000, d + 100))}
+                disabled={nearbyDistance >= 2000}
+              >
+                <Plus className="w-3 h-3" />
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Worker quick-pick strip */}
       {workers && workers.length > 0 && (
         <ScrollArea className="w-full" dir={dir}>
@@ -84,6 +120,8 @@ const WorkerTracking: React.FC = () => {
         highlightWorkerId={highlightWorkerId}
         showOnlyHighlighted={!!highlightWorkerId && !showAll}
         trackableWorkerIds={trackableIds ?? undefined}
+        showNearbyCustomers={showNearbyCustomers && !!highlightWorkerId}
+        nearbyDistanceMeters={nearbyDistance}
       />
 
       <TrackingSettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />

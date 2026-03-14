@@ -5,6 +5,8 @@ import { Loader2, MapPin, Users, Warehouse, Clock, Navigation, Route } from 'luc
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { calculateDistance } from '@/utils/geoUtils';
+import { supabase } from '@/integrations/supabase/client';
+import { useQuery } from '@tanstack/react-query';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 
@@ -37,9 +39,11 @@ interface WorkerTrackingMapProps {
   highlightWorkerId?: string;
   showOnlyHighlighted?: boolean;
   trackableWorkerIds?: string[];
+  showNearbyCustomers?: boolean;
+  nearbyDistanceMeters?: number;
 }
 
-const WorkerTrackingMap: React.FC<WorkerTrackingMapProps> = ({ highlightWorkerId, showOnlyHighlighted, trackableWorkerIds }) => {
+const WorkerTrackingMap: React.FC<WorkerTrackingMapProps> = ({ highlightWorkerId, showOnlyHighlighted, trackableWorkerIds, showNearbyCustomers, nearbyDistanceMeters = 500 }) => {
   const { t, dir } = useLanguage();
   const { data: rawLocations, isLoading } = useWorkerLocations();
   const filteredByTrackable = trackableWorkerIds
@@ -63,6 +67,65 @@ const WorkerTrackingMap: React.FC<WorkerTrackingMapProps> = ({ highlightWorkerId
   const labelsLayerRef = useRef<L.TileLayer | null>(null);
   const initRetryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const initAttemptsRef = useRef(0);
+  const customerMarkersRef = useRef<Map<string, L.Marker>>(new Map());
+
+  // Fetch customers with coordinates for nearby display
+  const { data: allCustomers } = useQuery({
+    queryKey: ['customers-with-coords-tracking'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('customers')
+        .select('id, name, store_name, latitude, longitude')
+        .not('latitude', 'is', null)
+        .not('longitude', 'is', null);
+      return data || [];
+    },
+    enabled: !!showNearbyCustomers,
+  });
+
+  // Add/remove customer markers based on nearby toggle
+  useEffect(() => {
+    if (!mapRef.current) return;
+
+    // Clear all customer markers first
+    customerMarkersRef.current.forEach((marker) => {
+      mapRef.current!.removeLayer(marker);
+    });
+    customerMarkersRef.current.clear();
+
+    if (!showNearbyCustomers || !highlightWorkerId || !allCustomers || !locations) return;
+
+    const workerLoc = locations.find(l => l.worker_id === highlightWorkerId);
+    if (!workerLoc || workerLoc.has_location === false) return;
+
+    const distKm = nearbyDistanceMeters / 1000;
+    const nearbyCustomers = allCustomers.filter(c => {
+      const d = calculateDistance(workerLoc.latitude, workerLoc.longitude, c.latitude!, c.longitude!);
+      return d <= distKm;
+    });
+
+    nearbyCustomers.forEach(customer => {
+      const displayName = customer.store_name || customer.name;
+      const icon = L.divIcon({
+        html: `<div style="position:relative;">
+          <div style="background:#f59e0b;width:24px;height:24px;border-radius:50%;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="1"><path d="M3 21V7l9-4 9 4v14"/><path d="M9 21V13h6v8"/></svg>
+          </div>
+          <div style="position:absolute;top:28px;left:50%;transform:translateX(-50%);white-space:nowrap;background:rgba(245,158,11,0.9);color:white;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:bold;">
+            ${displayName}
+          </div>
+        </div>`,
+        className: '',
+        iconSize: [24, 24],
+        iconAnchor: [12, 12],
+      });
+
+      const marker = L.marker([customer.latitude!, customer.longitude!], { icon })
+        .addTo(mapRef.current!)
+        .bindPopup(`<div class="text-center p-1" dir="rtl"><p class="font-bold text-sm">🏪 ${displayName}</p><p class="text-xs text-gray-500">${customer.name}</p></div>`);
+      customerMarkersRef.current.set(customer.id, marker);
+    });
+  }, [showNearbyCustomers, highlightWorkerId, allCustomers, locations, nearbyDistanceMeters]);
 
   // Initialize map with robust sizing
   useEffect(() => {
@@ -166,6 +229,7 @@ const WorkerTrackingMap: React.FC<WorkerTrackingMapProps> = ({ highlightWorkerId
     return () => {
       observerRef.current?.disconnect();
       timersRef.current.forEach(clearTimeout);
+      customerMarkersRef.current.clear();
       if (mapRef.current) {
         mapRef.current.remove();
         mapRef.current = null;
