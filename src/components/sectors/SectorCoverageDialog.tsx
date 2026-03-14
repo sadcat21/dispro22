@@ -18,6 +18,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { UserX, UserCheck, ArrowRight, Trash2, Plus, Calendar, Truck, ShoppingCart, Loader2, AlertCircle, RefreshCw, Pencil, UserCog } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 
 interface SectorCoverageDialogProps {
   open: boolean;
@@ -55,6 +56,37 @@ const SectorCoverageDialog: React.FC<SectorCoverageDialogProps> = ({ open, onOpe
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editSubstituteId, setEditSubstituteId] = useState<string>('');
+  const [mergeAssignments, setMergeAssignments] = useState(true);
+  const [loadingMergeSetting, setLoadingMergeSetting] = useState(true);
+
+  // Load merge setting from app_settings
+  React.useEffect(() => {
+    if (!open) return;
+    (async () => {
+      const { data } = await supabase
+        .from('app_settings')
+        .select('value')
+        .eq('key', 'coverage_merge_assignments')
+        .maybeSingle();
+      setMergeAssignments(data ? data.value !== 'false' : true);
+      setLoadingMergeSetting(false);
+    })();
+  }, [open]);
+
+  const handleToggleMerge = async (checked: boolean) => {
+    setMergeAssignments(checked);
+    const { data: existing } = await supabase
+      .from('app_settings')
+      .select('id')
+      .eq('key', 'coverage_merge_assignments')
+      .maybeSingle();
+    if (existing) {
+      await supabase.from('app_settings').update({ value: String(checked), updated_by: workerId }).eq('id', existing.id);
+    } else {
+      await supabase.from('app_settings').insert({ key: 'coverage_merge_assignments', value: String(checked), updated_by: workerId });
+    }
+    toast.success(checked ? 'تم تفعيل دمج التعيينات مع التعويضات' : 'تم إلغاء دمج التعيينات');
+  };
 
   // Fetch workers
   const { data: workers = [] } = useQuery({
@@ -204,6 +236,19 @@ const SectorCoverageDialog: React.FC<SectorCoverageDialogProps> = ({ open, onOpe
             إدارة التعويضات
           </DialogTitle>
         </DialogHeader>
+
+        {/* Merge assignments switch */}
+        <div className="flex items-center justify-between bg-muted/50 rounded-lg px-3 py-2 mb-2">
+          <div className="flex items-center gap-2 text-sm">
+            <Truck className="w-4 h-4 text-primary" />
+            <span>دمج التعيينات مع التعويضات</span>
+          </div>
+          <Switch
+            checked={mergeAssignments}
+            onCheckedChange={handleToggleMerge}
+            disabled={loadingMergeSetting}
+          />
+        </div>
 
         <Tabs value={tab} onValueChange={v => setTab(v as any)}>
           <TabsList className="w-full">
