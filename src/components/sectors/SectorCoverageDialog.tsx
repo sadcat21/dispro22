@@ -144,7 +144,7 @@ const SectorCoverageDialog: React.FC<SectorCoverageDialogProps> = ({ open, onOpe
   const getWorkerName = (id: string) => workers.find(w => w.id === id)?.full_name || '—';
   const getSectorName = (id: string) => {
     const s = sectors.find(sec => sec.id === id);
-    return s ? getLocalizedName(s.name, s.name_fr, language) : '—';
+    return s ? getLocalizedName(s, language) : '—';
   };
 
   return (
