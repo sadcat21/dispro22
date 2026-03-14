@@ -145,15 +145,49 @@ const SectorCoverageDialog: React.FC<SectorCoverageDialogProps> = ({ open, onOpe
     setAssignments(prev => ({ ...prev, [sectorId]: substituteId }));
   };
 
+  // Check if substitute workers have their own tasks on the coverage days
+  const checkSubstituteConflicts = (entries: [string, string][]) => {
+    const substituteIds = [...new Set(entries.map(([, wId]) => wId))];
+    const actualStart = startDate <= endDate ? startDate : endDate;
+    const actualEnd = startDate <= endDate ? endDate : startDate;
+
+    const conflicting: string[] = [];
+    for (const subId of substituteIds) {
+      // Check if substitute has any schedules in the date range for the same schedule_type
+      const subSchedules = schedules.filter(
+        s => s.worker_id === subId && s.schedule_type === scheduleType
+      );
+      if (subSchedules.length > 0) {
+        const name = workers.find(w => w.id === subId)?.full_name || subId;
+        conflicting.push(name);
+      }
+    }
+    return conflicting;
+  };
+
   const handleSave = async () => {
-    const entries = Object.entries(assignments).filter(([, wId]) => wId);
+    const entries = Object.entries(assignments).filter(([, wId]) => wId) as [string, string][];
     if (entries.length === 0) {
       toast.error('يرجى تعيين بديل واحد على الأقل');
       return;
     }
+
+    // Check for conflicts
+    const conflicts = checkSubstituteConflicts(entries);
+    if (conflicts.length > 0) {
+      setPendingEntries(entries);
+      setConflictingWorkerNames(conflicts);
+      setShowModeDialog(true);
+      return;
+    }
+
+    // No conflicts, save with merge mode by default
+    await executeSave(entries, 'merge');
+  };
+
+  const executeSave = async (entries: [string, string][], mode: 'merge' | 'replace') => {
     setSaving(true);
     try {
-      // Ensure dates are in correct order (swap if user entered them backwards)
       const actualStart = startDate <= endDate ? startDate : endDate;
       const actualEnd = startDate <= endDate ? endDate : startDate;
       for (const [sectorId, substituteId] of entries) {
@@ -162,6 +196,7 @@ const SectorCoverageDialog: React.FC<SectorCoverageDialogProps> = ({ open, onOpe
           absent_worker_id: absentWorkerId,
           substitute_worker_id: substituteId,
           coverage_type: entries.length === 1 && absentWorkerSectors.length === 1 ? 'full' : 'split',
+          coverage_mode: mode,
           schedule_type: scheduleType,
           start_date: actualStart,
           end_date: actualEnd,
@@ -170,7 +205,7 @@ const SectorCoverageDialog: React.FC<SectorCoverageDialogProps> = ({ open, onOpe
           branch_id: activeBranch?.id || undefined,
         });
       }
-      toast.success(`تم إنشاء ${entries.length} تعويض(ات) بنجاح`);
+      toast.success(`تم إنشاء ${entries.length} تعويض(ات) بنجاح - ${mode === 'merge' ? 'دمج المهام' : 'استبدال المهام'}`);
       setAssignments({});
       setAbsentWorkerId('');
       setReason('');
@@ -181,6 +216,13 @@ const SectorCoverageDialog: React.FC<SectorCoverageDialogProps> = ({ open, onOpe
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleModeSelect = async (mode: 'merge' | 'replace') => {
+    setShowModeDialog(false);
+    await executeSave(pendingEntries, mode);
+    setPendingEntries([]);
+    setConflictingWorkerNames([]);
   };
 
   const handleCancel = async (id: string) => {
