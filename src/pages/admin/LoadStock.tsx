@@ -32,6 +32,7 @@ import ExchangeSessionDialog from '@/components/stock/ExchangeSessionDialog';
 import CustomerPickerDialog from '@/components/orders/CustomerPickerDialog';
 import PartialLoadFromOrdersDialog from '@/components/stock/PartialLoadFromOrdersDialog';
 import WorkerLoadRequestBanner from '@/components/stock/WorkerLoadRequestBanner';
+import BulkLoadNeedsDialog from '@/components/stock/BulkLoadNeedsDialog';
 import LoadSheetPrintView from '@/components/stock/LoadSheetPrintView';
 import SessionPrintView from '@/components/stock/SessionPrintView';
 import { Customer, Sector } from '@/types/database';
@@ -109,6 +110,7 @@ const LoadStock: React.FC = () => {
   const [showSessionHistory, setShowSessionHistory] = useState(false);
   const [showPartialLoadDialog, setShowPartialLoadDialog] = useState(false);
   const [showLoadSheetPrint, setShowLoadSheetPrint] = useState(false);
+  const [showBulkLoadNeeds, setShowBulkLoadNeeds] = useState(false);
 
   // Auto-open history from URL params
   useEffect(() => {
@@ -1454,6 +1456,17 @@ const LoadStock: React.FC = () => {
                   شحن من الطلبيات
                 </Button>
               </div>
+              {hasDeficit && (
+                <Button
+                  variant="outline"
+                  className="w-full h-10 rounded-xl text-[13px] border-destructive/40 text-destructive bg-destructive/5 hover:bg-destructive/10"
+                  onClick={() => setShowBulkLoadNeeds(true)}
+                  disabled={isSaving}
+                >
+                  <AlertTriangle className="w-4 h-4 me-1" />
+                  شحن الاحتياج ({totalDeficit} صندوق)
+                </Button>
+              )}
               <div className="flex gap-2">
                 <Button
                   variant="default"
@@ -2262,6 +2275,20 @@ const LoadStock: React.FC = () => {
           onOpenChange={(open) => { if (!open) setPrintSessionId(null); }}
           sessionId={printSessionId}
           workerName={workers.find(w => w.id === selectedWorker)?.full_name || ''}
+        />
+      )}
+      {selectedWorker && activeSessionId && (
+        <BulkLoadNeedsDialog
+          open={showBulkLoadNeeds}
+          onOpenChange={setShowBulkLoadNeeds}
+          suggestions={suggestions}
+          products={allProductOptions.map(p => {
+            const prod = products.find(pr => pr.id === p.id);
+            return { id: p.id, name: p.name, image_url: p.image_url, pieces_per_box: prod?.pieces_per_box || 20 };
+          })}
+          warehouseStock={warehouseStock.map(s => ({ product_id: s.product_id, quantity: s.quantity }))}
+          isLoading={suggestionsLoading}
+          onConfirm={handlePartialLoadConfirm}
         />
       )}
     </div>
