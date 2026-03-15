@@ -1305,52 +1305,52 @@ const LoadStock: React.FC = () => {
       </div>
 
       {/* Scrollable Session Items */}
-      <ScrollArea className="flex-1 px-3">
+      <ScrollArea className="flex-1 px-2">
         {activeSessionId && sessionItems.length > 0 ? (
-          <div className="grid grid-cols-3 gap-2 pb-4 pt-1">
+          <div className="grid grid-cols-4 gap-1.5 pb-2 pt-1">
             {sessionItems.map((item: any) => {
               const productData = allProductOptions.find(p => p.id === item.product_id);
               const imageUrl = productData?.image_url || (item.product as any)?.image_url;
               return (
                 <div
                   key={item.id}
-                  className="relative rounded-xl ring-1 ring-border/40 bg-card overflow-hidden cursor-pointer hover:ring-primary/50 active:scale-[0.97] transition-all"
+                  className="relative rounded-lg ring-1 ring-border/40 bg-card overflow-hidden cursor-pointer hover:ring-primary/50 active:scale-[0.97] transition-all"
                   onClick={() => handleEditSessionItem(item)}
                 >
-                  {/* Product Image */}
-                  <div className="aspect-square bg-muted/30 flex items-center justify-center overflow-hidden">
+                  {/* Product Image - compact */}
+                  <div className="aspect-[4/3] bg-muted/30 flex items-center justify-center overflow-hidden">
                     {imageUrl ? (
                       <img src={imageUrl} alt={item.product?.name || ''} className="w-full h-full object-cover" />
                     ) : (
-                      <Package className="w-10 h-10 text-muted-foreground/30" />
+                      <Package className="w-7 h-7 text-muted-foreground/30" />
                     )}
                   </div>
 
                   {/* Delete button */}
                   <button
-                    className="absolute top-1 left-1 w-6 h-6 rounded-full bg-destructive/90 text-destructive-foreground flex items-center justify-center hover:bg-destructive transition-colors"
+                    className="absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-destructive/90 text-destructive-foreground flex items-center justify-center"
                     onClick={(e) => { e.stopPropagation(); handleRemoveSessionItem(item); }}
                     disabled={deleteSessionItem.isPending}
                   >
-                    <Trash2 className="w-3 h-3" />
+                    <Trash2 className="w-2.5 h-2.5" />
                   </button>
 
                   {/* Quantity badge */}
-                  <div className="absolute top-1 right-1 flex flex-col gap-0.5 items-end">
-                    <Badge className="text-[10px] px-1.5 py-0 rounded-full shadow-sm">{fmtQty(item.quantity)}</Badge>
+                  <div className="absolute top-0.5 right-0.5 flex flex-col gap-0.5 items-end">
+                    <Badge className="text-[9px] px-1 py-0 rounded-full shadow-sm h-4">{fmtQty(item.quantity)}</Badge>
                     {item.gift_quantity > 0 && (
-                      <Badge variant="destructive" className="text-[9px] px-1.5 py-0 rounded-full shadow-sm">
-                        <Gift className="w-2.5 h-2.5 me-0.5" />{fmtQty(item.gift_quantity)}
+                      <Badge variant="destructive" className="text-[8px] px-1 py-0 rounded-full shadow-sm h-3.5">
+                        <Gift className="w-2 h-2 me-0.5" />{fmtQty(item.gift_quantity)}
                       </Badge>
                     )}
                   </div>
 
                   {/* Product Name */}
-                  <div className="p-1.5 border-t">
-                    <p className="text-[11px] font-semibold leading-tight line-clamp-2 text-center">{item.product?.name || item.notes || ''}</p>
+                  <div className="px-1 py-0.5 border-t">
+                    <p className="text-[9px] font-semibold leading-tight line-clamp-1 text-center">{item.product?.name || item.notes || ''}</p>
                     {item.is_custom_load && (
-                      <div className="flex justify-center mt-0.5">
-                        <Badge className="bg-blue-500 text-white text-[8px] px-1 py-0 rounded-full">مخصص</Badge>
+                      <div className="flex justify-center">
+                        <Badge className="bg-blue-500 text-white text-[7px] px-0.5 py-0 rounded-full h-3">مخصص</Badge>
                       </div>
                     )}
                   </div>
@@ -1359,19 +1359,14 @@ const LoadStock: React.FC = () => {
             })}
           </div>
         ) : activeSessionId ? (
-          <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-            <div className="w-16 h-16 rounded-2xl bg-muted/50 flex items-center justify-center mb-3">
-              <Package className="w-8 h-8 text-muted-foreground/40" />
-            </div>
-            <p className="text-sm font-medium">لا توجد منتجات في الجلسة بعد</p>
-            <p className="text-[11px] text-muted-foreground/70 mt-0.5">اضغط "إضافة منتج" لبدء الشحن</p>
+          <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+            <Package className="w-10 h-10 text-muted-foreground/30 mb-2" />
+            <p className="text-[12px] font-medium">لا توجد منتجات بعد</p>
           </div>
         ) : selectedWorker ? (
-          <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-            <div className="w-16 h-16 rounded-2xl bg-muted/50 flex items-center justify-center mb-3">
-              <Truck className="w-8 h-8 text-muted-foreground/40" />
-            </div>
-            <p className="text-sm font-medium">ابدأ جلسة شحن جديدة</p>
+          <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+            <Truck className="w-10 h-10 text-muted-foreground/30 mb-2" />
+            <p className="text-[12px] font-medium">ابدأ جلسة شحن جديدة</p>
           </div>
         ) : null}
       </ScrollArea>
