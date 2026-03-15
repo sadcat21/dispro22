@@ -1382,7 +1382,7 @@ const LoadStock: React.FC = () => {
             <p className="text-[12px] font-medium">ابدأ جلسة شحن جديدة</p>
           </div>
         ) : null}
-      </ScrollArea>
+      </div>
 
       {/* Fixed Bottom Buttons */}
       {selectedWorker && (
