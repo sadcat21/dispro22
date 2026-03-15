@@ -86,7 +86,7 @@ const BulkLoadNeedsDialog: React.FC<BulkLoadNeedsDialogProps> = ({
           </DialogTitle>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 px-4">
+        <ScrollArea className="flex-1 px-4 max-h-[60vh] overflow-y-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
           <div className="space-y-2 pb-4">
             {deficitSuggestions.map(s => {
               const product = products.find(p => p.id === s.product_id);
