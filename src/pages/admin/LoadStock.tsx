@@ -1163,9 +1163,10 @@ const LoadStock: React.FC = () => {
 
   const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
     const currentY = e.currentTarget.scrollTop;
-    if (currentY > lastScrollY.current && currentY > 40) {
+    const delta = currentY - lastScrollY.current;
+    if (delta > 8 && currentY > 40) {
       setHeaderVisible(false);
-    } else {
+    } else if (delta < -8) {
       setHeaderVisible(true);
     }
     lastScrollY.current = currentY;
@@ -1188,7 +1189,7 @@ const LoadStock: React.FC = () => {
   return (
     <div className="flex flex-col h-[calc(100dvh-4rem)] min-h-0">
       {/* Compact Header - hides on scroll */}
-      <div className={`px-2 pt-2 pb-1 space-y-1.5 transition-all duration-200 overflow-hidden ${headerVisible ? 'max-h-[50vh] opacity-100' : 'max-h-0 opacity-0 pt-0 pb-0'}`}>
+      <div className={`px-2 pt-2 pb-1 space-y-1.5 transition-transform duration-300 ease-out will-change-transform origin-top ${headerVisible ? 'translate-y-0 scale-y-100' : '-translate-y-full scale-y-0 h-0 overflow-hidden'}`}>
         {/* Title + Worker inline */}
         <div className="flex items-center gap-2">
           <button
