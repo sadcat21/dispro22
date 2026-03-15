@@ -1310,7 +1310,7 @@ const LoadStock: React.FC = () => {
       </div>
 
       {/* Scrollable Session Items - horizontal compact list */}
-      <div className="flex-1 overflow-y-auto px-2" onScroll={handleScroll} ref={scrollContainerRef}>
+      <div className="flex-1 overflow-y-auto px-2 touch-pan-y" style={{ WebkitOverflowScrolling: 'touch' }}>
         {activeSessionId && sessionItems.length > 0 ? (
           <div className="space-y-1 pb-2 pt-1">
             {sessionItems.map((item: any) => {
