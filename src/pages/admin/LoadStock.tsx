@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useSelectedWorker } from '@/contexts/SelectedWorkerContext';
@@ -1156,6 +1156,21 @@ const LoadStock: React.FC = () => {
     finally { setIsEmptying(false); }
   };
 
+  // Hide header on scroll
+  const [headerVisible, setHeaderVisible] = useState(true);
+  const lastScrollY = useRef(0);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    const currentY = e.currentTarget.scrollTop;
+    if (currentY > lastScrollY.current && currentY > 40) {
+      setHeaderVisible(false);
+    } else {
+      setHeaderVisible(true);
+    }
+    lastScrollY.current = currentY;
+  }, []);
+
   if (isLoading) {
     return <div className="flex items-center justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
   }
@@ -1169,10 +1184,11 @@ const LoadStock: React.FC = () => {
     );
   }
 
+
   return (
     <div className="flex flex-col h-[calc(100dvh-4rem)] min-h-0">
-      {/* Compact Header */}
-      <div className="px-2 pt-2 pb-1 space-y-1.5">
+      {/* Compact Header - hides on scroll */}
+      <div className={`px-2 pt-2 pb-1 space-y-1.5 transition-all duration-200 overflow-hidden ${headerVisible ? 'max-h-[50vh] opacity-100' : 'max-h-0 opacity-0 pt-0 pb-0'}`}>
         {/* Title + Worker inline */}
         <div className="flex items-center gap-2">
           <button
@@ -1304,56 +1320,54 @@ const LoadStock: React.FC = () => {
         )}
       </div>
 
-      {/* Scrollable Session Items */}
-      <ScrollArea className="flex-1 px-2">
+      {/* Scrollable Session Items - horizontal compact list */}
+      <div className="flex-1 overflow-y-auto px-2" onScroll={handleScroll} ref={scrollContainerRef}>
         {activeSessionId && sessionItems.length > 0 ? (
-          <div className="grid grid-cols-4 gap-1.5 pb-2 pt-1">
+          <div className="space-y-1 pb-2 pt-1">
             {sessionItems.map((item: any) => {
               const productData = allProductOptions.find(p => p.id === item.product_id);
               const imageUrl = productData?.image_url || (item.product as any)?.image_url;
               return (
                 <div
                   key={item.id}
-                  className="relative rounded-lg ring-1 ring-border/40 bg-card overflow-hidden cursor-pointer hover:ring-primary/50 active:scale-[0.97] transition-all"
+                  className="flex items-center gap-2 rounded-xl bg-card ring-1 ring-border/30 shadow-sm hover:shadow-md hover:ring-primary/40 active:scale-[0.99] transition-all cursor-pointer px-2 py-1.5"
                   onClick={() => handleEditSessionItem(item)}
                 >
-                  {/* Product Image - compact */}
-                  <div className="aspect-[4/3] bg-muted/30 flex items-center justify-center overflow-hidden">
+                  {/* Thumbnail */}
+                  <div className="w-10 h-10 rounded-lg bg-muted/40 overflow-hidden shrink-0 shadow-inner">
                     {imageUrl ? (
-                      <img src={imageUrl} alt={item.product?.name || ''} className="w-full h-full object-cover" />
+                      <img src={imageUrl} alt="" className="w-full h-full object-cover" />
                     ) : (
-                      <Package className="w-7 h-7 text-muted-foreground/30" />
-                    )}
-                  </div>
-
-                  {/* Delete button */}
-                  <button
-                    className="absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-destructive/90 text-destructive-foreground flex items-center justify-center"
-                    onClick={(e) => { e.stopPropagation(); handleRemoveSessionItem(item); }}
-                    disabled={deleteSessionItem.isPending}
-                  >
-                    <Trash2 className="w-2.5 h-2.5" />
-                  </button>
-
-                  {/* Quantity badge */}
-                  <div className="absolute top-0.5 right-0.5 flex flex-col gap-0.5 items-end">
-                    <Badge className="text-[9px] px-1 py-0 rounded-full shadow-sm h-4">{fmtQty(item.quantity)}</Badge>
-                    {item.gift_quantity > 0 && (
-                      <Badge variant="destructive" className="text-[8px] px-1 py-0 rounded-full shadow-sm h-3.5">
-                        <Gift className="w-2 h-2 me-0.5" />{fmtQty(item.gift_quantity)}
-                      </Badge>
-                    )}
-                  </div>
-
-                  {/* Product Name */}
-                  <div className="px-1 py-0.5 border-t">
-                    <p className="text-[9px] font-semibold leading-tight line-clamp-1 text-center">{item.product?.name || item.notes || ''}</p>
-                    {item.is_custom_load && (
-                      <div className="flex justify-center">
-                        <Badge className="bg-blue-500 text-white text-[7px] px-0.5 py-0 rounded-full h-3">مخصص</Badge>
+                      <div className="w-full h-full flex items-center justify-center">
+                        <Package className="w-5 h-5 text-muted-foreground/30" />
                       </div>
                     )}
                   </div>
+
+                  {/* Name + details */}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[12px] font-semibold leading-tight truncate">{item.product?.name || item.notes || ''}</p>
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <Badge className="text-[9px] px-1.5 py-0 rounded-full h-4 shadow-sm bg-primary/90">{fmtQty(item.quantity)}</Badge>
+                      {item.gift_quantity > 0 && (
+                        <Badge variant="destructive" className="text-[8px] px-1 py-0 rounded-full h-3.5 shadow-sm">
+                          <Gift className="w-2 h-2 me-0.5" />{fmtQty(item.gift_quantity)}
+                        </Badge>
+                      )}
+                      {item.is_custom_load && (
+                        <Badge className="bg-blue-500/90 text-white text-[7px] px-1 py-0 rounded-full h-3.5">مخصص</Badge>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Delete */}
+                  <button
+                    className="w-7 h-7 rounded-full bg-destructive/10 hover:bg-destructive/20 text-destructive flex items-center justify-center shrink-0 transition-colors"
+                    onClick={(e) => { e.stopPropagation(); handleRemoveSessionItem(item); }}
+                    disabled={deleteSessionItem.isPending}
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </button>
                 </div>
               );
             })}
@@ -1369,116 +1383,108 @@ const LoadStock: React.FC = () => {
             <p className="text-[12px] font-medium">ابدأ جلسة شحن جديدة</p>
           </div>
         ) : null}
-      </ScrollArea>
+      </div>
 
       {/* Fixed Bottom Buttons */}
       {selectedWorker && (
-        <div className="px-2 pt-1.5 pb-2 border-t bg-background space-y-1.5">
+        <div className="px-2 pt-1 pb-1.5 border-t bg-gradient-to-t from-background to-background/95 shadow-[0_-2px_8px_-2px_hsl(var(--foreground)/0.06)] space-y-1">
            {!activeSessionId ? (
             <>
               {!hasReviewToday && (
-                <div className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg bg-amber-50 dark:bg-amber-900/10 ring-1 ring-amber-200 dark:ring-amber-800 text-amber-700 dark:text-amber-400 text-[10px]">
-                  <AlertTriangle className="w-3 h-3 shrink-0" />
-                  <span>يجب إجراء جلسة مراجعة قبل الشحن أو التفريغ</span>
+                <div className="flex items-center gap-1 px-2 py-1 rounded-md bg-amber-50 dark:bg-amber-900/10 ring-1 ring-amber-200 dark:ring-amber-800 text-amber-700 dark:text-amber-400 text-[9px]">
+                  <AlertTriangle className="w-2.5 h-2.5 shrink-0" />
+                  <span>مراجعة مطلوبة أولاً</span>
                 </div>
               )}
-              <div className="flex gap-1.5">
+              <div className="flex gap-1">
                 <Button
                   variant="outline"
-                  className={`flex-1 h-9 rounded-lg text-[11px] ${hasReviewToday 
+                  className={`flex-1 h-7 rounded-md text-[10px] px-2 ${hasReviewToday 
                     ? "border-green-400 text-green-700 bg-green-50/50 dark:bg-green-900/10"
                     : "border-blue-400 text-blue-700 bg-blue-50/50 dark:bg-blue-900/10"
                   }`}
                   onClick={() => setShowVerificationDialog(true)}
                   disabled={isEmptying}
                 >
-                  {hasReviewToday ? <CheckCircle className="w-3.5 h-3.5 me-1" /> : <Search className="w-3.5 h-3.5 me-1" />}
-                  {hasReviewToday ? 'مراجعة ✓' : 'مراجعة (إلزامي)'}
+                  {hasReviewToday ? <CheckCircle className="w-3 h-3" /> : <Search className="w-3 h-3" />}
                 </Button>
-                <Button onClick={handleStartSession} className="flex-1 h-9 rounded-lg text-[11px] shadow-sm" disabled={createSession.isPending || !hasReviewToday}>
-                  {createSession.isPending && <Loader2 className="w-3.5 h-3.5 animate-spin me-1" />}
-                  <Plus className="w-3.5 h-3.5 me-1" />
-                  بدء جلسة شحن
+                <Button onClick={handleStartSession} className="flex-[2] h-7 rounded-md text-[10px] shadow-sm" disabled={createSession.isPending || !hasReviewToday}>
+                  {createSession.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3 me-0.5" />}
+                  بدء شحن
                 </Button>
               </div>
-              <div className="grid grid-cols-4 gap-1">
-                <Button variant="outline" onClick={() => setShowSessionHistory(true)} className="h-8 rounded-lg text-[10px] px-1">
-                  <History className="w-3 h-3 me-0.5" />
-                  السجل
+              <div className="grid grid-cols-4 gap-0.5">
+                <Button variant="ghost" onClick={() => setShowSessionHistory(true)} className="h-6 rounded text-[9px] px-0.5">
+                  <History className="w-3 h-3" />
                 </Button>
                 <Button
-                  variant="outline"
-                  className="h-8 rounded-lg text-[10px] px-1 text-destructive border-destructive/30"
+                  variant="ghost"
+                  className="h-6 rounded text-[9px] px-0.5 text-destructive"
                   onClick={handleEmptyTruckPreview}
                   disabled={isEmptying || !hasReviewToday}
                 >
-                  <PackageX className="w-3 h-3 me-0.5" />
-                  {t('stock.empty_truck')}
+                  <PackageX className="w-3 h-3" />
                 </Button>
                 <Button
-                  variant="outline"
-                  className="h-8 rounded-lg text-[10px] px-1 border-orange-400 text-orange-700"
+                  variant="ghost"
+                  className="h-6 rounded text-[9px] px-0.5 text-orange-600"
                   onClick={() => setShowExchangeDialog(true)}
                 >
-                  <RefreshCw className="w-3 h-3 me-0.5" />
-                  تغيير
+                  <RefreshCw className="w-3 h-3" />
                 </Button>
                 <Button
-                  variant="outline"
-                  className="h-8 rounded-lg text-[10px] px-1 border-primary/30 text-primary"
+                  variant="ghost"
+                  className="h-6 rounded text-[9px] px-0.5 text-primary"
                   onClick={() => setShowLoadSheetPrint(true)}
                 >
-                  <Printer className="w-3 h-3 me-0.5" />
-                  طباعة
+                  <Printer className="w-3 h-3" />
                 </Button>
               </div>
             </>
           ) : (
             <>
-              <div className="flex gap-1.5">
-                <Button onClick={handleOpenAddProduct} className="flex-1 h-9 rounded-lg text-[11px] shadow-sm">
-                  <Plus className="w-3.5 h-3.5 me-1" />
-                  إضافة منتج
+              <div className="flex gap-1">
+                <Button onClick={handleOpenAddProduct} className="flex-1 h-7 rounded-md text-[10px] shadow-sm">
+                  <Plus className="w-3 h-3 me-0.5" />
+                  إضافة
                 </Button>
                 <Button
                   variant="outline"
-                  className="flex-1 h-9 rounded-lg text-[11px] border-primary/30 text-primary"
+                  className="flex-1 h-7 rounded-md text-[10px] border-primary/30 text-primary"
                   onClick={() => setShowPartialLoadDialog(true)}
                   disabled={isSaving}
                 >
-                  <ShoppingCart className="w-3.5 h-3.5 me-1" />
-                  من الطلبيات
+                  <ShoppingCart className="w-3 h-3 me-0.5" />
+                  طلبيات
                 </Button>
               </div>
               {hasDeficit && (
                 <Button
                   variant="outline"
-                  className="w-full h-8 rounded-lg text-[11px] border-destructive/40 text-destructive bg-destructive/5"
+                  className="w-full h-6 rounded-md text-[9px] border-destructive/40 text-destructive bg-destructive/5"
                   onClick={() => setShowBulkLoadNeeds(true)}
                   disabled={isSaving}
                 >
-                  <AlertTriangle className="w-3.5 h-3.5 me-1" />
-                  شحن الاحتياج ({totalDeficit})
+                  <AlertTriangle className="w-3 h-3 me-0.5" />
+                  احتياج ({totalDeficit})
                 </Button>
               )}
-              <div className="flex gap-1.5">
+              <div className="flex gap-1">
                 <Button
-                  className="flex-1 h-9 rounded-lg text-[11px] shadow-sm"
+                  className="flex-1 h-7 rounded-md text-[10px] shadow-sm"
                   onClick={handleCompleteSession}
                   disabled={sessionItems.length === 0 || completeSession.isPending}
                 >
-                  {completeSession.isPending && <Loader2 className="w-3.5 h-3.5 animate-spin me-1" />}
-                  <Save className="w-3.5 h-3.5 me-1" />
-                  تأكيد الشحن
+                  {completeSession.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3 me-0.5" />}
+                  تأكيد
                 </Button>
                 <Button
                   variant="outline"
-                  className="flex-1 h-9 rounded-lg text-[11px] text-destructive border-destructive/30"
+                  className="h-7 rounded-md text-[10px] text-destructive border-destructive/30 px-3"
                   onClick={() => handleDeleteSession(activeSessionId!)}
                   disabled={deleteSession.isPending}
                 >
-                  <X className="w-3.5 h-3.5 me-1" />
-                  إلغاء
+                  <X className="w-3 h-3" />
                 </Button>
               </div>
             </>
