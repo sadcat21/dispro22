@@ -666,32 +666,34 @@ const ModifyOrderDialog: React.FC<ModifyOrderDialogProps> = ({
             </div>
 
             {/* Payment type */}
-            <div className="border rounded-lg p-3 space-y-2 bg-muted/30">
+            <div className="border rounded-lg p-3 space-y-3 bg-muted/30">
               <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
                 <CreditCard className="w-3.5 h-3.5" />
                 طريقة الدفع
               </label>
-              <Select value={paymentType} onValueChange={(v) => { setPaymentType(v); if (v !== 'with_invoice') setInvoicePaymentMethod(''); }}>
-                <SelectTrigger className="h-9">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="with_invoice">بفاتورة</SelectItem>
-                  <SelectItem value="without_invoice">بدون فاتورة</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  type="button"
+                  variant={paymentType === 'with_invoice' ? 'default' : 'outline'}
+                  className={`h-10 text-sm font-bold ${paymentType === 'with_invoice' ? '' : 'opacity-60'}`}
+                  onClick={() => setPaymentType('with_invoice')}
+                >
+                  بفاتورة
+                </Button>
+                <Button
+                  type="button"
+                  variant={paymentType === 'without_invoice' ? 'default' : 'outline'}
+                  className={`h-10 text-sm font-bold ${paymentType === 'without_invoice' ? '' : 'opacity-60'}`}
+                  onClick={() => { setPaymentType('without_invoice'); setInvoicePaymentMethod(null); }}
+                >
+                  بدون فاتورة
+                </Button>
+              </div>
               {paymentType === 'with_invoice' && (
-                <Select value={invoicePaymentMethod} onValueChange={setInvoicePaymentMethod}>
-                  <SelectTrigger className="h-9">
-                    <SelectValue placeholder="طريقة الدفع الفرعية" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="cash">نقدي</SelectItem>
-                    <SelectItem value="check">شيك</SelectItem>
-                    <SelectItem value="receipt">وصل</SelectItem>
-                    <SelectItem value="transfer">تحويل</SelectItem>
-                  </SelectContent>
-                </Select>
+                <InvoicePaymentMethodSelect
+                  value={invoicePaymentMethod}
+                  onChange={setInvoicePaymentMethod}
+                />
               )}
             </div>
 
