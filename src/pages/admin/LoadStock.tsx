@@ -1156,19 +1156,6 @@ const LoadStock: React.FC = () => {
     finally { setIsEmptying(false); }
   };
 
-  if (isLoading) {
-    return <div className="flex items-center justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
-  }
-
-  if (!branchId) {
-    return (
-      <div className="p-4">
-        <h2 className="text-xl font-bold mb-4">{t('stock.load_to_worker')}</h2>
-        <Card><CardContent className="py-6 text-center text-muted-foreground">{t('branches.select_branch')}</CardContent></Card>
-      </div>
-    );
-  }
-
   // Hide header on scroll
   const [headerVisible, setHeaderVisible] = useState(true);
   const lastScrollY = useRef(0);
@@ -1183,6 +1170,20 @@ const LoadStock: React.FC = () => {
     }
     lastScrollY.current = currentY;
   }, []);
+
+  if (isLoading) {
+    return <div className="flex items-center justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
+  }
+
+  if (!branchId) {
+    return (
+      <div className="p-4">
+        <h2 className="text-xl font-bold mb-4">{t('stock.load_to_worker')}</h2>
+        <Card><CardContent className="py-6 text-center text-muted-foreground">{t('branches.select_branch')}</CardContent></Card>
+      </div>
+    );
+  }
+
 
   return (
     <div className="flex flex-col h-[calc(100dvh-4rem)] min-h-0">
