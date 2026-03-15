@@ -578,7 +578,7 @@ const ModifyOrderDialog: React.FC<ModifyOrderDialogProps> = ({
           نوع_التعديل: order.status === 'delivered' ? 'تعديل بعد التوصيل' : 'تعديل أثناء التوصيل',
           العميل: order.customer?.name,
           التغييرات: changes,
-          ...(paymentType && { طريقة_دفع_الفارق: paymentType, المبلغ_المدفوع: paidAmount }),
+          ...(diffPaymentType && { طريقة_دفع_الفارق: diffPaymentType, المبلغ_المدفوع: paidAmount }),
         },
       });
 
