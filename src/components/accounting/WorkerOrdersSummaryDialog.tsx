@@ -175,6 +175,7 @@ const WorkerOrdersSummaryDialog: React.FC<Props> = ({ open, onOpenChange, worker
   const [printOrderItems, setPrintOrderItems] = useState<Map<string, any[]>>(new Map());
   const [printProducts, setPrintProducts] = useState<Product[]>([]);
   const [isPrintLoading, setIsPrintLoading] = useState(false);
+  const isPrintingRef = useRef(false);
   const printRef = useRef<HTMLDivElement>(null);
 
   const { columns: columnConfig } = usePrintColumnsConfig();
@@ -313,10 +314,14 @@ const WorkerOrdersSummaryDialog: React.FC<Props> = ({ open, onOpenChange, worker
       setPrintOrderItems(itemsMap);
       setPrintProducts(Array.from(productMap.values()).sort((a, b) => (a.name || '').localeCompare(b.name || '')));
       setIsPrintReady(true);
+      isPrintingRef.current = true;
 
       setTimeout(() => {
         window.print();
-        setTimeout(() => setIsPrintReady(false), 500);
+        setTimeout(() => {
+          setIsPrintReady(false);
+          isPrintingRef.current = false;
+        }, 500);
       }, 400);
     } catch (err) {
       console.error('Print error:', err);
@@ -349,7 +354,7 @@ const WorkerOrdersSummaryDialog: React.FC<Props> = ({ open, onOpenChange, worker
         />
       )}
 
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(v) => { if (isPrintingRef.current) return; onOpenChange(v); }}>
       <DialogContent className="max-w-[95vw] sm:max-w-md max-h-[92dvh] flex flex-col overflow-hidden p-0 gap-0 rounded-2xl" dir="rtl">
         {/* Header */}
         <div className="bg-primary/5 border-b px-4 pt-4 pb-3 shrink-0">
