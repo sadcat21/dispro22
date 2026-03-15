@@ -170,6 +170,15 @@ const WorkerOrdersSummaryDialog: React.FC<Props> = ({ open, onOpenChange, worker
   const [activeTab, setActiveTab] = useState<'created' | 'assigned'>('assigned');
   const [selectedDate, setSelectedDate] = useState(() => format(new Date(), 'yyyy-MM-dd'));
   const [expandedProduct, setExpandedProduct] = useState<string | null>(null);
+  const [isPrintReady, setIsPrintReady] = useState(false);
+  const [printOrders, setPrintOrders] = useState<OrderWithDetails[]>([]);
+  const [printOrderItems, setPrintOrderItems] = useState<Map<string, any[]>>(new Map());
+  const [printProducts, setPrintProducts] = useState<Product[]>([]);
+  const [isPrintLoading, setIsPrintLoading] = useState(false);
+  const printRef = useRef<HTMLDivElement>(null);
+
+  const { columns: columnConfig } = usePrintColumnsConfig();
+  const { data: workerPrintInfo } = useWorkerPrintInfo(workerId);
 
   const { data, isLoading } = useQuery({
     queryKey: ['worker-orders-summary', workerId, selectedDate],
