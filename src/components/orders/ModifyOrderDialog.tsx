@@ -70,7 +70,7 @@ const ModifyOrderDialog: React.FC<ModifyOrderDialogProps> = ({
   const [customerCreditTotal, setCustomerCreditTotal] = useState(0);
   const [deliveryDate, setDeliveryDate] = useState<Date | undefined>(order.delivery_date ? new Date(order.delivery_date) : undefined);
   const [paymentType, setPaymentType] = useState<string>(order.payment_type || 'with_invoice');
-  const [invoicePaymentMethod, setInvoicePaymentMethod] = useState<string>(order.invoice_payment_method || '');
+  const [invoicePaymentMethod, setInvoicePaymentMethod] = useState<InvoicePaymentMethod | null>((order.invoice_payment_method as InvoicePaymentMethod) || null);
 
   const canChangeWorker = role === 'admin' || role === 'branch_admin' || order.created_by === workerId;
 
