@@ -1163,9 +1163,10 @@ const LoadStock: React.FC = () => {
 
   const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
     const currentY = e.currentTarget.scrollTop;
-    if (currentY > lastScrollY.current && currentY > 40) {
+    const delta = currentY - lastScrollY.current;
+    if (delta > 8 && currentY > 40) {
       setHeaderVisible(false);
-    } else {
+    } else if (delta < -8) {
       setHeaderVisible(true);
     }
     lastScrollY.current = currentY;
