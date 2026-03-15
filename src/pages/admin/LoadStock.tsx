@@ -1373,114 +1373,112 @@ const LoadStock: React.FC = () => {
 
       {/* Fixed Bottom Buttons */}
       {selectedWorker && (
-        <div className="px-3 pt-2 pb-3 border-t bg-background space-y-2">
+        <div className="px-2 pt-1.5 pb-2 border-t bg-background space-y-1.5">
            {!activeSessionId ? (
             <>
               {!hasReviewToday && (
-                <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-amber-50 dark:bg-amber-900/10 ring-1 ring-amber-200 dark:ring-amber-800 text-amber-700 dark:text-amber-400 text-[11px]">
-                  <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                <div className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg bg-amber-50 dark:bg-amber-900/10 ring-1 ring-amber-200 dark:ring-amber-800 text-amber-700 dark:text-amber-400 text-[10px]">
+                  <AlertTriangle className="w-3 h-3 shrink-0" />
                   <span>يجب إجراء جلسة مراجعة قبل الشحن أو التفريغ</span>
                 </div>
               )}
-              <Button
-                variant="outline"
-                className={`w-full h-10 rounded-xl text-[13px] ${hasReviewToday 
-                  ? "border-green-400 text-green-700 bg-green-50/50 dark:bg-green-900/10 hover:bg-green-100 dark:hover:bg-green-900/20"
-                  : "border-blue-400 text-blue-700 bg-blue-50/50 dark:bg-blue-900/10 hover:bg-blue-100 dark:hover:bg-blue-900/20"
-                }`}
-                onClick={() => setShowVerificationDialog(true)}
-                disabled={isEmptying}
-              >
-                {hasReviewToday ? <CheckCircle className="w-4 h-4 me-1" /> : <Search className="w-4 h-4 me-1" />}
-                {hasReviewToday ? 'تمت المراجعة ✓ (إعادة المراجعة)' : 'بدء جلسة مراجعة (إلزامي)'}
-              </Button>
-              <Button onClick={handleStartSession} className="w-full h-11 rounded-xl text-[13px] shadow-sm" disabled={createSession.isPending || !hasReviewToday}>
-                {createSession.isPending && <Loader2 className="w-4 h-4 animate-spin me-2" />}
-                <Plus className="w-4 h-4 me-1" />
-                بدء جلسة شحن جديدة
-              </Button>
-              <div className="grid grid-cols-4 gap-1.5">
-                <Button variant="outline" onClick={() => setShowSessionHistory(true)} className="h-10 rounded-xl text-[11px] px-2">
-                  <History className="w-3.5 h-3.5 me-1" />
-                  سجل الجلسات
+              <div className="flex gap-1.5">
+                <Button
+                  variant="outline"
+                  className={`flex-1 h-9 rounded-lg text-[11px] ${hasReviewToday 
+                    ? "border-green-400 text-green-700 bg-green-50/50 dark:bg-green-900/10"
+                    : "border-blue-400 text-blue-700 bg-blue-50/50 dark:bg-blue-900/10"
+                  }`}
+                  onClick={() => setShowVerificationDialog(true)}
+                  disabled={isEmptying}
+                >
+                  {hasReviewToday ? <CheckCircle className="w-3.5 h-3.5 me-1" /> : <Search className="w-3.5 h-3.5 me-1" />}
+                  {hasReviewToday ? 'مراجعة ✓' : 'مراجعة (إلزامي)'}
+                </Button>
+                <Button onClick={handleStartSession} className="flex-1 h-9 rounded-lg text-[11px] shadow-sm" disabled={createSession.isPending || !hasReviewToday}>
+                  {createSession.isPending && <Loader2 className="w-3.5 h-3.5 animate-spin me-1" />}
+                  <Plus className="w-3.5 h-3.5 me-1" />
+                  بدء جلسة شحن
+                </Button>
+              </div>
+              <div className="grid grid-cols-4 gap-1">
+                <Button variant="outline" onClick={() => setShowSessionHistory(true)} className="h-8 rounded-lg text-[10px] px-1">
+                  <History className="w-3 h-3 me-0.5" />
+                  السجل
                 </Button>
                 <Button
                   variant="outline"
-                  className="h-10 rounded-xl text-[11px] px-2 text-destructive border-destructive/30 hover:bg-destructive/5"
+                  className="h-8 rounded-lg text-[10px] px-1 text-destructive border-destructive/30"
                   onClick={handleEmptyTruckPreview}
                   disabled={isEmptying || !hasReviewToday}
                 >
-                  {isEmptying ? <Loader2 className="w-3.5 h-3.5 animate-spin me-1" /> : <PackageX className="w-3.5 h-3.5 me-1" />}
+                  <PackageX className="w-3 h-3 me-0.5" />
                   {t('stock.empty_truck')}
                 </Button>
                 <Button
                   variant="outline"
-                  className="h-10 rounded-xl text-[11px] px-2 border-orange-400 text-orange-700 bg-orange-50/50 dark:bg-orange-900/10 hover:bg-orange-100 dark:hover:bg-orange-900/20"
+                  className="h-8 rounded-lg text-[10px] px-1 border-orange-400 text-orange-700"
                   onClick={() => setShowExchangeDialog(true)}
-                  disabled={!selectedWorker}
                 >
-                  <RefreshCw className="w-3.5 h-3.5 me-1" />
+                  <RefreshCw className="w-3 h-3 me-0.5" />
                   تغيير
                 </Button>
                 <Button
                   variant="outline"
-                  className="h-10 rounded-xl text-[11px] px-2 border-primary/30 text-primary hover:bg-primary/5"
+                  className="h-8 rounded-lg text-[10px] px-1 border-primary/30 text-primary"
                   onClick={() => setShowLoadSheetPrint(true)}
-                  disabled={!selectedWorker}
                 >
-                  <Printer className="w-3.5 h-3.5 me-1" />
-                  ورقة الشحن
+                  <Printer className="w-3 h-3 me-0.5" />
+                  طباعة
                 </Button>
               </div>
             </>
           ) : (
             <>
-              <div className="flex gap-2">
-                <Button onClick={handleOpenAddProduct} className="flex-1 h-10 rounded-xl text-[13px] shadow-sm">
-                  <Plus className="w-4 h-4 me-1" />
+              <div className="flex gap-1.5">
+                <Button onClick={handleOpenAddProduct} className="flex-1 h-9 rounded-lg text-[11px] shadow-sm">
+                  <Plus className="w-3.5 h-3.5 me-1" />
                   إضافة منتج
                 </Button>
                 <Button
                   variant="outline"
-                  className="flex-1 h-10 rounded-xl text-[13px] border-primary/30 text-primary hover:bg-primary/5"
+                  className="flex-1 h-9 rounded-lg text-[11px] border-primary/30 text-primary"
                   onClick={() => setShowPartialLoadDialog(true)}
                   disabled={isSaving}
                 >
-                  <ShoppingCart className="w-4 h-4 me-1" />
-                  شحن من الطلبيات
+                  <ShoppingCart className="w-3.5 h-3.5 me-1" />
+                  من الطلبيات
                 </Button>
               </div>
               {hasDeficit && (
                 <Button
                   variant="outline"
-                  className="w-full h-10 rounded-xl text-[13px] border-destructive/40 text-destructive bg-destructive/5 hover:bg-destructive/10"
+                  className="w-full h-8 rounded-lg text-[11px] border-destructive/40 text-destructive bg-destructive/5"
                   onClick={() => setShowBulkLoadNeeds(true)}
                   disabled={isSaving}
                 >
-                  <AlertTriangle className="w-4 h-4 me-1" />
-                  شحن الاحتياج ({totalDeficit} صندوق)
+                  <AlertTriangle className="w-3.5 h-3.5 me-1" />
+                  شحن الاحتياج ({totalDeficit})
                 </Button>
               )}
-              <div className="flex gap-2">
+              <div className="flex gap-1.5">
                 <Button
-                  variant="default"
-                  className="flex-1 h-10 rounded-xl text-[13px] shadow-sm bg-primary hover:bg-primary/90"
+                  className="flex-1 h-9 rounded-lg text-[11px] shadow-sm"
                   onClick={handleCompleteSession}
                   disabled={sessionItems.length === 0 || completeSession.isPending}
                 >
-                  {completeSession.isPending && <Loader2 className="w-4 h-4 animate-spin me-2" />}
-                  <Save className="w-4 h-4 me-1" />
+                  {completeSession.isPending && <Loader2 className="w-3.5 h-3.5 animate-spin me-1" />}
+                  <Save className="w-3.5 h-3.5 me-1" />
                   تأكيد الشحن
                 </Button>
                 <Button
                   variant="outline"
-                  className="flex-1 h-10 rounded-xl text-[13px] text-destructive border-destructive/30 hover:bg-destructive/5"
+                  className="flex-1 h-9 rounded-lg text-[11px] text-destructive border-destructive/30"
                   onClick={() => handleDeleteSession(activeSessionId!)}
                   disabled={deleteSession.isPending}
                 >
-                  {deleteSession.isPending && <Loader2 className="w-4 h-4 animate-spin me-2" />}
-                  <X className="w-4 h-4 me-1" />
-                  إلغاء الجلسة
+                  <X className="w-3.5 h-3.5 me-1" />
+                  إلغاء
                 </Button>
               </div>
             </>
