@@ -175,6 +175,7 @@ const WorkerOrdersSummaryDialog: React.FC<Props> = ({ open, onOpenChange, worker
   const [printOrderItems, setPrintOrderItems] = useState<Map<string, any[]>>(new Map());
   const [printProducts, setPrintProducts] = useState<Product[]>([]);
   const [isPrintLoading, setIsPrintLoading] = useState(false);
+  const isPrintingRef = useRef(false);
   const printRef = useRef<HTMLDivElement>(null);
 
   const { columns: columnConfig } = usePrintColumnsConfig();
