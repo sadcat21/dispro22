@@ -83,8 +83,8 @@ const ProductPickerDialog: React.FC<ProductPickerDialogProps> = ({
         key={p.id}
         disabled={isSelected}
         className={`flex flex-col rounded-2xl overflow-hidden text-center transition-all relative bg-white shadow-lg border-2
-          ${isSelected ? 'border-primary ring-2 ring-primary/40 opacity-60 cursor-not-allowed' : neededQty > 0 ? 'border-orange-400 ring-2 ring-orange-300/40 hover:border-orange-500 hover:shadow-xl cursor-pointer' : 'border-red-200 hover:border-primary/60 hover:shadow-xl cursor-pointer'}
-          ${isOutOfStock && !isSelected ? 'border-orange-400/60' : ''}
+          ${isSelected ? 'border-primary ring-2 ring-primary/40 opacity-60 cursor-not-allowed' : neededQty > 0 ? 'border-destructive ring-2 ring-destructive/40 hover:border-destructive hover:shadow-xl cursor-pointer' : 'border-red-200 hover:border-primary/60 hover:shadow-xl cursor-pointer'}
+          ${isOutOfStock && !isSelected ? 'border-destructive/60' : ''}
         `}
         onClick={() => {
           if (!isSelected) {
