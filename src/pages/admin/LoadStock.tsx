@@ -1169,10 +1169,25 @@ const LoadStock: React.FC = () => {
     );
   }
 
+  // Hide header on scroll
+  const [headerVisible, setHeaderVisible] = useState(true);
+  const lastScrollY = useRef(0);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    const currentY = e.currentTarget.scrollTop;
+    if (currentY > lastScrollY.current && currentY > 40) {
+      setHeaderVisible(false);
+    } else {
+      setHeaderVisible(true);
+    }
+    lastScrollY.current = currentY;
+  }, []);
+
   return (
     <div className="flex flex-col h-[calc(100dvh-4rem)] min-h-0">
-      {/* Compact Header */}
-      <div className="px-2 pt-2 pb-1 space-y-1.5">
+      {/* Compact Header - hides on scroll */}
+      <div className={`px-2 pt-2 pb-1 space-y-1.5 transition-all duration-200 overflow-hidden ${headerVisible ? 'max-h-[50vh] opacity-100' : 'max-h-0 opacity-0 pt-0 pb-0'}`}>
         {/* Title + Worker inline */}
         <div className="flex items-center gap-2">
           <button
