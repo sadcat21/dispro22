@@ -1170,55 +1170,43 @@ const LoadStock: React.FC = () => {
   }
 
   return (
-    <div className="flex flex-col h-[calc(100dvh-8rem)] min-h-0">
-      {/* Header */}
-      <div className="px-3 pt-3 pb-1 space-y-2.5">
-        <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-            <Truck className="w-5 h-5 text-primary" />
-          </div>
-          <h2 className="text-lg font-bold flex-1">{t('stock.load_to_worker')}</h2>
+    <div className="flex flex-col h-[calc(100dvh-4rem)] min-h-0">
+      {/* Compact Header */}
+      <div className="px-2 pt-2 pb-1 space-y-1.5">
+        {/* Title + Worker inline */}
+        <div className="flex items-center gap-2">
+          <button
+            className="flex-1 flex items-center gap-2 h-9 px-2.5 rounded-lg ring-1 ring-border/60 bg-card hover:bg-muted/30 active:scale-[0.99] transition-all"
+            onClick={() => setShowWorkerPicker(true)}
+          >
+            <Truck className="w-4 h-4 text-primary shrink-0" />
+            <span className="text-[13px] font-semibold truncate flex-1 text-right">
+              {selectedWorker ? workers.find(w => w.id === selectedWorker)?.full_name : t('stock.select_worker')}
+            </span>
+            <ChevronDown className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+          </button>
           {selectedWorker && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-9 w-9 rounded-xl hover:bg-muted"
-              onClick={() => setShowSessionHistory(true)}
-            >
-              <History className="w-5 h-5 text-muted-foreground" />
+            <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0 rounded-lg" onClick={() => setShowSessionHistory(true)}>
+              <History className="w-4 h-4 text-muted-foreground" />
             </Button>
           )}
         </div>
 
-        {/* Worker Selection */}
-        <button
-          className="w-full flex items-center justify-between h-12 px-3 rounded-xl ring-1 ring-border/60 bg-card hover:bg-muted/30 active:scale-[0.99] transition-all"
-          onClick={() => setShowWorkerPicker(true)}
-        >
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-              <User className="w-4 h-4 text-primary" />
-            </div>
-            <span className="text-sm font-medium">{selectedWorker ? workers.find(w => w.id === selectedWorker)?.full_name : t('stock.select_worker')}</span>
-          </div>
-          <ChevronDown className="w-4 h-4 text-muted-foreground" />
-        </button>
-
-        {/* Stock Summary Collapsible */}
+        {/* Stock Summary - collapsed by default */}
         {selectedWorker && !suggestionsLoading && suggestions.length > 0 && (
           <Collapsible>
             <CollapsibleTrigger asChild>
-              <button className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl ring-1 ring-border/60 bg-card hover:bg-muted/30 active:scale-[0.99] transition-all">
-                <div className="flex items-center gap-2">
-                  {hasDeficit ? <AlertTriangle className="w-4 h-4 text-destructive" /> : <CheckCircle className="w-4 h-4 text-green-600" />}
-                  <span className="font-semibold text-[13px]">{hasDeficit ? t('stock.needs_loading') : t('stock.stock_sufficient')}</span>
-                  {hasDeficit && <Badge variant="destructive" className="text-[10px] px-2 rounded-full">{totalDeficit} {t('stock.boxes')}</Badge>}
+              <button className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg ring-1 ring-border/60 bg-card hover:bg-muted/30 active:scale-[0.99] transition-all">
+                <div className="flex items-center gap-1.5">
+                  {hasDeficit ? <AlertTriangle className="w-3.5 h-3.5 text-destructive" /> : <CheckCircle className="w-3.5 h-3.5 text-green-600" />}
+                  <span className="font-semibold text-[12px]">{hasDeficit ? t('stock.needs_loading') : t('stock.stock_sufficient')}</span>
+                  {hasDeficit && <Badge variant="destructive" className="text-[9px] px-1.5 rounded-full h-4">{totalDeficit} {t('stock.boxes')}</Badge>}
                 </div>
-                <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
               </button>
             </CollapsibleTrigger>
-            <CollapsibleContent className="mt-2">
-              <div className="grid gap-1.5 max-h-[30dvh] overflow-y-auto">
+            <CollapsibleContent className="mt-1">
+              <div className="grid gap-1 max-h-[25dvh] overflow-y-auto">
                 {suggestions.map(s => {
                   const sessionLoad = sessionItems.filter(si => si.product_id === s.product_id);
                   const loadedBoxes = sessionLoad.reduce((sum: number, si: any) => sum + (si.quantity || 0), 0);
@@ -1234,50 +1222,50 @@ const LoadStock: React.FC = () => {
                   const totalGiftsCustom = newGiftInCustom;
                   const hasGifts = totalGiftsCustom > 0;
                   return (
-                    <div key={s.product_id} className="rounded-xl ring-1 ring-border/40 bg-card p-2.5">
-                      <div className="flex items-center justify-between mb-1.5">
-                        <div className="flex items-center gap-1.5">
-                          <Package className="w-3.5 h-3.5 text-primary" />
-                          <span className="font-semibold text-[12px]">{s.product_name}</span>
+                    <div key={s.product_id} className="rounded-lg ring-1 ring-border/40 bg-card p-2">
+                      <div className="flex items-center justify-between mb-1">
+                        <div className="flex items-center gap-1">
+                          <Package className="w-3 h-3 text-primary" />
+                          <span className="font-semibold text-[11px]">{s.product_name}</span>
                         </div>
                         {s.suggested_load > 0 ? (
-                          <Badge variant="destructive" className="text-[9px] px-1.5 py-0 h-4 rounded-full">يحتاج +{fmtQty(s.suggested_load)}</Badge>
+                          <Badge variant="destructive" className="text-[8px] px-1 py-0 h-3.5 rounded-full">+{fmtQty(s.suggested_load)}</Badge>
                         ) : (
-                          <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 rounded-full border-green-400 text-green-600">✓ كافي</Badge>
+                          <Badge variant="outline" className="text-[8px] px-1 py-0 h-3.5 rounded-full border-green-400 text-green-600">✓</Badge>
                         )}
                       </div>
-                      <div className={`grid ${hasGifts ? 'grid-cols-8' : 'grid-cols-7'} gap-0.5 text-[10px]`}>
-                        <div className="bg-muted/50 rounded-lg p-1 text-center">
-                          <div className="text-muted-foreground text-[8px]">المتبقي</div>
+                      <div className={`grid ${hasGifts ? 'grid-cols-8' : 'grid-cols-7'} gap-0.5 text-[9px]`}>
+                        <div className="bg-muted/50 rounded p-0.5 text-center">
+                          <div className="text-muted-foreground text-[7px]">المتبقي</div>
                           <div className="font-bold">{fmtQty(oldStock)}</div>
                         </div>
-                        <div className="bg-blue-50 dark:bg-blue-950/30 rounded-lg p-1 text-center">
-                          <div className="text-muted-foreground text-[8px]">شحن</div>
+                        <div className="bg-blue-50 dark:bg-blue-950/30 rounded p-0.5 text-center">
+                          <div className="text-muted-foreground text-[7px]">شحن</div>
                           <div className="font-bold text-blue-600 dark:text-blue-400">{fmtQty((workerLoadedData || {})[s.product_id] || 0)}</div>
                         </div>
-                        <div className="bg-orange-50 dark:bg-orange-950/30 rounded-lg p-1 text-center">
-                          <div className="text-muted-foreground text-[8px]">بدون محاسبة</div>
+                        <div className="bg-orange-50 dark:bg-orange-950/30 rounded p-0.5 text-center">
+                          <div className="text-muted-foreground text-[7px]">بدون محاسبة</div>
                           <div className="font-bold text-orange-600 dark:text-orange-400">{fmtQty((workerLoadedSinceAccounting || {})[s.product_id] || 0)}</div>
                         </div>
-                        <div className="bg-primary/5 rounded-lg p-1 text-center">
-                          <div className="text-muted-foreground text-[8px]">جديد</div>
+                        <div className="bg-primary/5 rounded p-0.5 text-center">
+                          <div className="text-muted-foreground text-[7px]">جديد</div>
                           <div className="font-bold text-primary">{loadedBoxes > 0 ? `+${fmtQty(loadedBoxes)}` : '—'}</div>
                         </div>
-                        <div className="bg-muted/50 rounded-lg p-1 text-center">
-                          <div className="text-muted-foreground text-[8px]">الكلي</div>
+                        <div className="bg-muted/50 rounded p-0.5 text-center">
+                          <div className="text-muted-foreground text-[7px]">الكلي</div>
                           <div className="font-bold">{fmtQty(s.current_stock)}</div>
                         </div>
-                        <div className="bg-muted/50 rounded-lg p-1 text-center">
-                          <div className="text-muted-foreground text-[8px]">طلبات</div>
+                        <div className="bg-muted/50 rounded p-0.5 text-center">
+                          <div className="text-muted-foreground text-[7px]">طلبات</div>
                           <div className="font-bold">{fmtQty(s.pending_orders_quantity)}</div>
                         </div>
-                        <div className="bg-muted/50 rounded-lg p-1 text-center">
-                          <div className="text-muted-foreground text-[8px]">فائض</div>
+                        <div className="bg-muted/50 rounded p-0.5 text-center">
+                          <div className="text-muted-foreground text-[7px]">فائض</div>
                           <div className="font-bold">{fmtQty(surplus)}</div>
                         </div>
                         {hasGifts && (
-                          <div className="bg-destructive/5 rounded-lg p-1 text-center">
-                            <div className="text-muted-foreground text-[8px]">هدايا</div>
+                          <div className="bg-destructive/5 rounded p-0.5 text-center">
+                            <div className="text-muted-foreground text-[7px]">هدايا</div>
                             <div className="font-bold text-destructive">{fmtQty(totalGiftsCustom)}</div>
                           </div>
                         )}
@@ -1291,22 +1279,18 @@ const LoadStock: React.FC = () => {
         )}
 
         {suggestionsLoading && selectedWorker && (
-          <div className="flex items-center justify-center py-3">
-            <Loader2 className="w-5 h-5 animate-spin text-primary" />
+          <div className="flex items-center justify-center py-2">
+            <Loader2 className="w-4 h-4 animate-spin text-primary" />
           </div>
         )}
 
-        {/* Session Status */}
+        {/* Session Status - compact inline */}
         {activeSessionId && (
-          <div className="flex items-center justify-between bg-primary/5 ring-1 ring-primary/20 rounded-xl px-3 py-2.5">
-            <div className="flex items-center gap-2 text-sm">
-              <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center">
-                <Package className="w-3.5 h-3.5 text-primary" />
-              </div>
-              <span className="font-medium text-[13px]">جلسة شحن نشطة</span>
-              <Badge variant="secondary" className="text-[10px] rounded-full">{sessionItems.length} منتج</Badge>
-              {totalSessionQty > 0 && <Badge className="text-[10px] rounded-full">{totalSessionQty} صندوق</Badge>}
-            </div>
+          <div className="flex items-center gap-1.5 bg-primary/5 ring-1 ring-primary/20 rounded-lg px-2.5 py-1.5">
+            <Package className="w-3.5 h-3.5 text-primary" />
+            <span className="font-medium text-[11px]">جلسة نشطة</span>
+            <Badge variant="secondary" className="text-[9px] rounded-full h-4">{sessionItems.length} منتج</Badge>
+            {totalSessionQty > 0 && <Badge className="text-[9px] rounded-full h-4">{totalSessionQty} صندوق</Badge>}
           </div>
         )}
 
@@ -1321,52 +1305,52 @@ const LoadStock: React.FC = () => {
       </div>
 
       {/* Scrollable Session Items */}
-      <ScrollArea className="flex-1 px-3">
+      <ScrollArea className="flex-1 px-2">
         {activeSessionId && sessionItems.length > 0 ? (
-          <div className="grid grid-cols-3 gap-2 pb-4 pt-1">
+          <div className="grid grid-cols-4 gap-1.5 pb-2 pt-1">
             {sessionItems.map((item: any) => {
               const productData = allProductOptions.find(p => p.id === item.product_id);
               const imageUrl = productData?.image_url || (item.product as any)?.image_url;
               return (
                 <div
                   key={item.id}
-                  className="relative rounded-xl ring-1 ring-border/40 bg-card overflow-hidden cursor-pointer hover:ring-primary/50 active:scale-[0.97] transition-all"
+                  className="relative rounded-lg ring-1 ring-border/40 bg-card overflow-hidden cursor-pointer hover:ring-primary/50 active:scale-[0.97] transition-all"
                   onClick={() => handleEditSessionItem(item)}
                 >
-                  {/* Product Image */}
-                  <div className="aspect-square bg-muted/30 flex items-center justify-center overflow-hidden">
+                  {/* Product Image - compact */}
+                  <div className="aspect-[4/3] bg-muted/30 flex items-center justify-center overflow-hidden">
                     {imageUrl ? (
                       <img src={imageUrl} alt={item.product?.name || ''} className="w-full h-full object-cover" />
                     ) : (
-                      <Package className="w-10 h-10 text-muted-foreground/30" />
+                      <Package className="w-7 h-7 text-muted-foreground/30" />
                     )}
                   </div>
 
                   {/* Delete button */}
                   <button
-                    className="absolute top-1 left-1 w-6 h-6 rounded-full bg-destructive/90 text-destructive-foreground flex items-center justify-center hover:bg-destructive transition-colors"
+                    className="absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-destructive/90 text-destructive-foreground flex items-center justify-center"
                     onClick={(e) => { e.stopPropagation(); handleRemoveSessionItem(item); }}
                     disabled={deleteSessionItem.isPending}
                   >
-                    <Trash2 className="w-3 h-3" />
+                    <Trash2 className="w-2.5 h-2.5" />
                   </button>
 
                   {/* Quantity badge */}
-                  <div className="absolute top-1 right-1 flex flex-col gap-0.5 items-end">
-                    <Badge className="text-[10px] px-1.5 py-0 rounded-full shadow-sm">{fmtQty(item.quantity)}</Badge>
+                  <div className="absolute top-0.5 right-0.5 flex flex-col gap-0.5 items-end">
+                    <Badge className="text-[9px] px-1 py-0 rounded-full shadow-sm h-4">{fmtQty(item.quantity)}</Badge>
                     {item.gift_quantity > 0 && (
-                      <Badge variant="destructive" className="text-[9px] px-1.5 py-0 rounded-full shadow-sm">
-                        <Gift className="w-2.5 h-2.5 me-0.5" />{fmtQty(item.gift_quantity)}
+                      <Badge variant="destructive" className="text-[8px] px-1 py-0 rounded-full shadow-sm h-3.5">
+                        <Gift className="w-2 h-2 me-0.5" />{fmtQty(item.gift_quantity)}
                       </Badge>
                     )}
                   </div>
 
                   {/* Product Name */}
-                  <div className="p-1.5 border-t">
-                    <p className="text-[11px] font-semibold leading-tight line-clamp-2 text-center">{item.product?.name || item.notes || ''}</p>
+                  <div className="px-1 py-0.5 border-t">
+                    <p className="text-[9px] font-semibold leading-tight line-clamp-1 text-center">{item.product?.name || item.notes || ''}</p>
                     {item.is_custom_load && (
-                      <div className="flex justify-center mt-0.5">
-                        <Badge className="bg-blue-500 text-white text-[8px] px-1 py-0 rounded-full">مخصص</Badge>
+                      <div className="flex justify-center">
+                        <Badge className="bg-blue-500 text-white text-[7px] px-0.5 py-0 rounded-full h-3">مخصص</Badge>
                       </div>
                     )}
                   </div>
@@ -1375,133 +1359,126 @@ const LoadStock: React.FC = () => {
             })}
           </div>
         ) : activeSessionId ? (
-          <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-            <div className="w-16 h-16 rounded-2xl bg-muted/50 flex items-center justify-center mb-3">
-              <Package className="w-8 h-8 text-muted-foreground/40" />
-            </div>
-            <p className="text-sm font-medium">لا توجد منتجات في الجلسة بعد</p>
-            <p className="text-[11px] text-muted-foreground/70 mt-0.5">اضغط "إضافة منتج" لبدء الشحن</p>
+          <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+            <Package className="w-10 h-10 text-muted-foreground/30 mb-2" />
+            <p className="text-[12px] font-medium">لا توجد منتجات بعد</p>
           </div>
         ) : selectedWorker ? (
-          <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-            <div className="w-16 h-16 rounded-2xl bg-muted/50 flex items-center justify-center mb-3">
-              <Truck className="w-8 h-8 text-muted-foreground/40" />
-            </div>
-            <p className="text-sm font-medium">ابدأ جلسة شحن جديدة</p>
+          <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+            <Truck className="w-10 h-10 text-muted-foreground/30 mb-2" />
+            <p className="text-[12px] font-medium">ابدأ جلسة شحن جديدة</p>
           </div>
         ) : null}
       </ScrollArea>
 
       {/* Fixed Bottom Buttons */}
       {selectedWorker && (
-        <div className="px-3 pt-2 pb-3 border-t bg-background space-y-2">
+        <div className="px-2 pt-1.5 pb-2 border-t bg-background space-y-1.5">
            {!activeSessionId ? (
             <>
               {!hasReviewToday && (
-                <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-amber-50 dark:bg-amber-900/10 ring-1 ring-amber-200 dark:ring-amber-800 text-amber-700 dark:text-amber-400 text-[11px]">
-                  <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                <div className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg bg-amber-50 dark:bg-amber-900/10 ring-1 ring-amber-200 dark:ring-amber-800 text-amber-700 dark:text-amber-400 text-[10px]">
+                  <AlertTriangle className="w-3 h-3 shrink-0" />
                   <span>يجب إجراء جلسة مراجعة قبل الشحن أو التفريغ</span>
                 </div>
               )}
-              <Button
-                variant="outline"
-                className={`w-full h-10 rounded-xl text-[13px] ${hasReviewToday 
-                  ? "border-green-400 text-green-700 bg-green-50/50 dark:bg-green-900/10 hover:bg-green-100 dark:hover:bg-green-900/20"
-                  : "border-blue-400 text-blue-700 bg-blue-50/50 dark:bg-blue-900/10 hover:bg-blue-100 dark:hover:bg-blue-900/20"
-                }`}
-                onClick={() => setShowVerificationDialog(true)}
-                disabled={isEmptying}
-              >
-                {hasReviewToday ? <CheckCircle className="w-4 h-4 me-1" /> : <Search className="w-4 h-4 me-1" />}
-                {hasReviewToday ? 'تمت المراجعة ✓ (إعادة المراجعة)' : 'بدء جلسة مراجعة (إلزامي)'}
-              </Button>
-              <Button onClick={handleStartSession} className="w-full h-11 rounded-xl text-[13px] shadow-sm" disabled={createSession.isPending || !hasReviewToday}>
-                {createSession.isPending && <Loader2 className="w-4 h-4 animate-spin me-2" />}
-                <Plus className="w-4 h-4 me-1" />
-                بدء جلسة شحن جديدة
-              </Button>
-              <div className="grid grid-cols-4 gap-1.5">
-                <Button variant="outline" onClick={() => setShowSessionHistory(true)} className="h-10 rounded-xl text-[11px] px-2">
-                  <History className="w-3.5 h-3.5 me-1" />
-                  سجل الجلسات
+              <div className="flex gap-1.5">
+                <Button
+                  variant="outline"
+                  className={`flex-1 h-9 rounded-lg text-[11px] ${hasReviewToday 
+                    ? "border-green-400 text-green-700 bg-green-50/50 dark:bg-green-900/10"
+                    : "border-blue-400 text-blue-700 bg-blue-50/50 dark:bg-blue-900/10"
+                  }`}
+                  onClick={() => setShowVerificationDialog(true)}
+                  disabled={isEmptying}
+                >
+                  {hasReviewToday ? <CheckCircle className="w-3.5 h-3.5 me-1" /> : <Search className="w-3.5 h-3.5 me-1" />}
+                  {hasReviewToday ? 'مراجعة ✓' : 'مراجعة (إلزامي)'}
+                </Button>
+                <Button onClick={handleStartSession} className="flex-1 h-9 rounded-lg text-[11px] shadow-sm" disabled={createSession.isPending || !hasReviewToday}>
+                  {createSession.isPending && <Loader2 className="w-3.5 h-3.5 animate-spin me-1" />}
+                  <Plus className="w-3.5 h-3.5 me-1" />
+                  بدء جلسة شحن
+                </Button>
+              </div>
+              <div className="grid grid-cols-4 gap-1">
+                <Button variant="outline" onClick={() => setShowSessionHistory(true)} className="h-8 rounded-lg text-[10px] px-1">
+                  <History className="w-3 h-3 me-0.5" />
+                  السجل
                 </Button>
                 <Button
                   variant="outline"
-                  className="h-10 rounded-xl text-[11px] px-2 text-destructive border-destructive/30 hover:bg-destructive/5"
+                  className="h-8 rounded-lg text-[10px] px-1 text-destructive border-destructive/30"
                   onClick={handleEmptyTruckPreview}
                   disabled={isEmptying || !hasReviewToday}
                 >
-                  {isEmptying ? <Loader2 className="w-3.5 h-3.5 animate-spin me-1" /> : <PackageX className="w-3.5 h-3.5 me-1" />}
+                  <PackageX className="w-3 h-3 me-0.5" />
                   {t('stock.empty_truck')}
                 </Button>
                 <Button
                   variant="outline"
-                  className="h-10 rounded-xl text-[11px] px-2 border-orange-400 text-orange-700 bg-orange-50/50 dark:bg-orange-900/10 hover:bg-orange-100 dark:hover:bg-orange-900/20"
+                  className="h-8 rounded-lg text-[10px] px-1 border-orange-400 text-orange-700"
                   onClick={() => setShowExchangeDialog(true)}
-                  disabled={!selectedWorker}
                 >
-                  <RefreshCw className="w-3.5 h-3.5 me-1" />
+                  <RefreshCw className="w-3 h-3 me-0.5" />
                   تغيير
                 </Button>
                 <Button
                   variant="outline"
-                  className="h-10 rounded-xl text-[11px] px-2 border-primary/30 text-primary hover:bg-primary/5"
+                  className="h-8 rounded-lg text-[10px] px-1 border-primary/30 text-primary"
                   onClick={() => setShowLoadSheetPrint(true)}
-                  disabled={!selectedWorker}
                 >
-                  <Printer className="w-3.5 h-3.5 me-1" />
-                  ورقة الشحن
+                  <Printer className="w-3 h-3 me-0.5" />
+                  طباعة
                 </Button>
               </div>
             </>
           ) : (
             <>
-              <div className="flex gap-2">
-                <Button onClick={handleOpenAddProduct} className="flex-1 h-10 rounded-xl text-[13px] shadow-sm">
-                  <Plus className="w-4 h-4 me-1" />
+              <div className="flex gap-1.5">
+                <Button onClick={handleOpenAddProduct} className="flex-1 h-9 rounded-lg text-[11px] shadow-sm">
+                  <Plus className="w-3.5 h-3.5 me-1" />
                   إضافة منتج
                 </Button>
                 <Button
                   variant="outline"
-                  className="flex-1 h-10 rounded-xl text-[13px] border-primary/30 text-primary hover:bg-primary/5"
+                  className="flex-1 h-9 rounded-lg text-[11px] border-primary/30 text-primary"
                   onClick={() => setShowPartialLoadDialog(true)}
                   disabled={isSaving}
                 >
-                  <ShoppingCart className="w-4 h-4 me-1" />
-                  شحن من الطلبيات
+                  <ShoppingCart className="w-3.5 h-3.5 me-1" />
+                  من الطلبيات
                 </Button>
               </div>
               {hasDeficit && (
                 <Button
                   variant="outline"
-                  className="w-full h-10 rounded-xl text-[13px] border-destructive/40 text-destructive bg-destructive/5 hover:bg-destructive/10"
+                  className="w-full h-8 rounded-lg text-[11px] border-destructive/40 text-destructive bg-destructive/5"
                   onClick={() => setShowBulkLoadNeeds(true)}
                   disabled={isSaving}
                 >
-                  <AlertTriangle className="w-4 h-4 me-1" />
-                  شحن الاحتياج ({totalDeficit} صندوق)
+                  <AlertTriangle className="w-3.5 h-3.5 me-1" />
+                  شحن الاحتياج ({totalDeficit})
                 </Button>
               )}
-              <div className="flex gap-2">
+              <div className="flex gap-1.5">
                 <Button
-                  variant="default"
-                  className="flex-1 h-10 rounded-xl text-[13px] shadow-sm bg-primary hover:bg-primary/90"
+                  className="flex-1 h-9 rounded-lg text-[11px] shadow-sm"
                   onClick={handleCompleteSession}
                   disabled={sessionItems.length === 0 || completeSession.isPending}
                 >
-                  {completeSession.isPending && <Loader2 className="w-4 h-4 animate-spin me-2" />}
-                  <Save className="w-4 h-4 me-1" />
+                  {completeSession.isPending && <Loader2 className="w-3.5 h-3.5 animate-spin me-1" />}
+                  <Save className="w-3.5 h-3.5 me-1" />
                   تأكيد الشحن
                 </Button>
                 <Button
                   variant="outline"
-                  className="flex-1 h-10 rounded-xl text-[13px] text-destructive border-destructive/30 hover:bg-destructive/5"
+                  className="flex-1 h-9 rounded-lg text-[11px] text-destructive border-destructive/30"
                   onClick={() => handleDeleteSession(activeSessionId!)}
                   disabled={deleteSession.isPending}
                 >
-                  {deleteSession.isPending && <Loader2 className="w-4 h-4 animate-spin me-2" />}
-                  <X className="w-4 h-4 me-1" />
-                  إلغاء الجلسة
+                  <X className="w-3.5 h-3.5 me-1" />
+                  إلغاء
                 </Button>
               </div>
             </>
