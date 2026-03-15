@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
@@ -6,8 +6,14 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { ClipboardList, Package, User, Calendar, ChevronLeft, ChevronRight, Loader2, ShoppingCart, UserCheck } from 'lucide-react';
+import { ClipboardList, Package, User, Calendar, ChevronLeft, ChevronRight, Loader2, ShoppingCart, UserCheck, Printer } from 'lucide-react';
 import { format, addDays, subDays } from 'date-fns';
+import OrdersPrintView from '@/components/print/OrdersPrintView';
+import type { PrintColumnConfig } from '@/components/print/OrdersPrintView';
+import { usePrintColumnsConfig } from '@/hooks/usePrintColumnsConfig';
+import { OrderWithDetails, Product } from '@/types/database';
+import { useWorkerPrintInfo } from '@/hooks/useWorkerPrintInfo';
+import { toast } from 'sonner';
 
 interface Props {
   open: boolean;
