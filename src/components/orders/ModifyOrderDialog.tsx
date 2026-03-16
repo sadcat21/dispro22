@@ -837,7 +837,7 @@ const ModifyOrderDialog: React.FC<ModifyOrderDialogProps> = ({
                   type="button"
                   variant={paymentType === 'with_invoice' ? 'default' : 'outline'}
                   className={`h-10 text-sm font-bold ${paymentType === 'with_invoice' ? '' : 'opacity-60'}`}
-                  onClick={() => setPaymentType('with_invoice')}
+                  onClick={() => { setPaymentType('with_invoice'); recalcItemPrices('with_invoice', priceSubType); }}
                 >
                   بفاتورة
                 </Button>
