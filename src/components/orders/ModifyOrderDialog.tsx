@@ -432,10 +432,20 @@ const ModifyOrderDialog: React.FC<ModifyOrderDialogProps> = ({
       }
 
       // Update payment type if changed
-      if (paymentTypeChanged || invoiceMethodChanged) {
+      if (paymentTypeChanged || invoiceMethodChanged || priceSubTypeChanged) {
         orderUpdate.payment_type = paymentType;
         orderUpdate.invoice_payment_method = paymentType === 'with_invoice' ? (invoicePaymentMethod || null) : null;
-        changes.push({ عملية: 'تغيير طريقة الدفع', نوع: paymentType, طريقة_فرعية: invoicePaymentMethod || 'بدون' });
+        changes.push({ عملية: 'تغيير طريقة الدفع', نوع: paymentType, طريقة_فرعية: invoicePaymentMethod || 'بدون', تسعير: priceSubType });
+
+        // Update price_subtype on all order items
+        const newSubtype = paymentType === 'with_invoice' ? 'invoice' : priceSubType;
+        await supabase.from('order_items')
+          .update({ 
+            price_subtype: newSubtype,
+            payment_type: paymentType,
+            invoice_payment_method: paymentType === 'with_invoice' ? (invoicePaymentMethod || null) : null,
+          })
+          .eq('order_id', order.id);
       }
 
       // Update paid/remaining amounts for delivered orders
