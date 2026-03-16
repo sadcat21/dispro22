@@ -728,9 +728,11 @@ const Customers: React.FC = () => {
           <Button size="icon" variant={expandAllSectors ? "default" : "secondary"} className="h-9 w-9" onClick={() => setExpandAllSectors(!expandAllSectors)} title={expandAllSectors ? t('customers.collapse_all') : t('customers.expand_all')}>
             {expandAllSectors ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
           </Button>
-          <Button size="icon" variant="outline" className="h-9 w-9" onClick={() => setShowSectorsDialog(true)} title={t('customers.sectors')}>
-            <MapPinPlus className="w-4 h-4" />
-          </Button>
+          {isManager && (
+            <Button size="icon" variant="outline" className="h-9 w-9" onClick={() => setShowSectorsDialog(true)} title={t('customers.sectors')}>
+              <MapPinPlus className="w-4 h-4" />
+            </Button>
+          )}
           {isManager && (
             <Button size="icon" variant="outline" className="h-9 w-9" onClick={() => setShowFieldSettingsDialog(true)} title="إعدادات حقول العميل">
               <Settings2 className="w-4 h-4" />
