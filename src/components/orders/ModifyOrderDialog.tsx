@@ -819,6 +819,26 @@ const ModifyOrderDialog: React.FC<ModifyOrderDialogProps> = ({
                   بدون فاتورة
                 </Button>
               </div>
+              {paymentType === 'without_invoice' && (
+                <div className="grid grid-cols-3 gap-2">
+                  {([
+                    { value: 'super_gros' as PriceSubType, label: 'Super Gros', colors: { active: 'bg-indigo-600 hover:bg-indigo-700 text-white border-indigo-600 ring-2 ring-indigo-400', inactive: 'bg-indigo-600 hover:bg-indigo-700 text-white border-indigo-600' } },
+                    { value: 'gros' as PriceSubType, label: 'Gros', colors: { active: 'bg-cyan-600 hover:bg-cyan-700 text-white border-cyan-600 ring-2 ring-cyan-400', inactive: 'bg-cyan-600 hover:bg-cyan-700 text-white border-cyan-600' } },
+                    { value: 'retail' as PriceSubType, label: 'Détail', colors: { active: 'bg-rose-600 hover:bg-rose-700 text-white border-rose-600 ring-2 ring-rose-400', inactive: 'bg-rose-600 hover:bg-rose-700 text-white border-rose-600' } },
+                  ]).map((option) => (
+                    <Button
+                      key={option.value}
+                      type="button"
+                      variant={priceSubType === option.value ? 'default' : 'outline'}
+                      size="sm"
+                      className={`h-10 text-sm font-bold transition-opacity ${priceSubType === option.value ? option.colors.active : option.colors.inactive} ${priceSubType !== option.value ? 'opacity-50' : ''}`}
+                      onClick={() => setPriceSubType(option.value)}
+                    >
+                      {option.label}
+                    </Button>
+                  ))}
+                </div>
+              )}
               {paymentType === 'with_invoice' && (
                 <InvoicePaymentMethodSelect
                   value={invoicePaymentMethod}
