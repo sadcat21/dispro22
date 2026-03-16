@@ -815,9 +815,9 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
       if (todaySalesSectorIds.has(c.sector_id)) return false;
       if (deliveryCustomerIdsWithOrders.has(c.id) || deliveredCustomerIds.has(c.id)) return false;
       if (salesWorkerOrderedCustomerIds.has(c.id)) return false;
-      // Only show customers NOT successfully visited by sales rep
+      // Show only customers that are truly not visited by sales rep
       const repStatus = salesRepStatusMap.get(c.id);
-      if (repStatus === 'visited') return false;
+      if (repStatus && repStatus !== 'not_visited') return false;
       return true;
     });
     
