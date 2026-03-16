@@ -264,11 +264,8 @@ const ModifyOrderDialog: React.FC<ModifyOrderDialogProps> = ({
   const originalTotal = orderItems.reduce((sum, item) => {
     const giftQty = Number((item as any).gift_quantity || 0);
     const paidQty = Math.max(0, Number(item.quantity) - giftQty);
-    const pricingUnit = (item as any).pricing_unit || item.product?.pricing_unit || 'box';
-    const weightPerBox = Number((item as any).weight_per_box || item.product?.weight_per_box || 1);
-    const piecesPerBox = Number((item as any).pieces_per_box || item.product?.pieces_per_box || 1);
-    const multiplier = getBoxMultiplier(pricingUnit, weightPerBox, piecesPerBox);
-    return sum + (paidQty * Number(item.unit_price || 0) * multiplier);
+    // unit_price in order_items is already the box price
+    return sum + (paidQty * Number(item.unit_price || 0));
   }, 0);
 
   const orderTotal = items.reduce((sum, item) => {
