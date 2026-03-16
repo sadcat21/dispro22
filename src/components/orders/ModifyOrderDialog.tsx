@@ -715,7 +715,78 @@ const ModifyOrderDialog: React.FC<ModifyOrderDialogProps> = ({
               )}
             </div>
 
-            {/* Current items */}
+            {/* Payment amount adjustment for delivered orders */}
+            {order.status === 'delivered' && (
+              <div className="border rounded-lg p-3 space-y-3 bg-amber-50/50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800">
+                <label className="text-xs font-bold text-amber-800 dark:text-amber-300 flex items-center gap-1">
+                  <Banknote className="w-3.5 h-3.5" />
+                  تعديل المبلغ المدفوع / المتبقي
+                </label>
+                <p className="text-[10px] text-amber-700 dark:text-amber-400">
+                  إذا لم يدفع العميل أو دفع جزئياً بعد التسليم، عدّل المبالغ هنا وسيتم تحديث الديون والوصل تلقائياً.
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <label className="text-[10px] text-muted-foreground">المبلغ المدفوع</label>
+                    <Input
+                      type="number"
+                      value={adjustPaidAmount}
+                      onChange={(e) => {
+                        const val = Math.max(0, Math.min(Number(e.target.value) || 0, orderTotal || Number(order.total_amount)));
+                        setAdjustPaidAmount(val);
+                        setAdjustRemainingAmount(Math.max(0, (orderTotal || Number(order.total_amount)) - val));
+                      }}
+                      className="h-9"
+                      min={0}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] text-muted-foreground">المبلغ المتبقي (دين)</label>
+                    <Input
+                      type="number"
+                      value={adjustRemainingAmount}
+                      onChange={(e) => {
+                        const val = Math.max(0, Math.min(Number(e.target.value) || 0, orderTotal || Number(order.total_amount)));
+                        setAdjustRemainingAmount(val);
+                        setAdjustPaidAmount(Math.max(0, (orderTotal || Number(order.total_amount)) - val));
+                      }}
+                      className="h-9"
+                      min={0}
+                    />
+                  </div>
+                </div>
+                {/* Quick shortcuts */}
+                <div className="flex gap-1.5 flex-wrap">
+                  <Button type="button" variant="outline" size="sm" className="h-7 text-[10px] px-2"
+                    onClick={() => { setAdjustPaidAmount(orderTotal || Number(order.total_amount)); setAdjustRemainingAmount(0); }}>
+                    دفع كامل
+                  </Button>
+                  <Button type="button" variant="outline" size="sm" className="h-7 text-[10px] px-2"
+                    onClick={() => { setAdjustPaidAmount(0); setAdjustRemainingAmount(orderTotal || Number(order.total_amount)); }}>
+                    بدون دفع (دين)
+                  </Button>
+                  <Button type="button" variant="outline" size="sm" className="h-7 text-[10px] px-2"
+                    onClick={() => { const half = Math.round((orderTotal || Number(order.total_amount)) / 2); setAdjustPaidAmount(half); setAdjustRemainingAmount((orderTotal || Number(order.total_amount)) - half); }}>
+                    نصف المبلغ
+                  </Button>
+                </div>
+                {paymentAmountChanged && (
+                  <div className="bg-amber-100 dark:bg-amber-900/30 rounded-md p-2 text-xs text-amber-800 dark:text-amber-300 flex items-start gap-1.5">
+                    <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-bold">سيتم تحديث:</p>
+                      <ul className="list-disc list-inside text-[10px] mt-0.5 space-y-0.5">
+                        <li>المبلغ المدفوع: {originalPaidAmount.toLocaleString()} → {adjustPaidAmount.toLocaleString()} دج</li>
+                        <li>المبلغ المتبقي: {originalRemainingAmount.toLocaleString()} → {adjustRemainingAmount.toLocaleString()} دج</li>
+                        {adjustRemainingAmount > originalRemainingAmount && <li className="text-red-700">سيتم إنشاء/تحديث دين بقيمة {(adjustRemainingAmount - originalRemainingAmount).toLocaleString()} دج</li>}
+                        {adjustRemainingAmount < originalRemainingAmount && <li className="text-green-700">سيتم تسوية ديون بقيمة {(originalRemainingAmount - adjustRemainingAmount).toLocaleString()} دج</li>}
+                      </ul>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {items.map((item, index) => {
               const changed = item.new_quantity !== item.original_quantity;
               return (
