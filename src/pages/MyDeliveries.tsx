@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -11,7 +11,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { 
   ShoppingCart, Loader2, Package, User, Calendar, Store,
   CheckCircle, Clock, Truck, XCircle, UserCheck, Phone, MapPin, ChevronDown, ChevronUp, Navigation, Search, Edit2,
-  Receipt, Banknote, Route, Gift, Trash2, ListFilter, Map, AlertTriangle, FileCheck, Printer
+  Receipt, Banknote, Route, Gift, Trash2, ListFilter, Map, AlertTriangle, FileCheck, Printer, CalendarClock
 } from 'lucide-react';
 import { toast } from 'sonner';
 import WorkerLoadRequestDialog from '@/components/stock/WorkerLoadRequestDialog';
@@ -22,7 +22,7 @@ import { useHasPermission } from '@/hooks/usePermissions';
 import { calculateDistance } from '@/utils/geoUtils';
 import { useLanguage, Language } from '@/contexts/LanguageContext';
 import { OrderStatus, OrderWithDetails, Product, Worker } from '@/types/database';
-import { format } from 'date-fns';
+import { format, addDays, isFriday } from 'date-fns';
 import { ar, fr, enUS } from 'date-fns/locale';
 import LazyCustomerLocationView from '@/components/map/LazyCustomerLocationView';
 import LazyNavigationMapView from '@/components/map/LazyNavigationMapView';
@@ -47,7 +47,24 @@ import { Eye } from 'lucide-react';
 import CustomerLabel from '@/components/customers/CustomerLabel';
 
 type TabStatus = 'all' | OrderStatus;
-type DeliveryType = 'orders' | 'direct_sales';
+type DeliveryType = 'orders' | 'direct_sales' | 'postponed';
+
+// Generate next work days (Sat-Thu, skip Friday) starting from tomorrow
+const getNextWorkDays = (): { date: Date; label: string }[] => {
+  const days: { date: Date; label: string }[] = [];
+  const dayNames = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+  let current = addDays(new Date(), 1);
+  while (days.length < 6) {
+    if (!isFriday(current)) {
+      days.push({
+        date: new Date(current),
+        label: `${dayNames[current.getDay()]} ${format(current, 'dd/MM')}`,
+      });
+    }
+    current = addDays(current, 1);
+  }
+  return days;
+};
 
 const MyDeliveries: React.FC = () => {
   const { t, language, loadPrintSettingsFromDB } = useLanguage();
