@@ -82,7 +82,7 @@ const getNextWorkDays = (): { date: Date; label: string }[] => {
   return days;
 };
 
-
+interface TodayCustomersDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   targetWorkerId?: string;
