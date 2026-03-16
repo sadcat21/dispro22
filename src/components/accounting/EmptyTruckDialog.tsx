@@ -9,28 +9,16 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
-import { Loader2, PackageX, AlertTriangle } from 'lucide-react';
-
-interface KeepAllocation {
-  reason: string;
-  quantity: number;
-}
+import { Loader2, PackageX, Truck, Warehouse } from 'lucide-react';
 
 interface EmptyTruckItem {
   id: string;
   product_id: string;
   product_name: string;
-  quantity: number;
-  pendingNeeded: number;
-  returnQty: number;
-  keepAllocations: KeepAllocation[];
-  allocationMode: boolean;
-  surplusQty: number;
+  currentQty: number; // ما في الشاحنة حالياً
+  returnQty: number;  // الكمية المراد إرجاعها للمخزن
 }
-
-const KEEP_REASONS = ['cash_sale', 'offer_gifts', 'reserve', 'other'] as const;
 
 interface EmptyTruckDialogProps {
   workerId: string;
@@ -46,12 +34,10 @@ const EmptyTruckDialog: React.FC<EmptyTruckDialogProps> = ({ workerId, open, onO
 
   const [isLoading, setIsLoading] = useState(false);
   const [isEmptying, setIsEmptying] = useState(false);
-  const [emptyTruckItems, setEmptyTruckItems] = useState<EmptyTruckItem[]>([]);
+  const [items, setItems] = useState<EmptyTruckItem[]>([]);
   const [loaded, setLoaded] = useState(false);
-  const [emptyMode, setEmptyMode] = useState<'full' | 'excess'>('full');
 
-  // Load worker stock when dialog opens
-  const loadWorkerStock = async (mode: 'full' | 'excess') => {
+  const loadWorkerStock = async () => {
     if (!workerId || !branchId || !currentWorkerId) return;
     setIsLoading(true);
 
@@ -68,65 +54,37 @@ const EmptyTruckDialog: React.FC<EmptyTruckDialogProps> = ({ workerId, open, onO
       return;
     }
 
-    const { data: orders } = await supabase
-      .from('orders')
-      .select('order_items:order_items(product_id, quantity)')
-      .eq('assigned_worker_id', workerId)
-      .in('status', ['assigned', 'in_progress']);
+    const mapped: EmptyTruckItem[] = workerStock.map(ws => ({
+      id: ws.id,
+      product_id: ws.product_id,
+      product_name: (ws.product as any)?.name || ws.product_id,
+      currentQty: ws.quantity,
+      returnQty: ws.quantity, // افتراضياً: تفريغ كلي
+    }));
 
-    const pendingQty: Record<string, number> = {};
-    for (const order of orders || []) {
-      for (const item of (order as any).order_items || []) {
-        pendingQty[item.product_id] = (pendingQty[item.product_id] || 0) + item.quantity;
-      }
-    }
-
-    const itemsToReturn = workerStock
-      .map(ws => {
-        const pending = pendingQty[ws.product_id] || 0;
-        const returnQty = mode === 'full' ? ws.quantity : Math.max(0, ws.quantity - pending);
-        return {
-          id: ws.id,
-          product_id: ws.product_id,
-          product_name: (ws.product as any)?.name || ws.product_id,
-          quantity: ws.quantity,
-          pendingNeeded: pending,
-          returnQty,
-          keepAllocations: [] as KeepAllocation[],
-          allocationMode: false,
-          surplusQty: 0,
-        };
-      })
-      .filter(ws => ws.returnQty > 0);
-
-    if (itemsToReturn.length === 0) {
-      toast.error(t('stock.empty_truck_nothing'));
-      setIsLoading(false);
-      onOpenChange(false);
-      return;
-    }
-
-    setEmptyTruckItems(itemsToReturn);
+    setItems(mapped);
     setLoaded(true);
     setIsLoading(false);
   };
 
-  // When dialog opens, load data
   React.useEffect(() => {
     if (open && !loaded) {
-      loadWorkerStock(emptyMode);
+      loadWorkerStock();
     }
     if (!open) {
       setLoaded(false);
-      setEmptyTruckItems([]);
-      setEmptyMode('full');
+      setItems([]);
     }
   }, [open]);
 
-  const switchMode = (mode: 'full' | 'excess') => {
-    setEmptyMode(mode);
-    setLoaded(false);
-    loadWorkerStock(mode);
+  // تفريغ كلي - إرجاع كل الكميات
+  const setFullUnload = () => {
+    setItems(prev => prev.map(it => ({ ...it, returnQty: it.currentQty })));
+  };
+
+  // تصفير الكل
+  const setZeroUnload = () => {
+    setItems(prev => prev.map(it => ({ ...it, returnQty: 0 })));
   };
 
   const handleConfirm = async () => {
@@ -134,22 +92,24 @@ const EmptyTruckDialog: React.FC<EmptyTruckDialogProps> = ({ workerId, open, onO
     setIsEmptying(true);
 
     try {
-      const hasSurplus = emptyTruckItems.some(item => item.surplusQty > 0);
-      const surplusNotes = hasSurplus ? ' (مع فائض)' : '';
+      const itemsToReturn = items.filter(it => it.returnQty > 0);
+      if (itemsToReturn.length === 0) {
+        toast.error('لم يتم تحديد أي كمية للإرجاع');
+        setIsEmptying(false);
+        return;
+      }
 
-      // Build unloading details JSONB
-      const unloadingDetails = emptyTruckItems
-        .filter(item => (item.returnQty + item.surplusQty) > 0)
-        .map(item => ({
-          product_id: item.product_id,
-          product_name: item.product_name,
-          system_qty: item.quantity,
-          return_qty: item.returnQty,
-          surplus_qty: item.surplusQty,
-          keep_allocations: item.keepAllocations.filter(a => a.quantity > 0),
-        }));
+      const isFullUnload = itemsToReturn.every(it => it.returnQty === it.currentQty) && itemsToReturn.length === items.length;
 
-      // Create an unloading session in loading_sessions
+      const unloadingDetails = itemsToReturn.map(item => ({
+        product_id: item.product_id,
+        product_name: item.product_name,
+        system_qty: item.currentQty,
+        return_qty: item.returnQty,
+        remaining_qty: item.currentQty - item.returnQty,
+      }));
+
+      // إنشاء جلسة تفريغ
       const { data: unloadSession, error: sessionError } = await supabase
         .from('loading_sessions')
         .insert({
@@ -157,7 +117,7 @@ const EmptyTruckDialog: React.FC<EmptyTruckDialogProps> = ({ workerId, open, onO
           manager_id: currentWorkerId,
           branch_id: branchId,
           status: 'unloaded',
-          notes: `تفريغ الشاحنة - ${emptyMode === 'full' ? 'تفريغ كلي' : 'تفريغ الفائض'}${surplusNotes}`,
+          notes: isFullUnload ? 'تفريغ كلي للشاحنة' : 'تفريغ جزئي للشاحنة',
           completed_at: new Date().toISOString(),
           unloading_details: unloadingDetails,
         } as any)
@@ -166,69 +126,56 @@ const EmptyTruckDialog: React.FC<EmptyTruckDialogProps> = ({ workerId, open, onO
 
       if (sessionError) throw sessionError;
 
-      // Fetch current warehouse stock
+      // جلب مخزون المستودع
       const { data: warehouseStock } = await supabase
         .from('warehouse_stock')
         .select('id, product_id, quantity')
         .eq('branch_id', branchId);
 
-      for (const item of emptyTruckItems) {
-        const totalReturn = item.returnQty + item.surplusQty;
-        if (totalReturn <= 0) continue;
-
-        // Save unloading session item with surplus
+      for (const item of itemsToReturn) {
+        // تسجيل عنصر الجلسة
         await supabase.from('loading_session_items').insert({
           session_id: unloadSession.id,
           product_id: item.product_id,
           quantity: item.returnQty,
           gift_quantity: 0,
-          surplus_quantity: item.surplusQty,
-          notes: [
-            item.keepAllocations.filter(a => a.quantity > 0).map(a => `${a.quantity} ${t(`stock.reason_${a.reason}`)}`).join(', '),
-            item.surplusQty > 0 ? `فائض: ${item.surplusQty}` : '',
-          ].filter(Boolean).join(' | ') || null,
+          surplus_quantity: 0,
+          previous_quantity: item.currentQty,
+          notes: `تفريغ ${item.returnQty} من ${item.currentQty} - متبقي: ${item.currentQty - item.returnQty}`,
         });
 
-        // Deduct returnQty from worker stock (not surplus - surplus was never in worker stock)
+        // خصم من رصيد العامل
+        const newWorkerQty = Math.max(0, item.currentQty - item.returnQty);
         await supabase
           .from('worker_stock')
-          .update({ quantity: Math.max(0, item.quantity - item.returnQty) })
+          .update({ quantity: newWorkerQty })
           .eq('id', item.id);
 
-        // Add totalReturn to warehouse
-        const existingWarehouse = warehouseStock?.find(s => s.product_id === item.product_id);
-        if (existingWarehouse) {
+        // إضافة للمستودع
+        const existingWh = warehouseStock?.find(s => s.product_id === item.product_id);
+        if (existingWh) {
           await supabase
             .from('warehouse_stock')
-            .update({ quantity: existingWarehouse.quantity + totalReturn })
-            .eq('id', existingWarehouse.id);
+            .update({ quantity: existingWh.quantity + item.returnQty })
+            .eq('id', existingWh.id);
         } else {
           await supabase.from('warehouse_stock').insert({
             branch_id: branchId,
             product_id: item.product_id,
-            quantity: totalReturn,
+            quantity: item.returnQty,
           });
         }
 
-        const totalKeep = item.keepAllocations.reduce((s, a) => s + a.quantity, 0);
-        const keepDetails = item.keepAllocations
-          .filter(a => a.quantity > 0)
-          .map(a => `${a.quantity} ${t(`stock.reason_${a.reason}`)}`)
-          .join(', ');
-        const keepNote = totalKeep > 0
-          ? ` | متبقي في الشاحنة: ${totalKeep} (${keepDetails})`
-          : '';
-        const surplusNote = item.surplusQty > 0 ? ` | فائض: ${item.surplusQty}` : '';
-
+        // تسجيل الحركة
         await supabase.from('stock_movements').insert({
           product_id: item.product_id,
           branch_id: branchId,
-          quantity: totalReturn,
+          quantity: item.returnQty,
           movement_type: 'return',
           status: 'approved',
           created_by: currentWorkerId,
           worker_id: workerId,
-          notes: `تفريغ الشاحنة - إرجاع ${item.returnQty} من ${item.product_name}${keepNote}${surplusNote}`,
+          notes: `تفريغ ${item.returnQty} من ${item.product_name} (كان ${item.currentQty}، متبقي ${newWorkerQty})`,
         });
       }
 
@@ -247,6 +194,9 @@ const EmptyTruckDialog: React.FC<EmptyTruckDialogProps> = ({ workerId, open, onO
     }
   };
 
+  const totalReturn = items.reduce((s, it) => s + it.returnQty, 0);
+  const totalRemaining = items.reduce((s, it) => s + (it.currentQty - it.returnQty), 0);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
@@ -255,35 +205,18 @@ const EmptyTruckDialog: React.FC<EmptyTruckDialogProps> = ({ workerId, open, onO
             <PackageX className="w-5 h-5 text-destructive" />
             {t('stock.empty_truck')}
           </DialogTitle>
-          <DialogDescription>{t('stock.empty_truck_confirm')}</DialogDescription>
+          <DialogDescription>حدد الكمية المراد إرجاعها لكل منتج. الباقي يبقى في الشاحنة.</DialogDescription>
         </DialogHeader>
 
-        {/* Mode Toggle */}
+        {/* أزرار سريعة */}
         <div className="flex gap-2">
-          <Button
-            variant={emptyMode === 'full' ? 'default' : 'outline'}
-            size="sm"
-            className="flex-1"
-            onClick={() => switchMode('full')}
-          >
-            {t('stock.empty_full')}
+          <Button variant="outline" size="sm" className="flex-1" onClick={setFullUnload}>
+            تفريغ كلي
           </Button>
-          <Button
-            variant={emptyMode === 'excess' ? 'default' : 'outline'}
-            size="sm"
-            className="flex-1"
-            onClick={() => switchMode('excess')}
-          >
-            {t('stock.empty_excess')}
+          <Button variant="outline" size="sm" className="flex-1" onClick={setZeroUnload}>
+            تصفير الكل
           </Button>
         </div>
-
-        {emptyMode === 'full' && emptyTruckItems.some(it => it.pendingNeeded > 0) && (
-          <div className="flex items-center gap-2 text-xs text-destructive bg-destructive/10 rounded-md p-2">
-            <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-            <span>{t('stock.full_empty_warning')}</span>
-          </div>
-        )}
 
         {isLoading ? (
           <div className="flex justify-center py-8">
@@ -291,183 +224,74 @@ const EmptyTruckDialog: React.FC<EmptyTruckDialogProps> = ({ workerId, open, onO
           </div>
         ) : (
           <>
-            <div className="max-h-[50vh] overflow-y-auto space-y-3">
-              {emptyTruckItems.map((item, idx) => {
-                const maxReturn = Math.max(0, item.quantity - item.pendingNeeded);
-                const totalKeep = item.keepAllocations.reduce((s, a) => s + a.quantity, 0);
-                const isAllocMode = item.allocationMode;
-                const derivedReturnQty = isAllocMode ? Math.max(0, maxReturn - totalKeep) : item.returnQty;
-                const derivedKeepQty = isAllocMode ? totalKeep : (maxReturn - item.returnQty);
-                const extraNeeded = isAllocMode && totalKeep > maxReturn ? totalKeep - maxReturn : 0;
-
+            <div className="max-h-[50vh] overflow-y-auto space-y-2">
+              {items.map((item, idx) => {
+                const remaining = item.currentQty - item.returnQty;
                 return (
                   <Card key={item.product_id} className="border">
                     <CardContent className="p-3 space-y-2">
                       <div className="flex items-center justify-between">
                         <span className="font-semibold text-sm">{item.product_name}</span>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <span>{t('stock.in_truck')}: <strong>{item.quantity}</strong></span>
-                          <span>{t('stock.orders_need')}: <strong>{item.pendingNeeded}</strong></span>
+                        <Badge variant="secondary" className="text-xs">
+                          <Truck className="w-3 h-3 ml-1" />
+                          {item.currentQty}
+                        </Badge>
+                      </div>
+
+                      <div className="flex items-center gap-3">
+                        <div className="flex-1">
+                          <Label className="text-xs flex items-center gap-1">
+                            <Warehouse className="w-3 h-3" />
+                            إرجاع للمخزن
+                          </Label>
+                          <Input
+                            type="number"
+                            min={0}
+                            max={item.currentQty}
+                            value={item.returnQty}
+                            onFocus={e => e.target.select()}
+                            onChange={e => {
+                              const val = Math.min(Math.max(0, parseFloat(e.target.value) || 0), item.currentQty);
+                              setItems(prev => prev.map((it, i) => i === idx ? { ...it, returnQty: val } : it));
+                            }}
+                            className="text-center h-8"
+                          />
+                        </div>
+                        <div className="flex-1">
+                          <Label className="text-xs flex items-center gap-1">
+                            <Truck className="w-3 h-3" />
+                            يبقى في الشاحنة
+                          </Label>
+                          <Input
+                            type="number"
+                            min={0}
+                            max={item.currentQty}
+                            value={remaining}
+                            onFocus={e => e.target.select()}
+                            onChange={e => {
+                              const keepVal = Math.min(Math.max(0, parseFloat(e.target.value) || 0), item.currentQty);
+                              setItems(prev => prev.map((it, i) => i === idx ? { ...it, returnQty: item.currentQty - keepVal } : it));
+                            }}
+                            className="text-center h-8"
+                          />
                         </div>
                       </div>
-
-                      <div className="flex items-center justify-between">
-                        <Label className="text-xs text-muted-foreground">{t('stock.allocation_mode')}</Label>
-                        <Switch checked={isAllocMode} onCheckedChange={checked => {
-                          setEmptyTruckItems(prev => prev.map((it, i) => i === idx
-                            ? { ...it, allocationMode: checked, returnQty: maxReturn, keepAllocations: [] }
-                            : it
-                          ));
-                        }} />
-                      </div>
-
-                      {!isAllocMode ? (
-                        <>
-                          <div className="flex items-center gap-3">
-                            <div className="flex-1">
-                              <Label className="text-xs">{t('stock.return_qty')}</Label>
-                              <Input
-                                type="number"
-                                min={0}
-                                max={item.quantity}
-                                value={item.returnQty}
-                                onFocus={e => e.target.select()}
-                                onChange={e => {
-                                  const val = Math.min(Math.max(0, parseInt(e.target.value) || 0), item.quantity);
-                                  setEmptyTruckItems(prev => prev.map((it, i) => i === idx ? { ...it, returnQty: val, keepAllocations: [] } : it));
-                                }}
-                                className="text-center h-8"
-                              />
-                            </div>
-                            <div className="flex-1">
-                              <Label className="text-xs">{t('stock.keep_in_truck')}</Label>
-                              <Input
-                                type="number"
-                                min={0}
-                                max={maxReturn}
-                                value={maxReturn - item.returnQty}
-                                onFocus={e => e.target.select()}
-                                onChange={e => {
-                                  const keepVal = Math.min(Math.max(0, parseInt(e.target.value) || 0), maxReturn);
-                                  setEmptyTruckItems(prev => prev.map((it, i) => i === idx ? { ...it, returnQty: maxReturn - keepVal, keepAllocations: [] } : it));
-                                }}
-                                className="text-center h-8"
-                              />
-                            </div>
-                            <div className="flex-1">
-                              <Label className="text-xs text-amber-600">فائض</Label>
-                              <Input
-                                type="number"
-                                min={0}
-                                value={item.surplusQty}
-                                onFocus={e => e.target.select()}
-                                onChange={e => {
-                                  const val = Math.max(0, parseInt(e.target.value) || 0);
-                                  setEmptyTruckItems(prev => prev.map((it, i) => i === idx ? { ...it, surplusQty: val } : it));
-                                }}
-                                className="text-center h-8 border-amber-300"
-                              />
-                            </div>
-                          </div>
-                          {item.surplusQty > 0 && (
-                            <div className="flex items-center gap-1 text-xs text-amber-600 bg-amber-50 dark:bg-amber-950/30 rounded px-2 py-1">
-                              <AlertTriangle className="w-3 h-3" />
-                              <span>فائض {item.surplusQty} سيُعاد للمخزن</span>
-                            </div>
-                          )}
-                          {derivedKeepQty > 0 && (
-                            <div className="space-y-1.5 border-t pt-2">
-                              <Label className="text-xs font-medium">{t('stock.keep_reason_details')}</Label>
-                              {KEEP_REASONS.map(reason => {
-                                const allocation = item.keepAllocations.find(a => a.reason === reason);
-                                return (
-                                  <div key={reason} className="flex items-center gap-2">
-                                    <span className="text-xs flex-1">{t(`stock.reason_${reason}`)}</span>
-                                    <Input
-                                      type="number"
-                                      min={0}
-                                      value={allocation?.quantity || 0}
-                                      onFocus={e => e.target.select()}
-                                      onChange={e => {
-                                        const val = Math.max(0, parseInt(e.target.value) || 0);
-                                        setEmptyTruckItems(prev => prev.map((it, i) => {
-                                          if (i !== idx) return it;
-                                          const newAllocations = it.keepAllocations.filter(a => a.reason !== reason);
-                                          if (val > 0) newAllocations.push({ reason, quantity: val });
-                                          return { ...it, keepAllocations: newAllocations };
-                                        }));
-                                      }}
-                                      className="w-20 text-center h-7 text-xs"
-                                    />
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          )}
-                        </>
-                      ) : (
-                        <>
-                          <div className="space-y-1.5">
-                            <Label className="text-xs font-medium">{t('stock.keep_reason_details')}</Label>
-                            {KEEP_REASONS.map(reason => {
-                              const allocation = item.keepAllocations.find(a => a.reason === reason);
-                              return (
-                                <div key={reason} className="flex items-center gap-2">
-                                  <span className="text-xs flex-1">{t(`stock.reason_${reason}`)}</span>
-                                  <Input
-                                    type="number"
-                                    min={0}
-                                    value={allocation?.quantity || 0}
-                                    onFocus={e => e.target.select()}
-                                    onChange={e => {
-                                      const val = Math.max(0, parseInt(e.target.value) || 0);
-                                      setEmptyTruckItems(prev => prev.map((it, i) => {
-                                        if (i !== idx) return it;
-                                        const newAllocations = it.keepAllocations.filter(a => a.reason !== reason);
-                                        if (val > 0) newAllocations.push({ reason, quantity: val });
-                                        const newTotalKeep = newAllocations.reduce((s, a) => s + a.quantity, 0);
-                                        return { ...it, keepAllocations: newAllocations, returnQty: Math.max(0, maxReturn - newTotalKeep) };
-                                      }));
-                                    }}
-                                    className="w-20 text-center h-7 text-xs"
-                                  />
-                                </div>
-                              );
-                            })}
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <div className="flex-1">
-                              <Label className="text-xs">{t('stock.keep_in_truck')}</Label>
-                              <div className="h-8 flex items-center justify-center text-sm font-medium rounded-md border bg-muted/50">
-                                {totalKeep}
-                              </div>
-                            </div>
-                            <div className="flex-1">
-                              <Label className="text-xs">{t('stock.return_qty')}</Label>
-                              <div className="h-8 flex items-center justify-center text-sm font-medium rounded-md border bg-muted/50">
-                                {derivedReturnQty}
-                              </div>
-                            </div>
-                          </div>
-                          {extraNeeded > 0 && (
-                            <div className="flex items-center gap-2 text-xs text-amber-600 bg-amber-50 dark:bg-amber-950/30 rounded-md p-2">
-                              <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-                              <span>{t('stock.extra_needed').replace('{qty}', String(extraNeeded))}</span>
-                            </div>
-                          )}
-                        </>
-                      )}
                     </CardContent>
                   </Card>
                 );
               })}
             </div>
 
-            <div className="flex items-center justify-between text-sm bg-muted/50 rounded-md p-2">
-              <span className="font-medium">{t('stock.total_return')}</span>
-              <Badge variant="destructive">
-                {emptyTruckItems.reduce((sum, it) => sum + it.returnQty, 0)} {t('stock.boxes')}
-              </Badge>
+            {/* ملخص */}
+            <div className="flex items-center justify-between text-sm bg-muted/50 rounded-md p-2 gap-3">
+              <div className="flex items-center gap-1">
+                <Warehouse className="w-4 h-4 text-destructive" />
+                <span>إرجاع: <strong>{totalReturn}</strong></span>
+              </div>
+              <div className="flex items-center gap-1">
+                <Truck className="w-4 h-4 text-primary" />
+                <span>يبقى: <strong>{totalRemaining}</strong></span>
+              </div>
             </div>
 
             <DialogFooter className="gap-2">
@@ -477,7 +301,7 @@ const EmptyTruckDialog: React.FC<EmptyTruckDialogProps> = ({ workerId, open, onO
               <Button
                 variant="destructive"
                 onClick={handleConfirm}
-                disabled={isEmptying || emptyTruckItems.every(it => it.returnQty === 0)}
+                disabled={isEmptying || totalReturn === 0}
               >
                 {isEmptying && <Loader2 className="w-4 h-4 animate-spin ml-2" />}
                 {t('stock.confirm_return')}
