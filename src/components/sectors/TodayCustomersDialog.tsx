@@ -65,8 +65,24 @@ const normalizeSaleItem = (item: any) => ({
   pricingUnit: item?.pricing_unit ?? item?.pricingUnit ?? item?.product?.pricing_unit ?? undefined,
   weightPerBox: toNullableNumber(item?.weight_per_box ?? item?.weightPerBox ?? item?.product?.weight_per_box),
 });
+// Generate next work days (Sat-Thu, skip Friday) starting from tomorrow
+const getNextWorkDays = (): { date: Date; label: string }[] => {
+  const days: { date: Date; label: string }[] = [];
+  const dayLabels = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+  let current = addDays(new Date(), 1);
+  while (days.length < 6) {
+    if (!isFriday(current)) {
+      days.push({
+        date: new Date(current),
+        label: `${dayLabels[current.getDay()]} ${format(current, 'dd/MM')}`,
+      });
+    }
+    current = addDays(current, 1);
+  }
+  return days;
+};
 
-interface TodayCustomersDialogProps {
+
   open: boolean;
   onOpenChange: (open: boolean) => void;
   targetWorkerId?: string;
