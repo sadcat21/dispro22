@@ -1043,6 +1043,41 @@ const CreateOrderDialog: React.FC<CreateOrderDialogProps> = ({ open, onOpenChang
 
               {/* Delivery Worker - removed, now shown after save */}
 
+              {/* Prepaid Amount Toggle - moved above delivery date */}
+              <section className="space-y-2">
+                <Button
+                  type="button"
+                  variant={Number(prepaidAmount) > 0 ? 'default' : 'outline'}
+                  className={`w-full h-12 text-sm font-bold gap-2 ${
+                    Number(prepaidAmount) > 0
+                      ? 'bg-emerald-600 hover:bg-emerald-700 text-white ring-2 ring-emerald-400/50'
+                      : 'border-dashed border-2'
+                  }`}
+                  onClick={() => {
+                    if (Number(prepaidAmount) > 0) {
+                      setPrepaidAmount('');
+                    } else {
+                      setPrepaidAmount('1');
+                    }
+                  }}
+                >
+                  <Banknote className="w-5 h-5" />
+                  {Number(prepaidAmount) > 0 ? `💰 دفع مسبق: ${Number(prepaidAmount).toLocaleString()} ${t('common.currency')}` : '💰 إضافة دفع مسبق (عربون)'}
+                </Button>
+                {Number(prepaidAmount) > 0 && (
+                  <div className="bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800 rounded-lg p-3 space-y-2">
+                    <Label className="text-emerald-700 dark:text-emerald-400 font-semibold text-sm">مبلغ الدفع المسبق</Label>
+                    <Input
+                      type="number"
+                      value={prepaidAmount}
+                      onChange={(e) => setPrepaidAmount(e.target.value)}
+                      placeholder="0"
+                      className="h-11 text-lg font-bold text-center"
+                    />
+                  </div>
+                )}
+              </section>
+
               {/* Delivery Date */}
               <section className="space-y-3">
                 <Label>{t('orders.delivery_date')} ({t('common.optional')})</Label>
