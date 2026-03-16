@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Plus, Minus, Loader2, Package, Save, PlusCircle, Trash2, Truck, Gift, CalendarDays, CreditCard } from 'lucide-react';
+import { Plus, Minus, Loader2, Package, Save, PlusCircle, Trash2, Truck, Gift, CalendarDays, CreditCard, Banknote, AlertTriangle } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
@@ -72,6 +72,10 @@ const ModifyOrderDialog: React.FC<ModifyOrderDialogProps> = ({
   const [paymentType, setPaymentType] = useState<string>(order.payment_type || 'with_invoice');
   const [invoicePaymentMethod, setInvoicePaymentMethod] = useState<InvoicePaymentMethod | null>((order.invoice_payment_method as InvoicePaymentMethod) || null);
 
+  // Payment adjustment for delivered orders
+  const [adjustPaidAmount, setAdjustPaidAmount] = useState<number>(Number((order as any).paid_amount || order.total_amount || 0));
+  const [adjustRemainingAmount, setAdjustRemainingAmount] = useState<number>(Number((order as any).remaining_amount || 0));
+
   const canChangeWorker = role === 'admin' || role === 'branch_admin' || order.created_by === workerId;
 
   // Initialize items from orderItems
@@ -104,8 +108,10 @@ const ModifyOrderDialog: React.FC<ModifyOrderDialogProps> = ({
       setDeliveryDate(order.delivery_date ? new Date(order.delivery_date) : undefined);
       setPaymentType(order.payment_type || 'with_invoice');
       setInvoicePaymentMethod((order.invoice_payment_method as InvoicePaymentMethod) || null);
+      setAdjustPaidAmount(Number((order as any).paid_amount || order.total_amount || 0));
+      setAdjustRemainingAmount(Number((order as any).remaining_amount || 0));
     }
-  }, [open, orderItems, order.assigned_worker_id, order.delivery_date, order.payment_type, order.invoice_payment_method]);
+  }, [open, orderItems, order.assigned_worker_id, order.delivery_date, order.payment_type, order.invoice_payment_method, (order as any).paid_amount, (order as any).remaining_amount, order.total_amount]);
 
   // Fetch available products for adding
   useEffect(() => {
@@ -252,9 +258,12 @@ const ModifyOrderDialog: React.FC<ModifyOrderDialogProps> = ({
   })();
   const paymentTypeChanged = paymentType !== (order.payment_type || 'with_invoice');
   const invoiceMethodChanged = (invoicePaymentMethod || null) !== (order.invoice_payment_method || null);
+  const originalPaidAmount = Number((order as any).paid_amount || order.total_amount || 0);
+  const originalRemainingAmount = Number((order as any).remaining_amount || 0);
+  const paymentAmountChanged = order.status === 'delivered' && (adjustPaidAmount !== originalPaidAmount || adjustRemainingAmount !== originalRemainingAmount);
 
   const hasChanges = items.some(i => i.new_quantity !== i.original_quantity) ||
-    items.some(i => !i.id && i.new_quantity > 0) || workerChanged || deliveryDateChanged || paymentTypeChanged || invoiceMethodChanged;
+    items.some(i => !i.id && i.new_quantity > 0) || workerChanged || deliveryDateChanged || paymentTypeChanged || invoiceMethodChanged || paymentAmountChanged;
 
   const getBoxPrice = useCallback((item: ModifiedItem) => {
     const multiplier = getBoxMultiplier(item.pricing_unit, item.weight_per_box, item.pieces_per_box);
@@ -422,6 +431,95 @@ const ModifyOrderDialog: React.FC<ModifyOrderDialogProps> = ({
         changes.push({ عملية: 'تغيير طريقة الدفع', نوع: paymentType, طريقة_فرعية: invoicePaymentMethod || 'بدون' });
       }
 
+      // Update paid/remaining amounts for delivered orders
+      if (paymentAmountChanged) {
+        orderUpdate.paid_amount = adjustPaidAmount;
+        orderUpdate.remaining_amount = adjustRemainingAmount;
+        changes.push({
+          عملية: 'تعديل المبلغ المدفوع',
+          مدفوع_سابق: originalPaidAmount,
+          مدفوع_جديد: adjustPaidAmount,
+          متبقي_سابق: originalRemainingAmount,
+          متبقي_جديد: adjustRemainingAmount,
+        });
+
+        // Handle debt changes from payment adjustment
+        const debtIncrease = adjustRemainingAmount - originalRemainingAmount;
+        if (debtIncrease > 0) {
+          // More remaining = new/increased debt
+          // Check if there's already a debt for this order
+          const { data: existingDebt } = await supabase
+            .from('customer_debts')
+            .select('id, total_amount, paid_amount, remaining_amount')
+            .eq('order_id', order.id)
+            .in('status', ['active', 'partially_paid'])
+            .maybeSingle();
+
+          if (existingDebt) {
+            const newDebtTotal = Number(existingDebt.total_amount) + debtIncrease;
+            const newDebtRemaining = (existingDebt.remaining_amount ?? (existingDebt.total_amount - existingDebt.paid_amount)) + debtIncrease;
+            await supabase.from('customer_debts').update({
+              total_amount: newDebtTotal,
+              remaining_amount: newDebtRemaining,
+              notes: `تعديل دفع بعد التوصيل - زيادة ${debtIncrease.toLocaleString()} دج`,
+            }).eq('id', existingDebt.id);
+          } else {
+            await supabase.from('customer_debts').insert({
+              customer_id: order.customer_id,
+              order_id: order.id,
+              worker_id: workerId,
+              branch_id: order.branch_id,
+              total_amount: debtIncrease,
+              paid_amount: 0,
+              remaining_amount: debtIncrease,
+              status: 'active',
+              notes: 'دين من تعديل الدفع بعد التوصيل',
+            });
+          }
+        } else if (debtIncrease < 0) {
+          // Less remaining = debt reduced/cleared
+          const debtReduction = Math.abs(debtIncrease);
+          let remaining = debtReduction;
+
+          const { data: debts } = await supabase
+            .from('customer_debts')
+            .select('id, total_amount, paid_amount, remaining_amount')
+            .eq('customer_id', order.customer_id)
+            .in('status', ['active', 'partially_paid'])
+            .order('created_at', { ascending: true });
+
+          for (const debt of (debts || [])) {
+            if (remaining <= 0) break;
+            const debtRemaining = (debt.remaining_amount ?? (debt.total_amount - debt.paid_amount));
+            const deduct = Math.min(debtRemaining, remaining);
+            const newPaid = debt.paid_amount + deduct;
+            const newRemaining = debt.total_amount - newPaid;
+            await supabase.from('customer_debts').update({
+              paid_amount: newPaid,
+              remaining_amount: newRemaining,
+              status: newRemaining <= 0 ? 'paid' : 'partially_paid',
+            }).eq('id', debt.id);
+            remaining -= deduct;
+          }
+
+          // If there's still surplus, create customer credit
+          if (remaining > 0) {
+            await supabase.from('customer_credits').insert({
+              customer_id: order.customer_id,
+              order_id: order.id,
+              worker_id: workerId!,
+              branch_id: order.branch_id,
+              amount: remaining,
+              credit_type: 'financial',
+              status: 'approved',
+              approved_by: workerId,
+              approved_at: new Date().toISOString(),
+              notes: 'فائض من تعديل الدفع بعد التوصيل',
+            });
+          }
+        }
+      }
+
       if (Object.keys(orderUpdate).length > 0) {
         await supabase.from('orders')
           .update(orderUpdate)
@@ -580,6 +678,23 @@ const ModifyOrderDialog: React.FC<ModifyOrderDialogProps> = ({
         }
       }
 
+      // Update receipt if payment amounts changed (so reprinted receipts reflect the change)
+      if (paymentAmountChanged || paymentTypeChanged || invoiceMethodChanged) {
+        const receiptUpdate: Record<string, any> = {};
+        if (paymentAmountChanged) {
+          receiptUpdate.paid_amount = adjustPaidAmount;
+          receiptUpdate.remaining_amount = adjustRemainingAmount;
+        }
+        if (paymentTypeChanged || invoiceMethodChanged) {
+          receiptUpdate.payment_method = paymentType === 'with_invoice' ? (invoicePaymentMethod || 'cash') : 'cash';
+        }
+        if (Object.keys(receiptUpdate).length > 0) {
+          await supabase.from('receipts')
+            .update(receiptUpdate)
+            .eq('order_id', order.id);
+        }
+      }
+
       // Log activity
       await logActivity.mutateAsync({
         actionType: 'update',
@@ -590,13 +705,13 @@ const ModifyOrderDialog: React.FC<ModifyOrderDialogProps> = ({
           العميل: order.customer?.name,
           التغييرات: changes,
           ...(diffPaymentType && { طريقة_دفع_الفارق: diffPaymentType, المبلغ_المدفوع: paidAmount }),
+          ...(paymentAmountChanged && { تعديل_الدفع: { مدفوع: adjustPaidAmount, متبقي: adjustRemainingAmount } }),
         },
       });
 
       queryClient.invalidateQueries({ queryKey: ['orders'] });
       queryClient.invalidateQueries({ queryKey: ['assigned-orders'] });
       queryClient.invalidateQueries({ queryKey: ['order-items'] });
-      // Refresh worker stock so returned products show in truck
       queryClient.invalidateQueries({ queryKey: ['my-worker-stock'] });
       queryClient.invalidateQueries({ queryKey: ['my-stock-sold'] });
       queryClient.invalidateQueries({ queryKey: ['my-stock-loaded'] });
@@ -604,6 +719,7 @@ const ModifyOrderDialog: React.FC<ModifyOrderDialogProps> = ({
       queryClient.invalidateQueries({ queryKey: ['customer-debts'] });
       queryClient.invalidateQueries({ queryKey: ['customer-debt-summary'] });
       queryClient.invalidateQueries({ queryKey: ['customer-credits'] });
+      queryClient.invalidateQueries({ queryKey: ['receipts'] });
 
       toast.success(t('orders.order_modified'));
       onOpenChange(false);
@@ -706,7 +822,78 @@ const ModifyOrderDialog: React.FC<ModifyOrderDialogProps> = ({
               )}
             </div>
 
-            {/* Current items */}
+            {/* Payment amount adjustment for delivered orders */}
+            {order.status === 'delivered' && (
+              <div className="border rounded-lg p-3 space-y-3 bg-amber-50/50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800">
+                <label className="text-xs font-bold text-amber-800 dark:text-amber-300 flex items-center gap-1">
+                  <Banknote className="w-3.5 h-3.5" />
+                  تعديل المبلغ المدفوع / المتبقي
+                </label>
+                <p className="text-[10px] text-amber-700 dark:text-amber-400">
+                  إذا لم يدفع العميل أو دفع جزئياً بعد التسليم، عدّل المبالغ هنا وسيتم تحديث الديون والوصل تلقائياً.
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <label className="text-[10px] text-muted-foreground">المبلغ المدفوع</label>
+                    <Input
+                      type="number"
+                      value={adjustPaidAmount}
+                      onChange={(e) => {
+                        const val = Math.max(0, Math.min(Number(e.target.value) || 0, orderTotal || Number(order.total_amount)));
+                        setAdjustPaidAmount(val);
+                        setAdjustRemainingAmount(Math.max(0, (orderTotal || Number(order.total_amount)) - val));
+                      }}
+                      className="h-9"
+                      min={0}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] text-muted-foreground">المبلغ المتبقي (دين)</label>
+                    <Input
+                      type="number"
+                      value={adjustRemainingAmount}
+                      onChange={(e) => {
+                        const val = Math.max(0, Math.min(Number(e.target.value) || 0, orderTotal || Number(order.total_amount)));
+                        setAdjustRemainingAmount(val);
+                        setAdjustPaidAmount(Math.max(0, (orderTotal || Number(order.total_amount)) - val));
+                      }}
+                      className="h-9"
+                      min={0}
+                    />
+                  </div>
+                </div>
+                {/* Quick shortcuts */}
+                <div className="flex gap-1.5 flex-wrap">
+                  <Button type="button" variant="outline" size="sm" className="h-7 text-[10px] px-2"
+                    onClick={() => { setAdjustPaidAmount(orderTotal || Number(order.total_amount)); setAdjustRemainingAmount(0); }}>
+                    دفع كامل
+                  </Button>
+                  <Button type="button" variant="outline" size="sm" className="h-7 text-[10px] px-2"
+                    onClick={() => { setAdjustPaidAmount(0); setAdjustRemainingAmount(orderTotal || Number(order.total_amount)); }}>
+                    بدون دفع (دين)
+                  </Button>
+                  <Button type="button" variant="outline" size="sm" className="h-7 text-[10px] px-2"
+                    onClick={() => { const half = Math.round((orderTotal || Number(order.total_amount)) / 2); setAdjustPaidAmount(half); setAdjustRemainingAmount((orderTotal || Number(order.total_amount)) - half); }}>
+                    نصف المبلغ
+                  </Button>
+                </div>
+                {paymentAmountChanged && (
+                  <div className="bg-amber-100 dark:bg-amber-900/30 rounded-md p-2 text-xs text-amber-800 dark:text-amber-300 flex items-start gap-1.5">
+                    <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-bold">سيتم تحديث:</p>
+                      <ul className="list-disc list-inside text-[10px] mt-0.5 space-y-0.5">
+                        <li>المبلغ المدفوع: {originalPaidAmount.toLocaleString()} → {adjustPaidAmount.toLocaleString()} دج</li>
+                        <li>المبلغ المتبقي: {originalRemainingAmount.toLocaleString()} → {adjustRemainingAmount.toLocaleString()} دج</li>
+                        {adjustRemainingAmount > originalRemainingAmount && <li className="text-red-700">سيتم إنشاء/تحديث دين بقيمة {(adjustRemainingAmount - originalRemainingAmount).toLocaleString()} دج</li>}
+                        {adjustRemainingAmount < originalRemainingAmount && <li className="text-green-700">سيتم تسوية ديون بقيمة {(originalRemainingAmount - adjustRemainingAmount).toLocaleString()} دج</li>}
+                      </ul>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {items.map((item, index) => {
               const changed = item.new_quantity !== item.original_quantity;
               return (
