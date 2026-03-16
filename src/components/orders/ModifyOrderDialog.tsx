@@ -284,6 +284,26 @@ const ModifyOrderDialog: React.FC<ModifyOrderDialogProps> = ({
     }));
   }, [products]);
 
+  // Change pricing subtype for a single item
+  const changeItemSubtype = useCallback((index: number, subtype: string) => {
+    setItems(prev => prev.map((item, i) => {
+      if (i !== index) return item;
+      const product = products.find(p => p.id === item.product_id);
+      if (!product) return { ...item, item_subtype: subtype };
+      let newUnitPrice: number;
+      if (subtype === 'invoice') {
+        newUnitPrice = Number(product.price_invoice || 0);
+      } else {
+        switch (subtype) {
+          case 'super_gros': newUnitPrice = Number(product.price_super_gros || product.price_no_invoice || 0); break;
+          case 'retail': newUnitPrice = Number(product.price_retail || 0); break;
+          default: newUnitPrice = Number(product.price_gros || product.price_no_invoice || 0); break;
+        }
+      }
+      return { ...item, unit_price: newUnitPrice, item_subtype: subtype };
+    }));
+  }, [products]);
+
   const workerChanged = assignedWorkerId !== (order.assigned_worker_id || '');
   const deliveryDateChanged = (() => {
     const origDate = order.delivery_date ? order.delivery_date.split('T')[0] : '';
