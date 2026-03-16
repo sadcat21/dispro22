@@ -1013,7 +1013,7 @@ const OrdersContent: React.FC = () => {
           open={showDeliverySaleDialog}
           onOpenChange={(open) => {
             setShowDeliverySaleDialog(open);
-            if (!open) setPendingDeliveryOrder(null);
+            if (!open) setTimeout(() => setPendingDeliveryOrder(null), 2000);
           }}
           order={pendingDeliveryOrder}
         />
