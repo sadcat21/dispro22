@@ -27,7 +27,7 @@ import { useLoadingSessions } from '@/hooks/useLoadingSessions';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
-import { useCreateDiscrepancy } from '@/hooks/useStockDiscrepancies';
+
 import StockVerificationDialog from '@/components/stock/StockVerificationDialog';
 import ExchangeSessionDialog from '@/components/stock/ExchangeSessionDialog';
 import CustomerPickerDialog from '@/components/orders/CustomerPickerDialog';
