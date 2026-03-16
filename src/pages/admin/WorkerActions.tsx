@@ -560,6 +560,8 @@ const WorkerActions: React.FC = () => {
           style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' }}
         >
           {workerActions.filter(action => {
+            // Hide worker_profile for supervisors
+            if (isSupervisorMode && action.key === 'worker_profile') return false;
             // Admin sees all, others check UI overrides
             if (role === 'admin') return true;
             const overrideKey = `wa_${action.key}`;
