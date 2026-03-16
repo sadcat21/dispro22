@@ -606,9 +606,10 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
       const isExplicitlyAssigned = o.delivery_date && o.delivery_date.startsWith(todayDateStr) && o.assigned_worker_id === effectiveWorkerId;
       if (matchesSector || isExplicitlyAssigned) ids.add(o.customer_id);
     });
-    todayDeliveredOrders.forEach(o => { if (o.customer_id) ids.add(o.customer_id); });
+    // Exclude direct-sale customers from delivery tracking
+    todayDeliveredOrders.forEach(o => { if (o.customer_id && !directSoldCustomerIds.has(o.customer_id)) ids.add(o.customer_id); });
     return ids;
-  }, [assignedOrders, todayDeliveredOrders, todayDeliverySectors, customers, todayDateStr, effectiveWorkerId]);
+  }, [assignedOrders, todayDeliveredOrders, todayDeliverySectors, customers, todayDateStr, effectiveWorkerId, directSoldCustomerIds]);
 
   const deliveryCustomers = useMemo(() => customers.filter(c => deliveryCustomerIdsWithOrders.has(c.id)), [customers, deliveryCustomerIdsWithOrders]);
   const salesCustomers = useMemo(() => {
