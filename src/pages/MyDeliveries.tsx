@@ -941,12 +941,16 @@ const MyDeliveries: React.FC = () => {
         </div>
       </div>
 
-      {/* Delivery Type Tabs (Orders vs Direct Sales) */}
+      {/* Delivery Type Tabs (Orders vs Direct Sales vs Postponed) */}
       <Tabs value={deliveryType} onValueChange={(v) => { setDeliveryType(v as DeliveryType); setActiveTab('all'); }} dir="rtl">
         <TabsList className="w-full h-10 p-1 bg-muted/60">
           <TabsTrigger value="orders" className="flex-1 gap-1.5 data-[state=active]:shadow-sm">
             <Truck className="w-4 h-4" />
             <span className="text-xs font-bold">{t('deliveries.title')} ({orderTypeCount})</span>
+          </TabsTrigger>
+          <TabsTrigger value="postponed" className="flex-1 gap-1.5 data-[state=active]:shadow-sm">
+            <CalendarClock className="w-4 h-4" />
+            <span className="text-xs font-bold">التأجيل ({postponedCount})</span>
           </TabsTrigger>
           <TabsTrigger value="direct_sales" className="flex-1 gap-1.5 data-[state=active]:shadow-sm">
             <ShoppingCart className="w-4 h-4" />
