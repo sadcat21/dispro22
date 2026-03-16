@@ -109,6 +109,10 @@ const ModifyOrderDialog: React.FC<ModifyOrderDialogProps> = ({
       setDeliveryDate(order.delivery_date ? new Date(order.delivery_date) : undefined);
       setPaymentType(order.payment_type || 'with_invoice');
       setInvoicePaymentMethod((order.invoice_payment_method as InvoicePaymentMethod) || null);
+      // Initialize price subtype from first order item or customer default
+      const firstItemSubtype = orderItems[0] && (orderItems[0] as any).price_subtype;
+      const customerDefault = order.customer?.default_price_subtype;
+      setPriceSubType((firstItemSubtype || customerDefault || 'gros') as PriceSubType);
       setAdjustPaidAmount(Number((order as any).paid_amount || order.total_amount || 0));
       setAdjustRemainingAmount(Number((order as any).remaining_amount || 0));
     }
