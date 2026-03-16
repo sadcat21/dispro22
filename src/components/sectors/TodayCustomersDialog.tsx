@@ -1161,11 +1161,25 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
     } catch { toast.error('خطأ في جلب البيانات'); }
   };
 
-  const handlePrintDirectSale = (customer: any) => {
-    const sale = todayDirectSales.find(s => s.customer_id === customer.id);
-    if (sale) {
-      setPrintReceiptData(buildReceiptDataFromOrder({ ...sale, _isDirectSale: true, customer }, true));
-      setShowPrintReceipt(true);
+  const handlePrintDirectSale = async (customer: any) => {
+    try {
+      const directOrder = await fetchDirectSaleOrderDetails(customer.id);
+      if (directOrder) {
+        setPrintReceiptData(buildReceiptDataFromOrder({ ...directOrder, _isDirectSale: true, customer: directOrder.customer || customer }, true));
+        setShowPrintReceipt(true);
+        return;
+      }
+
+      const sale = todayDirectSales.find(s => s.customer_id === customer.id);
+      if (sale) {
+        setPrintReceiptData(buildReceiptDataFromOrder({ ...sale, _isDirectSale: true, customer }, true));
+        setShowPrintReceipt(true);
+        return;
+      }
+
+      toast.error('لم يتم العثور على بيانات البيع المباشر للطباعة');
+    } catch {
+      toast.error('خطأ في جلب بيانات البيع المباشر');
     }
   };
 
