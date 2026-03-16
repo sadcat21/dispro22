@@ -678,6 +678,23 @@ const ModifyOrderDialog: React.FC<ModifyOrderDialogProps> = ({
         }
       }
 
+      // Update receipt if payment amounts changed (so reprinted receipts reflect the change)
+      if (paymentAmountChanged || paymentTypeChanged || invoiceMethodChanged) {
+        const receiptUpdate: Record<string, any> = {};
+        if (paymentAmountChanged) {
+          receiptUpdate.paid_amount = adjustPaidAmount;
+          receiptUpdate.remaining_amount = adjustRemainingAmount;
+        }
+        if (paymentTypeChanged || invoiceMethodChanged) {
+          receiptUpdate.payment_method = paymentType === 'with_invoice' ? (invoicePaymentMethod || 'cash') : 'cash';
+        }
+        if (Object.keys(receiptUpdate).length > 0) {
+          await supabase.from('receipts')
+            .update(receiptUpdate)
+            .eq('order_id', order.id);
+        }
+      }
+
       // Log activity
       await logActivity.mutateAsync({
         actionType: 'update',
@@ -688,13 +705,13 @@ const ModifyOrderDialog: React.FC<ModifyOrderDialogProps> = ({
           العميل: order.customer?.name,
           التغييرات: changes,
           ...(diffPaymentType && { طريقة_دفع_الفارق: diffPaymentType, المبلغ_المدفوع: paidAmount }),
+          ...(paymentAmountChanged && { تعديل_الدفع: { مدفوع: adjustPaidAmount, متبقي: adjustRemainingAmount } }),
         },
       });
 
       queryClient.invalidateQueries({ queryKey: ['orders'] });
       queryClient.invalidateQueries({ queryKey: ['assigned-orders'] });
       queryClient.invalidateQueries({ queryKey: ['order-items'] });
-      // Refresh worker stock so returned products show in truck
       queryClient.invalidateQueries({ queryKey: ['my-worker-stock'] });
       queryClient.invalidateQueries({ queryKey: ['my-stock-sold'] });
       queryClient.invalidateQueries({ queryKey: ['my-stock-loaded'] });
@@ -702,6 +719,7 @@ const ModifyOrderDialog: React.FC<ModifyOrderDialogProps> = ({
       queryClient.invalidateQueries({ queryKey: ['customer-debts'] });
       queryClient.invalidateQueries({ queryKey: ['customer-debt-summary'] });
       queryClient.invalidateQueries({ queryKey: ['customer-credits'] });
+      queryClient.invalidateQueries({ queryKey: ['receipts'] });
 
       toast.success(t('orders.order_modified'));
       onOpenChange(false);
