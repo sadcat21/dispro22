@@ -1467,7 +1467,7 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
       {pendingDeliveryOrder && (
         <DeliverySaleDialog
           open={showDeliveryDialog}
-          onOpenChange={(o) => { setShowDeliveryDialog(o); if (!o) setPendingDeliveryOrder(null); }}
+          onOpenChange={(o) => { setShowDeliveryDialog(o); if (!o) setTimeout(() => setPendingDeliveryOrder(null), 2000); }}
           order={pendingDeliveryOrder}
         />
       )}
