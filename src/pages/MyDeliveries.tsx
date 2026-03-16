@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -11,7 +11,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { 
   ShoppingCart, Loader2, Package, User, Calendar, Store,
   CheckCircle, Clock, Truck, XCircle, UserCheck, Phone, MapPin, ChevronDown, ChevronUp, Navigation, Search, Edit2,
-  Receipt, Banknote, Route, Gift, Trash2, ListFilter, Map, AlertTriangle, FileCheck, Printer
+  Receipt, Banknote, Route, Gift, Trash2, ListFilter, Map, AlertTriangle, FileCheck, Printer, CalendarClock
 } from 'lucide-react';
 import { toast } from 'sonner';
 import WorkerLoadRequestDialog from '@/components/stock/WorkerLoadRequestDialog';
@@ -22,7 +22,7 @@ import { useHasPermission } from '@/hooks/usePermissions';
 import { calculateDistance } from '@/utils/geoUtils';
 import { useLanguage, Language } from '@/contexts/LanguageContext';
 import { OrderStatus, OrderWithDetails, Product, Worker } from '@/types/database';
-import { format } from 'date-fns';
+import { format, addDays, isFriday } from 'date-fns';
 import { ar, fr, enUS } from 'date-fns/locale';
 import LazyCustomerLocationView from '@/components/map/LazyCustomerLocationView';
 import LazyNavigationMapView from '@/components/map/LazyNavigationMapView';
@@ -47,7 +47,24 @@ import { Eye } from 'lucide-react';
 import CustomerLabel from '@/components/customers/CustomerLabel';
 
 type TabStatus = 'all' | OrderStatus;
-type DeliveryType = 'orders' | 'direct_sales';
+type DeliveryType = 'orders' | 'direct_sales' | 'postponed';
+
+// Generate next work days (Sat-Thu, skip Friday) starting from tomorrow
+const getNextWorkDays = (): { date: Date; label: string }[] => {
+  const days: { date: Date; label: string }[] = [];
+  const dayNames = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+  let current = addDays(new Date(), 1);
+  while (days.length < 6) {
+    if (!isFriday(current)) {
+      days.push({
+        date: new Date(current),
+        label: `${dayNames[current.getDay()]} ${format(current, 'dd/MM')}`,
+      });
+    }
+    current = addDays(current, 1);
+  }
+  return days;
+};
 
 const MyDeliveries: React.FC = () => {
   const { t, language, loadPrintSettingsFromDB } = useLanguage();
@@ -71,6 +88,10 @@ const MyDeliveries: React.FC = () => {
     lat: number; lng: number; name: string; address?: string;
   } | null>(null);
   
+  const [postponeOrderId, setPostponeOrderId] = useState<string | null>(null);
+  const [postponeGroupBy, setPostponeGroupBy] = useState<'date' | 'sector'>('date');
+  const queryClient = useQueryClient();
+
   const { data: rawOrders, isLoading, refetch: refetchOrders } = useAssignedOrders();
   
   // Cutoff: filter out delivered/cancelled orders before last accounting session
@@ -524,16 +545,48 @@ const MyDeliveries: React.FC = () => {
     }
   };
 
+  const handlePostponeOrder = async (orderId: string, newDate: Date) => {
+    try {
+      const dateStr = format(newDate, 'yyyy-MM-dd');
+      const { error } = await supabase
+        .from('orders')
+        .update({ delivery_date: dateStr })
+        .eq('id', orderId);
+      if (error) throw error;
+      await logActivity.mutateAsync({
+        actionType: 'postpone',
+        entityType: 'order',
+        entityId: orderId,
+        details: { التاريخ_الجديد: dateStr },
+      });
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+      queryClient.invalidateQueries({ queryKey: ['assigned-orders'] });
+      toast.success(`تم تأجيل الطلبية إلى ${format(newDate, 'dd/MM/yyyy')}`);
+      setPostponeOrderId(null);
+    } catch {
+      toast.error('فشل في تأجيل الطلبية');
+    }
+  };
+
   const selectedOrder = orders?.find(o => o.id === selectedOrderId);
 
   // Helper to check if an order is a direct sale
   const isDirectSale = (order: OrderWithDetails) => 
     order.notes?.includes('بيع مباشر') || false;
 
+  // Helper to check if order is postponed (delivery_date is in the future, not today)
+  const isPostponed = (order: OrderWithDetails) => {
+    if (!order.delivery_date) return false;
+    const today = format(new Date(), 'yyyy-MM-dd');
+    return order.delivery_date > today && !isDirectSale(order);
+  };
+
   // Filter by delivery type first
-  const typeFilteredOrders = orders?.filter(o => 
-    deliveryType === 'direct_sales' ? isDirectSale(o) : !isDirectSale(o)
-  );
+  const typeFilteredOrders = orders?.filter(o => {
+    if (deliveryType === 'direct_sales') return isDirectSale(o);
+    if (deliveryType === 'postponed') return isPostponed(o);
+    return !isDirectSale(o) && !isPostponed(o);
+  });
 
   // Count per status (based on type-filtered orders)
   const statusCounts: Record<string, number> = {
@@ -546,8 +599,9 @@ const MyDeliveries: React.FC = () => {
   };
 
   // Type-level counts
-  const orderTypeCount = orders?.filter(o => !isDirectSale(o)).length || 0;
+  const orderTypeCount = orders?.filter(o => !isDirectSale(o) && !isPostponed(o)).length || 0;
   const directSaleCount = orders?.filter(o => isDirectSale(o)).length || 0;
+  const postponedCount = orders?.filter(o => isPostponed(o)).length || 0;
 
   // Filtered orders
   const filteredOrders = activeTab === 'all' 
@@ -714,6 +768,15 @@ const MyDeliveries: React.FC = () => {
                     )}
                     <Button
                       size="icon"
+                      variant="outline"
+                      className="h-8 w-8 text-amber-600 border-amber-300 hover:bg-amber-50"
+                      onClick={() => setPostponeOrderId(order.id)}
+                      title="تأجيل"
+                    >
+                      <CalendarClock className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      size="icon"
                       className="h-8 w-8 bg-primary"
                       onClick={() => handleUpdateStatus(order.id, 'in_progress')}
                       disabled={updateStatus.isPending}
@@ -758,6 +821,15 @@ const MyDeliveries: React.FC = () => {
                     )}
                     <Button
                       size="icon"
+                      variant="outline"
+                      className="h-8 w-8 text-amber-600 border-amber-300 hover:bg-amber-50"
+                      onClick={() => setPostponeOrderId(order.id)}
+                      title="تأجيل"
+                    >
+                      <CalendarClock className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      size="icon"
                       className="h-8 w-8 bg-primary"
                       onClick={() => handleUpdateStatus(order.id, 'in_progress')}
                       disabled={updateStatus.isPending}
@@ -800,6 +872,15 @@ const MyDeliveries: React.FC = () => {
                         <Edit2 className="w-4 h-4" />
                       </Button>
                     )}
+                    <Button
+                      size="icon"
+                      variant="outline"
+                      className="h-8 w-8 text-amber-600 border-amber-300 hover:bg-amber-50"
+                      onClick={() => setPostponeOrderId(order.id)}
+                      title="تأجيل"
+                    >
+                      <CalendarClock className="w-4 h-4" />
+                    </Button>
                     <Button
                       size="icon"
                       className="h-8 w-8 bg-green-600 hover:bg-green-700"
@@ -887,12 +968,16 @@ const MyDeliveries: React.FC = () => {
         </div>
       </div>
 
-      {/* Delivery Type Tabs (Orders vs Direct Sales) */}
+      {/* Delivery Type Tabs (Orders vs Direct Sales vs Postponed) */}
       <Tabs value={deliveryType} onValueChange={(v) => { setDeliveryType(v as DeliveryType); setActiveTab('all'); }} dir="rtl">
         <TabsList className="w-full h-10 p-1 bg-muted/60">
           <TabsTrigger value="orders" className="flex-1 gap-1.5 data-[state=active]:shadow-sm">
             <Truck className="w-4 h-4" />
             <span className="text-xs font-bold">{t('deliveries.title')} ({orderTypeCount})</span>
+          </TabsTrigger>
+          <TabsTrigger value="postponed" className="flex-1 gap-1.5 data-[state=active]:shadow-sm">
+            <CalendarClock className="w-4 h-4" />
+            <span className="text-xs font-bold">التأجيل ({postponedCount})</span>
           </TabsTrigger>
           <TabsTrigger value="direct_sales" className="flex-1 gap-1.5 data-[state=active]:shadow-sm">
             <ShoppingCart className="w-4 h-4" />
@@ -924,16 +1009,96 @@ const MyDeliveries: React.FC = () => {
       )}
 
       {/* Orders List */}
-      <div className="space-y-2.5">
-        {filteredOrders?.map(renderOrderCard)}
-
-        {(!filteredOrders || filteredOrders.length === 0) && (
-          <div className="text-center py-12 text-muted-foreground">
-            <Truck className="w-12 h-12 mx-auto mb-3 opacity-30" />
-            <p className="text-sm">{t('deliveries.no_deliveries')}</p>
+      {deliveryType === 'postponed' ? (
+        <>
+          {/* Group-by selector for postponed */}
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-xs text-muted-foreground">ترتيب حسب:</span>
+            <Button
+              variant={postponeGroupBy === 'date' ? 'default' : 'outline'}
+              size="sm"
+              className="h-7 text-xs"
+              onClick={() => setPostponeGroupBy('date')}
+            >
+              <Calendar className="w-3 h-3 me-1" />
+              التاريخ
+            </Button>
+            <Button
+              variant={postponeGroupBy === 'sector' ? 'default' : 'outline'}
+              size="sm"
+              className="h-7 text-xs"
+              onClick={() => setPostponeGroupBy('sector')}
+            >
+              <Map className="w-3 h-3 me-1" />
+              السيكتور
+            </Button>
           </div>
-        )}
-      </div>
+          {(() => {
+            const postponedOrders = filteredOrders || [];
+            if (postponedOrders.length === 0) {
+              return (
+                <div className="text-center py-12 text-muted-foreground">
+                  <CalendarClock className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                  <p className="text-sm">لا توجد طلبيات مؤجلة</p>
+                </div>
+              );
+            }
+            
+            const groups: Record<string, OrderWithDetails[]> = {};
+            postponedOrders.forEach(order => {
+              let key: string;
+              if (postponeGroupBy === 'date') {
+                key = order.delivery_date || 'بدون تاريخ';
+              } else {
+                const sectorName = (order.customer as any)?.sector
+                  ? getLocalizedName((order.customer as any).sector, language)
+                  : 'بدون سيكتور';
+                key = sectorName;
+              }
+              if (!groups[key]) groups[key] = [];
+              groups[key].push(order);
+            });
+
+            const sortedKeys = Object.keys(groups).sort();
+
+            return (
+              <div className="space-y-4">
+                {sortedKeys.map(key => (
+                  <div key={key}>
+                    <div className="flex items-center gap-2 mb-2 px-1">
+                      {postponeGroupBy === 'date' ? (
+                        <Calendar className="w-4 h-4 text-amber-600" />
+                      ) : (
+                        <Map className="w-4 h-4 text-amber-600" />
+                      )}
+                      <span className="font-bold text-sm">
+                        {postponeGroupBy === 'date' && key !== 'بدون تاريخ'
+                          ? format(new Date(key), 'EEEE dd MMMM', { locale: getDateLocale(language) })
+                          : key}
+                      </span>
+                      <Badge variant="secondary" className="text-[10px]">{groups[key].length}</Badge>
+                    </div>
+                    <div className="space-y-2.5">
+                      {groups[key].map(renderOrderCard)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
+        </>
+      ) : (
+        <div className="space-y-2.5">
+          {filteredOrders?.map(renderOrderCard)}
+
+          {(!filteredOrders || filteredOrders.length === 0) && (
+            <div className="text-center py-12 text-muted-foreground">
+              <Truck className="w-12 h-12 mx-auto mb-3 opacity-30" />
+              <p className="text-sm">{t('deliveries.no_deliveries')}</p>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Order Details Dialog */}
       <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
@@ -1211,6 +1376,31 @@ const MyDeliveries: React.FC = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      {/* Postpone Day Picker Dialog */}
+      <Dialog open={!!postponeOrderId} onOpenChange={(open) => { if (!open) setPostponeOrderId(null); }}>
+        <DialogContent className="max-w-xs" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CalendarClock className="w-5 h-5 text-amber-600" />
+              تأجيل التوصيل
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">اختر يوم التوصيل الجديد:</p>
+          <div className="grid grid-cols-2 gap-2">
+            {getNextWorkDays().map(({ date, label }) => (
+              <Button
+                key={date.toISOString()}
+                variant="outline"
+                className="h-12 text-sm font-bold hover:bg-amber-50 hover:border-amber-400 hover:text-amber-700"
+                onClick={() => postponeOrderId && handlePostponeOrder(postponeOrderId, date)}
+              >
+                {label}
+              </Button>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Reprint Receipt Dialog */}
       {reprintReceiptData && (
         <ReceiptDialog
