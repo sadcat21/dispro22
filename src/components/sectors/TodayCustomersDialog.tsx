@@ -1325,6 +1325,28 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
     }
   };
 
+  const handleSinglePostpone = async (newDate: Date) => {
+    if (!postponeCustomer) return;
+    const customerOrders = assignedOrders
+      .filter(o => o.customer_id === postponeCustomer.id && ['pending', 'assigned', 'in_progress'].includes(o.status));
+    if (customerOrders.length === 0) { toast.info('لا توجد طلبيات لهذا العميل'); return; }
+    const dateStr = format(newDate, 'yyyy-MM-dd');
+    try {
+      const { error } = await supabase
+        .from('orders')
+        .update({ delivery_date: dateStr })
+        .in('id', customerOrders.map(o => o.id));
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+      queryClient.invalidateQueries({ queryKey: ['assigned-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['today-cust-assigned-orders-full'] });
+      toast.success(`تم تأجيل طلبية ${postponeCustomer.name} إلى ${format(newDate, 'dd/MM/yyyy')}`);
+      setPostponeCustomer(null);
+    } catch {
+      toast.error('فشل في تأجيل الطلبية');
+    }
+  };
+
   const handleDirectSaleDebtRefused = async (customer: any) => {
     const allowed = await checkLocationBeforeAction(customer);
     if (!allowed) return;
