@@ -392,7 +392,11 @@ const ModifyOrderDialog: React.FC<ModifyOrderDialogProps> = ({
       const changes: Record<string, any>[] = [];
 
       for (const item of items) {
-        if (item.id && item.new_quantity !== item.original_quantity) {
+        const itemSubtype = item.item_subtype || (paymentType === 'with_invoice' ? 'invoice' : priceSubType);
+        const itemPayType = itemSubtype === 'invoice' ? 'with_invoice' : 'without_invoice';
+        const itemInvMethod = itemSubtype === 'invoice' ? (invoicePaymentMethod || null) : null;
+
+        if (item.id && (item.new_quantity !== item.original_quantity || item.item_subtype !== undefined)) {
           if (item.new_quantity === 0) {
             // Delete the item
             await supabase.from('order_items').delete().eq('id', item.id);
@@ -413,8 +417,11 @@ const ModifyOrderDialog: React.FC<ModifyOrderDialogProps> = ({
               .update({
                 quantity: item.new_quantity,
                 gift_quantity: item.gift_quantity || 0,
-                unit_price: boxPrice, // store as box price (consistent with creation)
+                unit_price: boxPrice,
                 total_price: paidQty * boxPrice,
+                price_subtype: itemSubtype,
+                payment_type: itemPayType,
+                invoice_payment_method: itemInvMethod,
               })
               .eq('id', item.id);
             changes.push({
@@ -423,7 +430,8 @@ const ModifyOrderDialog: React.FC<ModifyOrderDialogProps> = ({
               كمية_جديدة: item.new_quantity,
               هدية_سابقة: item.original_gift_quantity || 0,
               هدية_جديدة: item.gift_quantity || 0,
-              عملية: 'تعديل كمية',
+              تسعير: itemSubtype,
+              عملية: item.item_subtype ? 'تعديل تسعير' : 'تعديل كمية',
             });
           }
         } else if (!item.id && item.new_quantity > 0) {
@@ -436,16 +444,20 @@ const ModifyOrderDialog: React.FC<ModifyOrderDialogProps> = ({
             product_id: item.product_id,
             quantity: item.new_quantity,
             gift_quantity: item.gift_quantity || 0,
-            unit_price: boxPrice, // store as box price (consistent with creation)
+            unit_price: boxPrice,
             total_price: paidQty * boxPrice,
             pricing_unit: item.pricing_unit,
             weight_per_box: item.weight_per_box,
             pieces_per_box: item.pieces_per_box,
+            price_subtype: itemSubtype,
+            payment_type: itemPayType,
+            invoice_payment_method: itemInvMethod,
           });
           changes.push({
             منتج: item.product_name,
             كمية: item.new_quantity,
             هدية: item.gift_quantity || 0,
+            تسعير: itemSubtype,
             عملية: 'إضافة جديد',
           });
         }
