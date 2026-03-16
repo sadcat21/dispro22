@@ -17,7 +17,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLogActivity } from '@/hooks/useActivityLogs';
 import { useQueryClient } from '@tanstack/react-query';
-import { OrderWithDetails, OrderItem, Product } from '@/types/database';
+import { OrderWithDetails, OrderItem, Product, PriceSubType } from '@/types/database';
 import DeliveryWorkerSelect from './DeliveryWorkerSelect';
 import PostDeliveryConfirmDialog from './PostDeliveryConfirmDialog';
 import InvoicePaymentMethodSelect from './InvoicePaymentMethodSelect';
@@ -71,6 +71,7 @@ const ModifyOrderDialog: React.FC<ModifyOrderDialogProps> = ({
   const [deliveryDate, setDeliveryDate] = useState<Date | undefined>(order.delivery_date ? new Date(order.delivery_date) : undefined);
   const [paymentType, setPaymentType] = useState<string>(order.payment_type || 'with_invoice');
   const [invoicePaymentMethod, setInvoicePaymentMethod] = useState<InvoicePaymentMethod | null>((order.invoice_payment_method as InvoicePaymentMethod) || null);
+  const [priceSubType, setPriceSubType] = useState<PriceSubType>('gros');
 
   // Payment adjustment for delivered orders
   const [adjustPaidAmount, setAdjustPaidAmount] = useState<number>(Number((order as any).paid_amount || order.total_amount || 0));
@@ -108,6 +109,10 @@ const ModifyOrderDialog: React.FC<ModifyOrderDialogProps> = ({
       setDeliveryDate(order.delivery_date ? new Date(order.delivery_date) : undefined);
       setPaymentType(order.payment_type || 'with_invoice');
       setInvoicePaymentMethod((order.invoice_payment_method as InvoicePaymentMethod) || null);
+      // Initialize price subtype from first order item or customer default
+      const firstItemSubtype = orderItems[0] && (orderItems[0] as any).price_subtype;
+      const customerDefault = order.customer?.default_price_subtype;
+      setPriceSubType((firstItemSubtype || customerDefault || 'gros') as PriceSubType);
       setAdjustPaidAmount(Number((order as any).paid_amount || order.total_amount || 0));
       setAdjustRemainingAmount(Number((order as any).remaining_amount || 0));
     }
@@ -258,12 +263,14 @@ const ModifyOrderDialog: React.FC<ModifyOrderDialogProps> = ({
   })();
   const paymentTypeChanged = paymentType !== (order.payment_type || 'with_invoice');
   const invoiceMethodChanged = (invoicePaymentMethod || null) !== (order.invoice_payment_method || null);
+  const originalPriceSubType = ((orderItems[0] as any)?.price_subtype || order.customer?.default_price_subtype || 'gros') as string;
+  const priceSubTypeChanged = paymentType === 'without_invoice' && priceSubType !== originalPriceSubType;
   const originalPaidAmount = Number((order as any).paid_amount || order.total_amount || 0);
   const originalRemainingAmount = Number((order as any).remaining_amount || 0);
   const paymentAmountChanged = order.status === 'delivered' && (adjustPaidAmount !== originalPaidAmount || adjustRemainingAmount !== originalRemainingAmount);
 
   const hasChanges = items.some(i => i.new_quantity !== i.original_quantity) ||
-    items.some(i => !i.id && i.new_quantity > 0) || workerChanged || deliveryDateChanged || paymentTypeChanged || invoiceMethodChanged || paymentAmountChanged;
+    items.some(i => !i.id && i.new_quantity > 0) || workerChanged || deliveryDateChanged || paymentTypeChanged || invoiceMethodChanged || priceSubTypeChanged || paymentAmountChanged;
 
   const getBoxPrice = useCallback((item: ModifiedItem) => {
     const multiplier = getBoxMultiplier(item.pricing_unit, item.weight_per_box, item.pieces_per_box);
@@ -425,10 +432,20 @@ const ModifyOrderDialog: React.FC<ModifyOrderDialogProps> = ({
       }
 
       // Update payment type if changed
-      if (paymentTypeChanged || invoiceMethodChanged) {
+      if (paymentTypeChanged || invoiceMethodChanged || priceSubTypeChanged) {
         orderUpdate.payment_type = paymentType;
         orderUpdate.invoice_payment_method = paymentType === 'with_invoice' ? (invoicePaymentMethod || null) : null;
-        changes.push({ عملية: 'تغيير طريقة الدفع', نوع: paymentType, طريقة_فرعية: invoicePaymentMethod || 'بدون' });
+        changes.push({ عملية: 'تغيير طريقة الدفع', نوع: paymentType, طريقة_فرعية: invoicePaymentMethod || 'بدون', تسعير: priceSubType });
+
+        // Update price_subtype on all order items
+        const newSubtype = paymentType === 'with_invoice' ? 'invoice' : priceSubType;
+        await supabase.from('order_items')
+          .update({ 
+            price_subtype: newSubtype,
+            payment_type: paymentType,
+            invoice_payment_method: paymentType === 'with_invoice' ? (invoicePaymentMethod || null) : null,
+          })
+          .eq('order_id', order.id);
       }
 
       // Update paid/remaining amounts for delivered orders
@@ -814,6 +831,26 @@ const ModifyOrderDialog: React.FC<ModifyOrderDialogProps> = ({
                   بدون فاتورة
                 </Button>
               </div>
+              {paymentType === 'without_invoice' && (
+                <div className="grid grid-cols-3 gap-2">
+                  {([
+                    { value: 'super_gros' as PriceSubType, label: 'Super Gros', colors: { active: 'bg-indigo-600 hover:bg-indigo-700 text-white border-indigo-600 ring-2 ring-indigo-400', inactive: 'bg-indigo-600 hover:bg-indigo-700 text-white border-indigo-600' } },
+                    { value: 'gros' as PriceSubType, label: 'Gros', colors: { active: 'bg-cyan-600 hover:bg-cyan-700 text-white border-cyan-600 ring-2 ring-cyan-400', inactive: 'bg-cyan-600 hover:bg-cyan-700 text-white border-cyan-600' } },
+                    { value: 'retail' as PriceSubType, label: 'Détail', colors: { active: 'bg-rose-600 hover:bg-rose-700 text-white border-rose-600 ring-2 ring-rose-400', inactive: 'bg-rose-600 hover:bg-rose-700 text-white border-rose-600' } },
+                  ]).map((option) => (
+                    <Button
+                      key={option.value}
+                      type="button"
+                      variant={priceSubType === option.value ? 'default' : 'outline'}
+                      size="sm"
+                      className={`h-10 text-sm font-bold transition-opacity ${priceSubType === option.value ? option.colors.active : option.colors.inactive} ${priceSubType !== option.value ? 'opacity-50' : ''}`}
+                      onClick={() => setPriceSubType(option.value)}
+                    >
+                      {option.label}
+                    </Button>
+                  ))}
+                </div>
+              )}
               {paymentType === 'with_invoice' && (
                 <InvoicePaymentMethodSelect
                   value={invoicePaymentMethod}
