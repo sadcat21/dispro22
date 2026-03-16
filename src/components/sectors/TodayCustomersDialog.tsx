@@ -360,6 +360,7 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
       const { data: vtData } = await vtQuery;
       const vtResults = (vtData || []).map(v => ({
         customer_id: v.customer_id,
+        order_id: v.operation_id,
         created_at: v.created_at,
         items: null,
         total_amount: null,
@@ -369,7 +370,7 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
       // 2. Also try receipts with receipt_type='direct_sale' as secondary source
       let rQuery = supabase
         .from('receipts')
-        .select('customer_id, items, total_amount, customer_name, created_at')
+        .select('customer_id, order_id, items, total_amount, customer_name, created_at')
         .eq('receipt_type', 'direct_sale')
         .gte('created_at', todayStart);
       if (!isAdmin || hasSpecificWorker) {
