@@ -1792,11 +1792,12 @@ const OrderDetailsDialog: React.FC<{ order: any; onClose: () => void }> = ({ ord
             <div className="bg-muted/30 px-3 py-2 text-xs font-bold border-b">المنتجات</div>
             <div className="divide-y">
               {items.map((item: any, idx: number) => {
-                const productName = isDirectSale ? (item.productName || '—') : (item.product?.name || '—');
-                const quantity = isDirectSale ? item.quantity : item.quantity;
-                const unitPrice = isDirectSale ? item.unitPrice : item.unit_price;
-                const itemTotal = isDirectSale ? item.totalPrice : item.total_price;
-                const giftQty = isDirectSale ? (item.giftQuantity || 0) : (item.gift_quantity || 0);
+                const normalizedItem = normalizeSaleItem(item);
+                const productName = normalizedItem.productName;
+                const quantity = normalizedItem.quantity;
+                const unitPrice = normalizedItem.unitPrice;
+                const itemTotal = normalizedItem.totalPrice;
+                const giftQty = normalizedItem.giftQuantity;
 
                 return (
                   <div key={idx} className="px-3 py-2 space-y-0.5">
