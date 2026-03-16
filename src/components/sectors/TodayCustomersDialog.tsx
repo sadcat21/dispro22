@@ -633,6 +633,9 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
   const salesUnavailable = useMemo(() => salesVisitedNoOrder.filter(c => unavailableCustomerIds.has(c.id)), [salesVisitedNoOrder, unavailableCustomerIds]);
   const salesWithOrders = useMemo(() => salesCustomers.filter(c => orderedCustomerIds.has(c.id)), [salesCustomers, orderedCustomerIds]);
 
+  // Direct sold customer IDs (moved up for use in delivery filtering)
+  const directSoldCustomerIds = useMemo(() => new Set(todayDirectSales.map(s => s.customer_id).filter(Boolean)), [todayDirectSales]);
+
   const deliveredCustomerIds = useMemo(() => new Set(todayDeliveredOrders.map(o => o.customer_id).filter(Boolean)), [todayDeliveredOrders]);
   const customerDeliveryTimeMap = useMemo(() => {
     const map = new Map<string, string>();
@@ -713,7 +716,7 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
   const deliveryVisitedCustomerIds = useMemo(() => new Set(todayVisits.filter(v => v.operation_type === 'delivery_visit').map(v => v.customer_id).filter(Boolean)), [todayVisits]);
   const deliveryNotDone = useMemo(() => deliveryCustomers.filter(c => !deliveredCustomerIds.has(c.id) && !deliveryVisitedCustomerIds.has(c.id)), [deliveryCustomers, deliveredCustomerIds, deliveryVisitedCustomerIds]);
   const deliveryNotReceived = useMemo(() => deliveryCustomers.filter(c => deliveryVisitedCustomerIds.has(c.id) && !deliveredCustomerIds.has(c.id)), [deliveryCustomers, deliveryVisitedCustomerIds, deliveredCustomerIds]);
-  const deliveryReceived = useMemo(() => deliveryCustomers.filter(c => deliveredCustomerIds.has(c.id)), [deliveryCustomers, deliveredCustomerIds]);
+  const deliveryReceived = useMemo(() => deliveryCustomers.filter(c => deliveredCustomerIds.has(c.id) && !directSoldCustomerIds.has(c.id)), [deliveryCustomers, deliveredCustomerIds, directSoldCustomerIds]);
 
   const collectedDebtIds = useMemo(() => new Set(todayCollections.filter(c => c.action !== 'no_payment').map(c => c.debt_id)), [todayCollections]);
   const noPaymentDebtIds = useMemo(() => new Set(todayCollections.filter(c => c.action === 'no_payment').map(c => c.debt_id)), [todayCollections]);
@@ -827,15 +830,17 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
   const directSaleCustomers = useMemo(() => {
     const cashVanSectorIds = new Set(todayDeliverySectors.filter(s => (s as any).sector_type === 'cash_van').map(s => s.id));
     const preventeSectorIds = new Set(preventeDeliverySectors.map(s => s.id));
+    // Only exclude customers delivered via regular delivery (not direct sales)
+    const deliveryOnlyCustomerIds = new Set(
+      [...deliveredCustomerIds].filter(id => !directSoldCustomerIds.has(id))
+    );
     
-    const cashVanCustomers = customers.filter(c => c.sector_id && cashVanSectorIds.has(c.sector_id) && !deliveredCustomerIds.has(c.id));
+    const cashVanCustomers = customers.filter(c => c.sector_id && cashVanSectorIds.has(c.sector_id) && !deliveryOnlyCustomerIds.has(c.id));
     const preventeAllCustomers = customers.filter(c => {
       if (!c.sector_id || !preventeSectorIds.has(c.sector_id)) return false;
-      // If this sector is also in the worker's sales schedule, customers are handled by orders tab
       if (todaySalesSectorIds.has(c.sector_id)) return false;
-      if (deliveryCustomerIdsWithOrders.has(c.id) || deliveredCustomerIds.has(c.id)) return false;
+      if (deliveryCustomerIdsWithOrders.has(c.id) || deliveryOnlyCustomerIds.has(c.id)) return false;
       if (salesWorkerOrderedCustomerIds.has(c.id)) return false;
-      // Show only customers that are truly not visited by sales rep
       const repStatus = salesRepStatusMap.get(c.id);
       if (repStatus && repStatus !== 'not_visited') return false;
       return true;
@@ -844,10 +849,9 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
     const combined = new Map<string, typeof customers[0]>();
     [...cashVanCustomers, ...preventeAllCustomers].forEach(c => combined.set(c.id, c));
     return Array.from(combined.values());
-  }, [todayDeliverySectors, preventeDeliverySectors, customers, deliveredCustomerIds, deliveryCustomerIdsWithOrders, salesWorkerOrderedCustomerIds, salesRepStatusMap, todaySalesSectorIds]);
+  }, [todayDeliverySectors, preventeDeliverySectors, customers, deliveredCustomerIds, directSoldCustomerIds, deliveryCustomerIdsWithOrders, salesWorkerOrderedCustomerIds, salesRepStatusMap, todaySalesSectorIds]);
 
-  // Direct sale sub-categorization
-  const directSoldCustomerIds = useMemo(() => new Set(todayDirectSales.map(s => s.customer_id).filter(Boolean)), [todayDirectSales]);
+  // Direct sale sub-categorization (directSoldCustomerIds declared above near delivery section)
   const directNoSaleCustomerIds = useMemo(() => new Set(todayDirectSaleVisits.map(v => v.customer_id).filter(Boolean)), [todayDirectSaleVisits]);
   const directSalePending = useMemo(() => directSaleCustomers.filter(c => !directSoldCustomerIds.has(c.id) && !directNoSaleCustomerIds.has(c.id)), [directSaleCustomers, directSoldCustomerIds, directNoSaleCustomerIds]);
   const directSaleSold = useMemo(() => directSaleCustomers.filter(c => directSoldCustomerIds.has(c.id)), [directSaleCustomers, directSoldCustomerIds]);
