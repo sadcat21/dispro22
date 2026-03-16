@@ -395,8 +395,8 @@ const ModifyOrderDialog: React.FC<ModifyOrderDialogProps> = ({
 
       const newTotal = updatedItems?.reduce((sum, i: any) => {
         const paidQty = Math.max(0, Number(i.quantity) - Number(i.gift_quantity || 0));
-        const mult = getBoxMultiplier(i.pricing_unit || 'box', Number(i.weight_per_box || 1), Number(i.pieces_per_box || 1));
-        return sum + (paidQty * Number(i.unit_price || 0) * mult);
+        // unit_price in DB is already the box price, no need to multiply again
+        return sum + (paidQty * Number(i.unit_price || 0));
       }, 0) || 0;
 
       const orderUpdate: Record<string, any> = {};
