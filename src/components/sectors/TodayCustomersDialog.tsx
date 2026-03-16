@@ -849,8 +849,7 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
     return Array.from(combined.values());
   }, [todayDeliverySectors, preventeDeliverySectors, customers, deliveredCustomerIds, deliveryCustomerIdsWithOrders, salesWorkerOrderedCustomerIds, salesRepStatusMap, todaySalesSectorIds]);
 
-  // Direct sale sub-categorization
-  const directSoldCustomerIds = useMemo(() => new Set(todayDirectSales.map(s => s.customer_id).filter(Boolean)), [todayDirectSales]);
+  // Direct sale sub-categorization (directSoldCustomerIds declared above near delivery section)
   const directNoSaleCustomerIds = useMemo(() => new Set(todayDirectSaleVisits.map(v => v.customer_id).filter(Boolean)), [todayDirectSaleVisits]);
   const directSalePending = useMemo(() => directSaleCustomers.filter(c => !directSoldCustomerIds.has(c.id) && !directNoSaleCustomerIds.has(c.id)), [directSaleCustomers, directSoldCustomerIds, directNoSaleCustomerIds]);
   const directSaleSold = useMemo(() => directSaleCustomers.filter(c => directSoldCustomerIds.has(c.id)), [directSaleCustomers, directSoldCustomerIds]);
