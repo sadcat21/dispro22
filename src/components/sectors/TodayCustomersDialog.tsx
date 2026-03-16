@@ -60,6 +60,10 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
   const { trackVisit } = useTrackVisit();
   const { data: locationThreshold } = useLocationThreshold();
   const canBypassLocation = useHasPermission('bypass_location_check');
+  const [sortByDistance, setSortByDistance] = useState(true);
+
+  // Real-time worker GPS position for distance sorting/badges
+  const { position: workerPosition } = useWorkerGeoPosition(open && sortByDistance);
 
   // Admin worker picker state
   const [selectedAdminWorkerId, setSelectedAdminWorkerId] = useState<string | null>(targetWorkerId || null);
