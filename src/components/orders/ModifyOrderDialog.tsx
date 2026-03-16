@@ -77,19 +77,29 @@ const ModifyOrderDialog: React.FC<ModifyOrderDialogProps> = ({
   // Initialize items from orderItems
   useEffect(() => {
     if (open && orderItems.length > 0) {
-      setItems(orderItems.map(item => ({
-        id: item.id,
-        product_id: item.product_id,
-        product_name: item.product?.name || '',
-        original_quantity: item.quantity,
-        new_quantity: item.quantity,
-        unit_price: Number(item.unit_price || 0),
-        gift_quantity: Number(item.gift_quantity || 0),
-        original_gift_quantity: Number(item.gift_quantity || 0),
-        pieces_per_box: Number((item as any).pieces_per_box || item.product?.pieces_per_box || 1),
-        pricing_unit: (item as any).pricing_unit || item.product?.pricing_unit || 'box',
-        weight_per_box: Number((item as any).weight_per_box || item.product?.weight_per_box || 1),
-      })));
+      setItems(orderItems.map(item => {
+        const piecesPerBox = Number((item as any).pieces_per_box || item.product?.pieces_per_box || 1);
+        const pricingUnit = (item as any).pricing_unit || item.product?.pricing_unit || 'box';
+        const weightPerBox = Number((item as any).weight_per_box || item.product?.weight_per_box || 1);
+        // unit_price in order_items is already the BOX price (pre-multiplied).
+        // Reverse the multiplier so getBoxPrice() doesn't double-multiply.
+        const storedUnitPrice = Number(item.unit_price || 0);
+        const multiplier = getBoxMultiplier(pricingUnit, weightPerBox, piecesPerBox);
+        const rawUnitPrice = multiplier > 0 ? storedUnitPrice / multiplier : storedUnitPrice;
+        return {
+          id: item.id,
+          product_id: item.product_id,
+          product_name: item.product?.name || '',
+          original_quantity: item.quantity,
+          new_quantity: item.quantity,
+          unit_price: rawUnitPrice,
+          gift_quantity: Number(item.gift_quantity || 0),
+          original_gift_quantity: Number(item.gift_quantity || 0),
+          pieces_per_box: piecesPerBox,
+          pricing_unit: pricingUnit,
+          weight_per_box: weightPerBox,
+        };
+      }));
       setAssignedWorkerId(order.assigned_worker_id || '');
       setDeliveryDate(order.delivery_date ? new Date(order.delivery_date) : undefined);
       setPaymentType(order.payment_type || 'with_invoice');
