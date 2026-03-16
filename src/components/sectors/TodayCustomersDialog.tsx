@@ -1828,7 +1828,7 @@ const OrderDetailsDialog: React.FC<{ order: any; onClose: () => void }> = ({ ord
           )}
 
           {/* Edit & Print Buttons */}
-          {order.id && !isDirectSale && (
+          {order.id && (
             <Button className="w-full gap-2" variant="default" onClick={() => setShowModifyDialog(true)}>
               <Pencil className="w-4 h-4" />
               تعديل الطلبية
