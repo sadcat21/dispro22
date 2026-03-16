@@ -228,7 +228,16 @@ const ModifyOrderDialog: React.FC<ModifyOrderDialogProps> = ({
     if (!product) return;
 
     const initialPaidQuantity = 1;
-    const unitPrice = Number(product.price_gros || product.price_invoice || 0);
+    let unitPrice: number;
+    if (paymentType === 'with_invoice') {
+      unitPrice = Number(product.price_invoice || 0);
+    } else {
+      switch (priceSubType) {
+        case 'super_gros': unitPrice = Number(product.price_super_gros || product.price_no_invoice || 0); break;
+        case 'retail': unitPrice = Number(product.price_retail || 0); break;
+        default: unitPrice = Number(product.price_gros || product.price_no_invoice || 0); break;
+      }
+    }
     const piecesPerBox = Number(product.pieces_per_box || 1);
     const pricingUnit = product.pricing_unit || 'box';
     const weightPerBox = Number(product.weight_per_box || 1);
