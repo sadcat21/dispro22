@@ -1046,34 +1046,38 @@ const LoadStock: React.FC = () => {
   };
 
   const handleEmptyTruckConfirm = async () => {
-    if (!branchId || !currentWorkerId) return;
+    if (!branchId || !currentWorkerId || !selectedWorker) return;
     setIsEmptying(true);
     setShowEmptyDialog(false);
     try {
-      const hasSurplus = emptyTruckItems.some(item => item.verificationStatus === 'surplus');
-      const hasDeficitItems = emptyTruckItems.some(item => item.verificationStatus === 'deficit');
-      const discrepancyNotes = hasSurplus ? ' (مع فائض)' : hasDeficitItems ? ' (مع عجز)' : '';
+      const itemsToReturn = emptyTruckItems.filter(item => item.returnQty > 0);
+      if (itemsToReturn.length === 0) {
+        toast.error('لم يتم تحديد أي كمية للإرجاع');
+        return;
+      }
 
-      // Build unloading details JSONB
+      const isFullUnload = emptyTruckItems.every(item => {
+        const returnPieces = customToTotalPieces(item.returnQty, item.piecesPerBox);
+        const systemPieces = customToTotalPieces(item.quantity, item.piecesPerBox);
+        return returnPieces === systemPieces;
+      });
+
       const unloadingDetails = emptyTruckItems.map(item => ({
         product_id: item.product_id,
         product_name: item.product_name,
         system_qty: item.quantity,
-        actual_qty: item.actualQty,
-        surplus_qty: item.verificationStatus === 'surplus' ? item.surplusQty : 0,
-        deficit_qty: item.verificationStatus === 'deficit' ? item.quantity - item.actualQty : 0,
-        status: item.verificationStatus,
+        return_qty: item.returnQty,
+        remaining_qty: subtractCustomQty(item.quantity, item.returnQty, item.piecesPerBox),
       }));
 
-      // Create an unloading session record
       const { data: unloadSession, error: sessionError } = await supabase
         .from('loading_sessions')
         .insert({
-          worker_id: selectedWorker!,
-          manager_id: currentWorkerId!,
+          worker_id: selectedWorker,
+          manager_id: currentWorkerId,
           branch_id: branchId,
           status: 'unloaded',
-          notes: `تفريغ الشاحنة${discrepancyNotes}`,
+          notes: isFullUnload ? 'تفريغ كلي للشاحنة' : 'تفريغ جزئي للشاحنة',
           completed_at: new Date().toISOString(),
           unloading_details: unloadingDetails,
         } as any)
@@ -1082,71 +1086,47 @@ const LoadStock: React.FC = () => {
 
       if (sessionError) throw sessionError;
 
-      for (const item of emptyTruckItems) {
-        const actualReturn = item.actualQty;
-        if (actualReturn <= 0 && item.verificationStatus !== 'deficit') continue;
-
+      for (const item of itemsToReturn) {
         const ppb = item.piecesPerBox;
-        const surplusQty = item.verificationStatus === 'surplus' ? item.surplusQty : 0;
-        const deficitQty = item.verificationStatus === 'deficit' 
-          ? subtractCustomQty(item.quantity, item.actualQty, ppb) 
-          : 0;
+        const returnQty = item.returnQty;
+        const newWorkerQty = subtractCustomQty(item.quantity, returnQty, ppb);
 
-        // Save unloading session item
         await supabase.from('loading_session_items').insert({
           session_id: unloadSession.id,
           product_id: item.product_id,
-          quantity: Math.min(actualReturn, item.quantity), // returnQty capped at system balance
+          quantity: returnQty,
           gift_quantity: 0,
-          surplus_quantity: surplusQty,
+          surplus_quantity: 0,
           previous_quantity: item.quantity,
-          notes: surplusQty > 0 ? `فائض: ${fmtQty(surplusQty)}` : deficitQty > 0 ? `عجز: ${fmtQty(deficitQty)}` : null,
+          notes: `تفريغ ${fmtQty(returnQty)} من ${fmtQty(item.quantity)} - متبقي: ${fmtQty(newWorkerQty)}`,
         });
 
-        // Record discrepancies
-        if (item.verificationStatus === 'surplus' && surplusQty > 0) {
-          await createDiscrepancy.mutateAsync({
-            worker_id: selectedWorker!,
-            product_id: item.product_id,
-            branch_id: branchId,
-            discrepancy_type: 'surplus',
-            quantity: surplusQty,
-            source_session_id: unloadSession.id,
-            notes: `فائض أثناء التفريغ - ${item.product_name}`,
-          });
-        }
-        if (item.verificationStatus === 'deficit' && deficitQty > 0) {
-          await createDiscrepancy.mutateAsync({
-            worker_id: selectedWorker!,
-            product_id: item.product_id,
-            branch_id: branchId,
-            discrepancy_type: 'deficit',
-            quantity: deficitQty,
-            source_session_id: unloadSession.id,
-            notes: `عجز أثناء التفريغ - ${item.product_name}`,
-          });
-        }
+        await supabase.from('worker_stock').update({ quantity: newWorkerQty }).eq('id', item.id);
 
-        // Deduct from worker stock (set to 0 since everything is returned/accounted for)
-        await supabase.from('worker_stock').update({ quantity: 0 }).eq('id', item.id);
-        
-        // Add actual return to warehouse (including surplus)
-        const totalToWarehouse = actualReturn;
         const existingWarehouse = warehouseStock.find(s => s.product_id === item.product_id);
         if (existingWarehouse) {
-          const newWhQty = addCustomQty(existingWarehouse.quantity, totalToWarehouse, ppb);
+          const newWhQty = addCustomQty(existingWarehouse.quantity, returnQty, ppb);
           await supabase.from('warehouse_stock').update({ quantity: newWhQty }).eq('id', existingWarehouse.id);
-        } else if (totalToWarehouse > 0) {
-          await supabase.from('warehouse_stock').insert({ branch_id: branchId, product_id: item.product_id, quantity: totalToWarehouse });
+        } else {
+          await supabase.from('warehouse_stock').insert({
+            branch_id: branchId,
+            product_id: item.product_id,
+            quantity: returnQty,
+          });
         }
-        
-        const statusNote = item.verificationStatus === 'surplus' ? ` | فائض: ${fmtQty(surplusQty)}` : item.verificationStatus === 'deficit' ? ` | عجز: ${fmtQty(deficitQty)}` : '';
+
         await supabase.from('stock_movements').insert({
-          product_id: item.product_id, branch_id: branchId, quantity: totalToWarehouse,
-          movement_type: 'return', status: 'approved', created_by: currentWorkerId,
-          worker_id: selectedWorker, notes: `تفريغ الشاحنة - ${item.product_name}${statusNote}`,
+          product_id: item.product_id,
+          branch_id: branchId,
+          quantity: returnQty,
+          movement_type: 'return',
+          status: 'approved',
+          created_by: currentWorkerId,
+          worker_id: selectedWorker,
+          notes: `تفريغ ${fmtQty(returnQty)} من ${item.product_name} (متبقي في الشاحنة ${fmtQty(newWorkerQty)})`,
         });
       }
+
       setSessionItems([]);
       setActiveSessionId(null);
       await refresh();
@@ -1158,8 +1138,11 @@ const LoadStock: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['stock-discrepancies'] });
       queryClient.invalidateQueries({ queryKey: ['stock-discrepancies-pending'] });
       toast.success(t('stock.empty_truck_success'));
-    } catch (error: any) { toast.error(error.message); }
-    finally { setIsEmptying(false); }
+    } catch (error: any) {
+      toast.error(error.message);
+    } finally {
+      setIsEmptying(false);
+    }
   };
 
   // Bottom tab state for action buttons
