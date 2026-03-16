@@ -342,20 +342,51 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
     enabled: !!effectiveWorkerId && open,
   });
 
-  // Today's direct sales (receipts of type direct_sale)
+  // Today's direct sales — detect via visit_tracking (operation_type='direct_sale') since
+  // the DirectSaleDialog tracks each sale as a 'direct_sale' visit, which is the most reliable marker.
+  // Also fetch from receipts as a secondary source.
   const { data: todayDirectSales = [] } = useQuery({
     queryKey: ['today-direct-sales-dialog', effectiveWorkerId, todayStart],
     queryFn: async () => {
-      let query = supabase
+      // 1. Get direct-sale visit tracking entries (most reliable marker)
+      let vtQuery = supabase
+        .from('visit_tracking')
+        .select('customer_id, created_at, operation_id')
+        .eq('operation_type', 'direct_sale')
+        .gte('created_at', todayStart);
+      if (!isAdmin || hasSpecificWorker) {
+        vtQuery = vtQuery.eq('worker_id', effectiveWorkerId!);
+      }
+      const { data: vtData } = await vtQuery;
+      const vtResults = (vtData || []).map(v => ({
+        customer_id: v.customer_id,
+        created_at: v.created_at,
+        items: null,
+        total_amount: null,
+        customer_name: null,
+      }));
+
+      // 2. Also try receipts with receipt_type='direct_sale' as secondary source
+      let rQuery = supabase
         .from('receipts')
         .select('customer_id, items, total_amount, customer_name, created_at')
         .eq('receipt_type', 'direct_sale')
         .gte('created_at', todayStart);
       if (!isAdmin || hasSpecificWorker) {
-        query = query.eq('worker_id', effectiveWorkerId!);
+        rQuery = rQuery.eq('worker_id', effectiveWorkerId!);
       }
-      const { data } = await query;
-      return data || [];
+      const { data: rData } = await rQuery;
+
+      // Merge: prefer receipts data, then visit tracking for any missing customers
+      const seen = new Set<string>();
+      const merged: typeof vtResults = [];
+      (rData || []).forEach(r => {
+        if (r.customer_id) { seen.add(r.customer_id); merged.push(r as any); }
+      });
+      vtResults.forEach(v => {
+        if (v.customer_id && !seen.has(v.customer_id)) { seen.add(v.customer_id); merged.push(v); }
+      });
+      return merged;
     },
     enabled: !!effectiveWorkerId && open,
     refetchInterval: 10000,
