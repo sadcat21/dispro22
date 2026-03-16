@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { MapPin, Truck, ShoppingCart, Landmark, User, Phone, Eye, EyeOff, CheckCircle, PackageX, PackageCheck, Navigation, Loader2, MapPinOff, Clock, Check, X, DoorClosed, UserX, ShoppingBag, Printer, XCircle, Search, BanknoteIcon } from 'lucide-react';
+import { MapPin, Truck, ShoppingCart, Landmark, User, Phone, Eye, EyeOff, CheckCircle, PackageX, PackageCheck, Navigation, Loader2, MapPinOff, Clock, Check, X, DoorClosed, UserX, ShoppingBag, Printer, XCircle, Search, BanknoteIcon, Pencil } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
@@ -28,6 +28,8 @@ import VisitNoPaymentDialog from '@/components/debts/VisitNoPaymentDialog';
 import CollectDebtDialog from '@/components/debts/CollectDebtDialog';
 import DirectSaleDialog from '@/components/warehouse/DirectSaleDialog';
 import ReceiptDialog from '@/components/printing/ReceiptDialog';
+import ModifyOrderDialog from '@/components/orders/ModifyOrderDialog';
+import { useOrderItems } from '@/hooks/useOrders';
 import { ReceiptItem } from '@/types/receipt';
 
 const DAY_NAMES: Record<string, string> = {
@@ -1529,6 +1531,8 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
 const OrderDetailsDialog: React.FC<{ order: any; onClose: () => void }> = ({ order, onClose }) => {
   const { user } = useAuth();
   const [showReceiptDialog, setShowReceiptDialog] = useState(false);
+  const [showModifyDialog, setShowModifyDialog] = useState(false);
+  const { data: modifyOrderItems } = useOrderItems(showModifyDialog ? order.id : null);
   const isDirectSale = order._isDirectSale;
   const items = isDirectSale ? (order.items || []) : (order.items || []);
   const customer = isDirectSale ? order.customer : order.customer;
@@ -1645,7 +1649,13 @@ const OrderDetailsDialog: React.FC<{ order: any; onClose: () => void }> = ({ ord
             </div>
           )}
 
-          {/* Print Button */}
+          {/* Edit & Print Buttons */}
+          {order.id && !isDirectSale && (
+            <Button className="w-full gap-2" variant="default" onClick={() => setShowModifyDialog(true)}>
+              <Pencil className="w-4 h-4" />
+              تعديل الطلبية
+            </Button>
+          )}
           <Button className="w-full gap-2" variant="outline" onClick={handlePrint}>
             <Printer className="w-4 h-4" />
             طباعة الوصل
@@ -1659,6 +1669,15 @@ const OrderDetailsDialog: React.FC<{ order: any; onClose: () => void }> = ({ ord
       onOpenChange={setShowReceiptDialog}
       receiptData={receiptData}
     />
+
+    {showModifyDialog && modifyOrderItems && (
+      <ModifyOrderDialog
+        open={showModifyDialog}
+        onOpenChange={(o) => { setShowModifyDialog(o); if (!o) onClose(); }}
+        order={order}
+        orderItems={modifyOrderItems}
+      />
+    )}
     </>
   );
 };
