@@ -192,7 +192,7 @@ const LoadStock: React.FC = () => {
 
   const { data: stockAlerts = [] } = useStockAlerts();
   const { data: suggestions = [], isLoading: suggestionsLoading } = useWorkerLoadSuggestions(selectedWorker || null);
-  const createDiscrepancy = useCreateDiscrepancy();
+  
   const {
     sessions, createSession, addSessionItem, completeSession, deleteSession,
     deleteSessionItem, sessionItemsQuery, refetch: refetchSessions,
