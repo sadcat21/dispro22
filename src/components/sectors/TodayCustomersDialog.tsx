@@ -119,6 +119,7 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
   // Admin worker picker state
   const [selectedAdminWorkerId, setSelectedAdminWorkerId] = useState<string | null>(targetWorkerId || null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showBulkPostpone, setShowBulkPostpone] = useState(false);
 
   // Fetch workers list for admin picker
   const { data: workersList = [] } = useQuery({
