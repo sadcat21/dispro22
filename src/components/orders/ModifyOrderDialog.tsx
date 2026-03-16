@@ -43,6 +43,7 @@ interface ModifiedItem {
   pieces_per_box: number;
   pricing_unit: string; // 'box' | 'kg' | 'unit'
   weight_per_box: number;
+  item_subtype?: string; // per-item override: 'super_gros' | 'gros' | 'retail' | 'invoice'
 }
 
 const getBoxMultiplier = (pricingUnit: string, weightPerBox: number, piecesPerBox: number): number => {
