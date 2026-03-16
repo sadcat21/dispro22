@@ -887,7 +887,15 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
   // Direct sale sub-categorization (directSoldCustomerIds declared above near delivery section)
   const directNoSaleCustomerIds = useMemo(() => new Set(todayDirectSaleVisits.map(v => v.customer_id).filter(Boolean)), [todayDirectSaleVisits]);
   const directSalePending = useMemo(() => directSaleCustomers.filter(c => !directSoldCustomerIds.has(c.id) && !directNoSaleCustomerIds.has(c.id)), [directSaleCustomers, directSoldCustomerIds, directNoSaleCustomerIds]);
-  const directSaleSold = useMemo(() => directSaleCustomers.filter(c => directSoldCustomerIds.has(c.id)), [directSaleCustomers, directSoldCustomerIds]);
+  // directSaleSold: include ALL customers who were direct-sold today, even if they belong to a sales sector
+  // (they may have been filtered out of directSaleCustomers, but since the sale already happened they must appear)
+  const directSaleSold = useMemo(() => {
+    const fromList = directSaleCustomers.filter(c => directSoldCustomerIds.has(c.id));
+    const fromListIds = new Set(fromList.map(c => c.id));
+    // Add any direct-sold customers not already in directSaleCustomers
+    const extra = customers.filter(c => directSoldCustomerIds.has(c.id) && !fromListIds.has(c.id));
+    return [...fromList, ...extra];
+  }, [directSaleCustomers, directSoldCustomerIds, customers]);
   const directSaleNoSale = useMemo(() => directSaleCustomers.filter(c => directNoSaleCustomerIds.has(c.id) && !directSoldCustomerIds.has(c.id)), [directSaleCustomers, directNoSaleCustomerIds, directSoldCustomerIds]);
 
   // Location check
