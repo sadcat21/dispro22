@@ -1254,7 +1254,7 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
             </ScrollArea>
           </div>
 
-          <div className="px-3 pt-2 pb-1 shrink-0">
+          <div className="px-3 pt-2 pb-1 shrink-0 space-y-1.5">
             <div className="relative">
               <Search className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
               <Input
@@ -1264,6 +1264,13 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
                 className="h-8 text-xs pr-8"
                 dir="rtl"
               />
+            </div>
+            <div className="flex items-center justify-between">
+              <label className="flex items-center gap-1.5 text-[11px] text-muted-foreground cursor-pointer">
+                <MapPin className="w-3 h-3" />
+                ترتيب حسب المسافة
+              </label>
+              <Switch checked={sortByDistance} onCheckedChange={setSortByDistance} />
             </div>
           </div>
 
