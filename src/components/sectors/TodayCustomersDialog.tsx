@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
-import { MapPin, Truck, ShoppingCart, Landmark, User, Phone, Eye, EyeOff, CheckCircle, PackageX, PackageCheck, Navigation, Loader2, MapPinOff, Clock, Check, X, DoorClosed, UserX, ShoppingBag, Printer, XCircle, Search, BanknoteIcon, Pencil } from 'lucide-react';
+import { MapPin, Truck, ShoppingCart, Landmark, User, Phone, Eye, EyeOff, CheckCircle, PackageX, PackageCheck, Navigation, Loader2, MapPinOff, Clock, Check, X, DoorClosed, UserX, ShoppingBag, Printer, XCircle, Search, BanknoteIcon, Pencil, CalendarClock } from 'lucide-react';
 import { useWorkerGeoPosition } from '@/hooks/useWorkerGeoPosition';
 import { reverseGeocode } from '@/utils/geoUtils';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -24,7 +24,7 @@ import { calculateDistance } from '@/utils/geoUtils';
 import { OrderWithDetails } from '@/types/database';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { format } from 'date-fns';
+import { format, addDays, isFriday } from 'date-fns';
 import DeliverySaleDialog from '@/components/orders/DeliverySaleDialog';
 import CreateOrderDialog from '@/components/orders/CreateOrderDialog';
 import VisitNoPaymentDialog from '@/components/debts/VisitNoPaymentDialog';
@@ -65,6 +65,22 @@ const normalizeSaleItem = (item: any) => ({
   pricingUnit: item?.pricing_unit ?? item?.pricingUnit ?? item?.product?.pricing_unit ?? undefined,
   weightPerBox: toNullableNumber(item?.weight_per_box ?? item?.weightPerBox ?? item?.product?.weight_per_box),
 });
+// Generate next work days (Sat-Thu, skip Friday) starting from tomorrow
+const getNextWorkDays = (): { date: Date; label: string }[] => {
+  const days: { date: Date; label: string }[] = [];
+  const dayLabels = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+  let current = addDays(new Date(), 1);
+  while (days.length < 6) {
+    if (!isFriday(current)) {
+      days.push({
+        date: new Date(current),
+        label: `${dayLabels[current.getDay()]} ${format(current, 'dd/MM')}`,
+      });
+    }
+    current = addDays(current, 1);
+  }
+  return days;
+};
 
 interface TodayCustomersDialogProps {
   open: boolean;
@@ -77,6 +93,7 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
   open, onOpenChange, targetWorkerId, targetWorkerName,
 }) => {
   const { workerId: authWorkerId, activeBranch, role, user } = useAuth();
+  const queryClient = useQueryClient();
   const navigate = useNavigate();
   const isAdmin = role === 'admin' || role === 'branch_admin' || role === 'supervisor';
   const todayName = JS_DAY_TO_NAME[new Date().getDay()] || '';
@@ -103,6 +120,7 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
   // Admin worker picker state
   const [selectedAdminWorkerId, setSelectedAdminWorkerId] = useState<string | null>(targetWorkerId || null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showBulkPostpone, setShowBulkPostpone] = useState(false);
 
   // Fetch workers list for admin picker
   const { data: workersList = [] } = useQuery({
@@ -1281,6 +1299,31 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
     } catch { toast.error('فشل في تسجيل الحالة'); }
   };
 
+  const handleBulkPostpone = async (newDate: Date) => {
+    const customerIds = deliveryNotDone.map(c => c.id);
+    if (customerIds.length === 0) { toast.info('لا توجد طلبيات للتأجيل'); return; }
+    const dateStr = format(newDate, 'yyyy-MM-dd');
+    try {
+      // Find all orders for these customers that are not yet delivered
+      const orderIds = assignedOrders
+        .filter(o => customerIds.includes(o.customer_id) && ['pending', 'assigned', 'in_progress'].includes(o.status))
+        .map(o => o.id);
+      if (orderIds.length === 0) { toast.info('لا توجد طلبيات للتأجيل'); return; }
+      const { error } = await supabase
+        .from('orders')
+        .update({ delivery_date: dateStr })
+        .in('id', orderIds);
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+      queryClient.invalidateQueries({ queryKey: ['assigned-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['today-cust-assigned-orders-full'] });
+      toast.success(`تم تأجيل ${orderIds.length} طلبية إلى ${format(newDate, 'dd/MM/yyyy')}`);
+      setShowBulkPostpone(false);
+    } catch {
+      toast.error('فشل في تأجيل الطلبيات');
+    }
+  };
+
   const handleDirectSaleDebtRefused = async (customer: any) => {
     const allowed = await checkLocationBeforeAction(customer);
     if (!allowed) return;
@@ -1490,6 +1533,19 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
                 </TabsList>
 
                 <TabsContent value="not-delivered" className="m-0 flex-1 min-h-0" style={{ overflow: 'auto', maxHeight: '55vh' }}>
+                  {deliveryNotDone.length > 0 && (
+                    <div className="p-2 border-b">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full gap-2 text-amber-700 border-amber-300 hover:bg-amber-50"
+                        onClick={() => setShowBulkPostpone(true)}
+                      >
+                        <CalendarClock className="w-4 h-4" />
+                        تأجيل جماعي ({deliveryNotDone.length} عميل)
+                      </Button>
+                    </div>
+                  )}
                   <CustomerList customers={deliveryNotDone} emptyMessage="تم توصيل جميع العملاء ✓" onCustomerClick={handleDeliveryCustomerClick} onVisitWithoutOrder={handleDeliveryVisitWithoutDelivery} onClosed={handleCustomerClosed} onUnavailable={handleCustomerUnavailable} onDebtRefused={handleDeliveryDebtRefused} showVisitButton visitButtonLabel="بدون تسليم" showActionButtons checkingLocationFor={checkingLocationFor} loadingFor={loadingDeliveryFor} searchQuery={searchQuery} sectors={sectors} allZones={allZones} workerPosition={workerPosition} sortByDistance={sortByDistance} />
                 </TabsContent>
                 <TabsContent value="not-received" className="m-0 flex-1 min-h-0" style={{ overflow: 'auto', maxHeight: '55vh' }}>
@@ -1706,6 +1762,30 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
           receiptData={printReceiptData}
         />
       )}
+      {/* Bulk Postpone Dialog */}
+      <Dialog open={showBulkPostpone} onOpenChange={setShowBulkPostpone}>
+        <DialogContent className="max-w-xs" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CalendarClock className="w-5 h-5 text-amber-600" />
+              تأجيل جماعي ({deliveryNotDone.length} عميل)
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">اختر يوم التوصيل الجديد لجميع الطلبيات:</p>
+          <div className="grid grid-cols-2 gap-2">
+            {getNextWorkDays().map(({ date, label }) => (
+              <Button
+                key={date.toISOString()}
+                variant="outline"
+                className="h-12 text-sm font-bold hover:bg-amber-50 hover:border-amber-400 hover:text-amber-700"
+                onClick={() => handleBulkPostpone(date)}
+              >
+                {label}
+              </Button>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 };
