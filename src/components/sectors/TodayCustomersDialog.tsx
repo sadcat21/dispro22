@@ -1726,15 +1726,6 @@ const OrderDetailsDialog: React.FC<{ order: any; onClose: () => void }> = ({ ord
   const remainingAmount = Number(order.remaining_amount ?? order.remainingAmount ?? (isOrderRequest ? totalAmount : 0));
 
   const handlePrint = () => {
-    const receiptItems: ReceiptItem[] = items.map((item: any) => ({
-      productId: isDirectSale ? (item.product_id || '') : (item.product_id || item.product?.id || ''),
-      productName: isDirectSale ? (item.productName || '—') : (item.product?.name || '—'),
-      quantity: item.quantity || 0,
-      unitPrice: isDirectSale ? (item.unitPrice || 0) : (item.unit_price || 0),
-      totalPrice: isDirectSale ? (item.totalPrice || 0) : (item.total_price || 0),
-      giftQuantity: isDirectSale ? (item.giftQuantity || 0) : (item.gift_quantity || 0),
-    }));
-
     setShowReceiptDialog(true);
   };
 
