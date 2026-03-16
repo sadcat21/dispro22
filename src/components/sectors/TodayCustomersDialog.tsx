@@ -633,6 +633,9 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
   const salesUnavailable = useMemo(() => salesVisitedNoOrder.filter(c => unavailableCustomerIds.has(c.id)), [salesVisitedNoOrder, unavailableCustomerIds]);
   const salesWithOrders = useMemo(() => salesCustomers.filter(c => orderedCustomerIds.has(c.id)), [salesCustomers, orderedCustomerIds]);
 
+  // Direct sold customer IDs (moved up for use in delivery filtering)
+  const directSoldCustomerIds = useMemo(() => new Set(todayDirectSales.map(s => s.customer_id).filter(Boolean)), [todayDirectSales]);
+
   const deliveredCustomerIds = useMemo(() => new Set(todayDeliveredOrders.map(o => o.customer_id).filter(Boolean)), [todayDeliveredOrders]);
   const customerDeliveryTimeMap = useMemo(() => {
     const map = new Map<string, string>();
