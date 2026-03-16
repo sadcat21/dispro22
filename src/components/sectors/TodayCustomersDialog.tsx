@@ -830,15 +830,17 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
   const directSaleCustomers = useMemo(() => {
     const cashVanSectorIds = new Set(todayDeliverySectors.filter(s => (s as any).sector_type === 'cash_van').map(s => s.id));
     const preventeSectorIds = new Set(preventeDeliverySectors.map(s => s.id));
+    // Only exclude customers delivered via regular delivery (not direct sales)
+    const deliveryOnlyCustomerIds = new Set(
+      [...deliveredCustomerIds].filter(id => !directSoldCustomerIds.has(id))
+    );
     
-    const cashVanCustomers = customers.filter(c => c.sector_id && cashVanSectorIds.has(c.sector_id) && !deliveredCustomerIds.has(c.id));
+    const cashVanCustomers = customers.filter(c => c.sector_id && cashVanSectorIds.has(c.sector_id) && !deliveryOnlyCustomerIds.has(c.id));
     const preventeAllCustomers = customers.filter(c => {
       if (!c.sector_id || !preventeSectorIds.has(c.sector_id)) return false;
-      // If this sector is also in the worker's sales schedule, customers are handled by orders tab
       if (todaySalesSectorIds.has(c.sector_id)) return false;
-      if (deliveryCustomerIdsWithOrders.has(c.id) || deliveredCustomerIds.has(c.id)) return false;
+      if (deliveryCustomerIdsWithOrders.has(c.id) || deliveryOnlyCustomerIds.has(c.id)) return false;
       if (salesWorkerOrderedCustomerIds.has(c.id)) return false;
-      // Show only customers that are truly not visited by sales rep
       const repStatus = salesRepStatusMap.get(c.id);
       if (repStatus && repStatus !== 'not_visited') return false;
       return true;
@@ -847,7 +849,7 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
     const combined = new Map<string, typeof customers[0]>();
     [...cashVanCustomers, ...preventeAllCustomers].forEach(c => combined.set(c.id, c));
     return Array.from(combined.values());
-  }, [todayDeliverySectors, preventeDeliverySectors, customers, deliveredCustomerIds, deliveryCustomerIdsWithOrders, salesWorkerOrderedCustomerIds, salesRepStatusMap, todaySalesSectorIds]);
+  }, [todayDeliverySectors, preventeDeliverySectors, customers, deliveredCustomerIds, directSoldCustomerIds, deliveryCustomerIdsWithOrders, salesWorkerOrderedCustomerIds, salesRepStatusMap, todaySalesSectorIds]);
 
   // Direct sale sub-categorization (directSoldCustomerIds declared above near delivery section)
   const directNoSaleCustomerIds = useMemo(() => new Set(todayDirectSaleVisits.map(v => v.customer_id).filter(Boolean)), [todayDirectSaleVisits]);
