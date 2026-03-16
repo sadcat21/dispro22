@@ -1649,7 +1649,13 @@ const OrderDetailsDialog: React.FC<{ order: any; onClose: () => void }> = ({ ord
             </div>
           )}
 
-          {/* Print Button */}
+          {/* Edit & Print Buttons */}
+          {order.id && !isDirectSale && (
+            <Button className="w-full gap-2" variant="default" onClick={() => setShowModifyDialog(true)}>
+              <Pencil className="w-4 h-4" />
+              تعديل الطلبية
+            </Button>
+          )}
           <Button className="w-full gap-2" variant="outline" onClick={handlePrint}>
             <Printer className="w-4 h-4" />
             طباعة الوصل
