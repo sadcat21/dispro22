@@ -1739,14 +1739,17 @@ const OrderDetailsDialog: React.FC<{ order: any; onClose: () => void }> = ({ ord
     workerName: user?.full_name || '',
     workerPhone: null,
     branchId: user?.branch_id || null,
-    items: items.map((item: any) => ({
-      productId: isDirectSale ? (item.product_id || '') : (item.product_id || item.product?.id || ''),
-      productName: isDirectSale ? (item.productName || '—') : (item.product?.name || '—'),
-      quantity: item.quantity || 0,
-      unitPrice: isDirectSale ? (item.unitPrice || 0) : (item.unit_price || 0),
-      totalPrice: isDirectSale ? (item.totalPrice || 0) : (item.total_price || 0),
-      giftQuantity: isDirectSale ? (item.giftQuantity || 0) : (item.gift_quantity || 0),
-    })),
+    items: items.map((item: any) => {
+      const normalizedItem = normalizeSaleItem(item);
+      return {
+        productId: normalizedItem.productId,
+        productName: normalizedItem.productName,
+        quantity: normalizedItem.quantity,
+        unitPrice: normalizedItem.unitPrice,
+        totalPrice: normalizedItem.totalPrice,
+        giftQuantity: normalizedItem.giftQuantity,
+      };
+    }),
     totalAmount,
     paidAmount,
     remainingAmount,
