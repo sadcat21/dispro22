@@ -394,7 +394,10 @@ const LoadStock: React.FC = () => {
         sessionStatus = sessionData?.status || undefined;
       }
 
-      if (sessionStatus === 'review') {
+      if (sessionStatus === 'unloaded') {
+        // Unloading sessions don't have discrepancies - skip detection
+        setViewReviewDiscrepancies([]);
+      } else if (sessionStatus === 'review') {
         const { data: discData, error: discError } = await supabase
           .from('stock_discrepancies')
           .select('*, product:products(name, pieces_per_box)')
