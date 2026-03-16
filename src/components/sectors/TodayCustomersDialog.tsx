@@ -50,7 +50,7 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
 }) => {
   const { workerId: authWorkerId, activeBranch, role, user } = useAuth();
   const navigate = useNavigate();
-  const isAdmin = role === 'admin' || role === 'branch_admin';
+  const isAdmin = role === 'admin' || role === 'branch_admin' || role === 'supervisor';
   const todayName = JS_DAY_TO_NAME[new Date().getDay()] || '';
   const [selectedDay, setSelectedDay] = useState(todayName);
   const { trackVisit } = useTrackVisit();
