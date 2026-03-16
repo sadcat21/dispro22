@@ -2128,57 +2128,52 @@ const LoadStock: React.FC = () => {
                       </div>
                     </div>
                     
-                    {/* Stock Verification */}
                     <div className="space-y-2 bg-muted/30 rounded-lg p-2.5">
-                      <div className="flex items-center gap-2">
-                        <Label className="text-xs font-semibold">الرصيد الفعلي:</Label>
-                        <Input
-                          type="number" min={0} step="any"
-                          value={item.actualQty}
-                          onFocus={e => e.target.select()}
-                          onChange={e => {
-                            const val = parseFloat(e.target.value) || 0;
-                            const systemQty = item.quantity;
-                            const ppb = item.piecesPerBox;
-                            const actualPieces = customToTotalPieces(val, ppb);
-                            const systemPieces = customToTotalPieces(systemQty, ppb);
-                            let status: EmptyTruckItem['verificationStatus'] = 'equivalent';
-                            let surplusVal = 0;
-                            if (actualPieces > systemPieces) {
-                              status = 'surplus';
-                              surplusVal = totalPiecesToCustom(actualPieces - systemPieces, ppb);
-                            } else if (actualPieces < systemPieces) {
-                              status = 'deficit';
-                            }
-                            setEmptyTruckItems(prev => prev.map((it, i2) => 
-                              it.product_id === item.product_id 
-                                ? { ...it, actualQty: val, verificationStatus: status, surplusQty: surplusVal, returnQty: val }
-                                : it
-                            ));
-                          }}
-                          className="text-center h-8 flex-1"
-                        />
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-1">
+                          <Label className="text-xs font-semibold">إرجاع للمخزن</Label>
+                          <Input
+                            type="number"
+                            min={0}
+                            step="any"
+                            value={item.returnQty}
+                            onFocus={e => e.target.select()}
+                            onChange={e => {
+                              const raw = parseFloat(e.target.value) || 0;
+                              const systemPieces = customToTotalPieces(item.quantity, item.piecesPerBox);
+                              const returnPieces = Math.min(Math.max(0, customToTotalPieces(raw, item.piecesPerBox)), systemPieces);
+                              const nextReturn = totalPiecesToCustom(returnPieces, item.piecesPerBox);
+
+                              setEmptyTruckItems(prev => prev.map((it) =>
+                                it.product_id === item.product_id ? { ...it, returnQty: nextReturn } : it,
+                              ));
+                            }}
+                            className="text-center h-8"
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <Label className="text-xs font-semibold">يبقى في الشاحنة</Label>
+                          <Input
+                            type="number"
+                            min={0}
+                            step="any"
+                            value={subtractCustomQty(item.quantity, item.returnQty, ppb)}
+                            onFocus={e => e.target.select()}
+                            onChange={e => {
+                              const rawKeep = parseFloat(e.target.value) || 0;
+                              const systemPieces = customToTotalPieces(item.quantity, item.piecesPerBox);
+                              const keepPieces = Math.min(Math.max(0, customToTotalPieces(rawKeep, item.piecesPerBox)), systemPieces);
+                              const nextReturn = totalPiecesToCustom(systemPieces - keepPieces, item.piecesPerBox);
+
+                              setEmptyTruckItems(prev => prev.map((it) =>
+                                it.product_id === item.product_id ? { ...it, returnQty: nextReturn } : it,
+                              ));
+                            }}
+                            className="text-center h-8"
+                          />
+                        </div>
                       </div>
-                      
-                      {/* Verification status badge */}
-                      {item.verificationStatus === 'equivalent' && item.actualQty === item.quantity && (
-                        <div className="flex items-center gap-1 text-xs text-green-600 bg-green-50 dark:bg-green-900/20 rounded px-2 py-1">
-                          <CheckCircle className="w-3 h-3" />
-                          <span>مطابق ✓</span>
-                        </div>
-                      )}
-                      {item.verificationStatus === 'surplus' && (
-                        <div className="flex items-center gap-1 text-xs text-amber-600 bg-amber-50 dark:bg-amber-900/20 rounded px-2 py-1">
-                          <AlertTriangle className="w-3 h-3" />
-                          <span>فائض: {fmtQty(item.surplusQty)} — سيتم تسجيله كفائض</span>
-                        </div>
-                      )}
-                      {item.verificationStatus === 'deficit' && (
-                        <div className="flex items-center gap-1 text-xs text-destructive bg-destructive/5 rounded px-2 py-1">
-                          <AlertTriangle className="w-3 h-3" />
-                          <span>عجز: {fmtQty(subtractCustomQty(item.quantity, item.actualQty, item.piecesPerBox))} — سيتم تسجيله كعجز</span>
-                        </div>
-                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -2188,24 +2183,16 @@ const LoadStock: React.FC = () => {
           <div className="flex flex-col gap-1.5 text-sm bg-muted/50 rounded-md p-2">
             <div className="flex items-center justify-between">
               <span className="font-medium">إجمالي الإرجاع</span>
-              <Badge variant="secondary">{fmtQty(emptyTruckItems.reduce((s, it) => s + it.actualQty, 0))} صندوق</Badge>
+              <Badge variant="secondary">{fmtQty(emptyTruckItems.reduce((sum, item) => sum + item.returnQty, 0))} صندوق</Badge>
             </div>
-            {emptyTruckItems.some(it => it.verificationStatus === 'surplus') && (
-              <div className="flex items-center justify-between text-xs text-amber-600">
-                <span>فائض</span>
-                <span className="font-bold">{fmtQty(emptyTruckItems.filter(it => it.verificationStatus === 'surplus').reduce((s, it) => s + it.surplusQty, 0))}</span>
-              </div>
-            )}
-            {emptyTruckItems.some(it => it.verificationStatus === 'deficit') && (
-              <div className="flex items-center justify-between text-xs text-destructive">
-                <span>عجز</span>
-                <span className="font-bold">{fmtQty(emptyTruckItems.filter(it => it.verificationStatus === 'deficit').reduce((s, it) => subtractCustomQty(it.quantity, it.actualQty, it.piecesPerBox) + s, 0))}</span>
-              </div>
-            )}
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <span>إجمالي المتبقي في الشاحنة</span>
+              <span className="font-bold">{fmtQty(emptyTruckItems.reduce((sum, item) => sum + subtractCustomQty(item.quantity, item.returnQty, item.piecesPerBox), 0))} صندوق</span>
+            </div>
           </div>
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setShowEmptyDialog(false)}>{t('common.cancel')}</Button>
-            <Button variant="destructive" onClick={handleEmptyTruckConfirm} disabled={isEmptying || emptyTruckItems.every(it => it.actualQty === 0)}>
+            <Button variant="destructive" onClick={handleEmptyTruckConfirm} disabled={isEmptying || emptyTruckItems.every(item => item.returnQty === 0)}>
               {isEmptying && <Loader2 className="w-4 h-4 animate-spin me-2" />}
               {t('stock.confirm_return')}
             </Button>
