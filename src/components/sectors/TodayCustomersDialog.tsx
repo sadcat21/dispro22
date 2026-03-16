@@ -2134,6 +2134,12 @@ const CustomerList: React.FC<{
               رفض الدين
             </Button>
           )}
+          {onPostpone && (
+            <Button variant="ghost" size="sm" className="h-6 text-[10px] px-1.5 gap-0.5 text-amber-600" onClick={() => onPostpone(c)}>
+              <CalendarClock className="w-3 h-3" />
+              تأجيل
+            </Button>
+          )}
         </div>
       </div>
     );
