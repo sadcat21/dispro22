@@ -1000,16 +1000,96 @@ const MyDeliveries: React.FC = () => {
       )}
 
       {/* Orders List */}
-      <div className="space-y-2.5">
-        {filteredOrders?.map(renderOrderCard)}
-
-        {(!filteredOrders || filteredOrders.length === 0) && (
-          <div className="text-center py-12 text-muted-foreground">
-            <Truck className="w-12 h-12 mx-auto mb-3 opacity-30" />
-            <p className="text-sm">{t('deliveries.no_deliveries')}</p>
+      {deliveryType === 'postponed' ? (
+        <>
+          {/* Group-by selector for postponed */}
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-xs text-muted-foreground">ترتيب حسب:</span>
+            <Button
+              variant={postponeGroupBy === 'date' ? 'default' : 'outline'}
+              size="sm"
+              className="h-7 text-xs"
+              onClick={() => setPostponeGroupBy('date')}
+            >
+              <Calendar className="w-3 h-3 me-1" />
+              التاريخ
+            </Button>
+            <Button
+              variant={postponeGroupBy === 'sector' ? 'default' : 'outline'}
+              size="sm"
+              className="h-7 text-xs"
+              onClick={() => setPostponeGroupBy('sector')}
+            >
+              <Map className="w-3 h-3 me-1" />
+              السيكتور
+            </Button>
           </div>
-        )}
-      </div>
+          {(() => {
+            const postponedOrders = filteredOrders || [];
+            if (postponedOrders.length === 0) {
+              return (
+                <div className="text-center py-12 text-muted-foreground">
+                  <CalendarClock className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                  <p className="text-sm">لا توجد طلبيات مؤجلة</p>
+                </div>
+              );
+            }
+            
+            const groups: Record<string, OrderWithDetails[]> = {};
+            postponedOrders.forEach(order => {
+              let key: string;
+              if (postponeGroupBy === 'date') {
+                key = order.delivery_date || 'بدون تاريخ';
+              } else {
+                const sectorName = (order.customer as any)?.sector
+                  ? getLocalizedName((order.customer as any).sector, language)
+                  : 'بدون سيكتور';
+                key = sectorName;
+              }
+              if (!groups[key]) groups[key] = [];
+              groups[key].push(order);
+            });
+
+            const sortedKeys = Object.keys(groups).sort();
+
+            return (
+              <div className="space-y-4">
+                {sortedKeys.map(key => (
+                  <div key={key}>
+                    <div className="flex items-center gap-2 mb-2 px-1">
+                      {postponeGroupBy === 'date' ? (
+                        <Calendar className="w-4 h-4 text-amber-600" />
+                      ) : (
+                        <Map className="w-4 h-4 text-amber-600" />
+                      )}
+                      <span className="font-bold text-sm">
+                        {postponeGroupBy === 'date' && key !== 'بدون تاريخ'
+                          ? format(new Date(key), 'EEEE dd MMMM', { locale: getDateLocale(language) })
+                          : key}
+                      </span>
+                      <Badge variant="secondary" className="text-[10px]">{groups[key].length}</Badge>
+                    </div>
+                    <div className="space-y-2.5">
+                      {groups[key].map(renderOrderCard)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
+        </>
+      ) : (
+        <div className="space-y-2.5">
+          {filteredOrders?.map(renderOrderCard)}
+
+          {(!filteredOrders || filteredOrders.length === 0) && (
+            <div className="text-center py-12 text-muted-foreground">
+              <Truck className="w-12 h-12 mx-auto mb-3 opacity-30" />
+              <p className="text-sm">{t('deliveries.no_deliveries')}</p>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Order Details Dialog */}
       <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
