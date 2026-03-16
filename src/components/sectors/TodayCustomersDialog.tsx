@@ -360,6 +360,7 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
       const { data: vtData } = await vtQuery;
       const vtResults = (vtData || []).map(v => ({
         customer_id: v.customer_id,
+        order_id: v.operation_id,
         created_at: v.created_at,
         items: null,
         total_amount: null,
@@ -369,7 +370,7 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
       // 2. Also try receipts with receipt_type='direct_sale' as secondary source
       let rQuery = supabase
         .from('receipts')
-        .select('customer_id, items, total_amount, customer_name, created_at')
+        .select('customer_id, order_id, items, total_amount, customer_name, created_at')
         .eq('receipt_type', 'direct_sale')
         .gte('created_at', todayStart);
       if (!isAdmin || hasSpecificWorker) {
@@ -997,10 +998,80 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
     }
   };
 
+  const fetchDirectSaleOrderDetails = async (customerId: string) => {
+    // 1) Prefer operation_id from direct_sale visit tracking (most precise link to order)
+    let vtQuery = supabase
+      .from('visit_tracking')
+      .select('operation_id, created_at')
+      .eq('customer_id', customerId)
+      .eq('operation_type', 'direct_sale')
+      .gte('created_at', todayStart)
+      .order('created_at', { ascending: false })
+      .limit(1);
+
+    if (!isAdmin || hasSpecificWorker) {
+      vtQuery = vtQuery.eq('worker_id', effectiveWorkerId!);
+    }
+
+    const { data: vtData } = await vtQuery;
+    const operationOrderId = vtData?.[0]?.operation_id || null;
+    const saleFromList = todayDirectSales.find((s: any) => s.customer_id === customerId);
+    const orderIdFromList = saleFromList?.order_id || null;
+    const directOrderId = operationOrderId || orderIdFromList;
+
+    if (directOrderId) {
+      const { data: directOrder } = await supabase
+        .from('orders')
+        .select('*, customer:customers(*), items:order_items(*, product:products(*))')
+        .eq('id', directOrderId)
+        .maybeSingle();
+
+      if (directOrder) {
+        const hydratedItems = await hydrateOrderItems(directOrder);
+        return { ...directOrder, items: hydratedItems };
+      }
+    }
+
+    // 2) Fallback: latest delivered order for customer today (scoped by worker when needed)
+    let fallbackQuery = supabase
+      .from('orders')
+      .select('*, customer:customers(*), items:order_items(*, product:products(*))')
+      .eq('customer_id', customerId)
+      .eq('status', 'delivered')
+      .gte('created_at', todayStart)
+      .order('created_at', { ascending: false })
+      .limit(1);
+
+    if (!isAdmin || hasSpecificWorker) {
+      fallbackQuery = fallbackQuery.eq('created_by', effectiveWorkerId!);
+    }
+
+    const { data: fallbackOrders } = await fallbackQuery;
+    if (fallbackOrders && fallbackOrders.length > 0) {
+      const hydratedItems = await hydrateOrderItems(fallbackOrders[0]);
+      return { ...fallbackOrders[0], items: hydratedItems };
+    }
+
+    return null;
+  };
+
   const handleShowDirectSaleDetails = async (customer: any) => {
-    const sale = todayDirectSales.find(s => s.customer_id === customer.id);
-    if (sale) {
-      setOrderDetailsDialog({ ...sale, _isDirectSale: true, customer });
+    try {
+      const directOrder = await fetchDirectSaleOrderDetails(customer.id);
+      if (directOrder) {
+        setOrderDetailsDialog({ ...directOrder, _isDirectSale: true, customer: directOrder.customer || customer });
+        return;
+      }
+
+      const sale = todayDirectSales.find(s => s.customer_id === customer.id);
+      if (sale) {
+        setOrderDetailsDialog({ ...sale, _isDirectSale: true, customer });
+        return;
+      }
+
+      toast.error('لم يتم العثور على تفاصيل البيع المباشر');
+    } catch {
+      toast.error('خطأ في جلب تفاصيل البيع المباشر');
     }
   };
 
@@ -1090,11 +1161,25 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
     } catch { toast.error('خطأ في جلب البيانات'); }
   };
 
-  const handlePrintDirectSale = (customer: any) => {
-    const sale = todayDirectSales.find(s => s.customer_id === customer.id);
-    if (sale) {
-      setPrintReceiptData(buildReceiptDataFromOrder({ ...sale, _isDirectSale: true, customer }, true));
-      setShowPrintReceipt(true);
+  const handlePrintDirectSale = async (customer: any) => {
+    try {
+      const directOrder = await fetchDirectSaleOrderDetails(customer.id);
+      if (directOrder) {
+        setPrintReceiptData(buildReceiptDataFromOrder({ ...directOrder, _isDirectSale: true, customer: directOrder.customer || customer }, true));
+        setShowPrintReceipt(true);
+        return;
+      }
+
+      const sale = todayDirectSales.find(s => s.customer_id === customer.id);
+      if (sale) {
+        setPrintReceiptData(buildReceiptDataFromOrder({ ...sale, _isDirectSale: true, customer }, true));
+        setShowPrintReceipt(true);
+        return;
+      }
+
+      toast.error('لم يتم العثور على بيانات البيع المباشر للطباعة');
+    } catch {
+      toast.error('خطأ في جلب بيانات البيع المباشر');
     }
   };
 
