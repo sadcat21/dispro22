@@ -43,6 +43,7 @@ interface ModifiedItem {
   pieces_per_box: number;
   pricing_unit: string; // 'box' | 'kg' | 'unit'
   weight_per_box: number;
+  item_subtype?: string; // per-item override: 'super_gros' | 'gros' | 'retail' | 'invoice'
 }
 
 const getBoxMultiplier = (pricingUnit: string, weightPerBox: number, piecesPerBox: number): number => {
@@ -283,6 +284,26 @@ const ModifyOrderDialog: React.FC<ModifyOrderDialogProps> = ({
     }));
   }, [products]);
 
+  // Change pricing subtype for a single item
+  const changeItemSubtype = useCallback((index: number, subtype: string) => {
+    setItems(prev => prev.map((item, i) => {
+      if (i !== index) return item;
+      const product = products.find(p => p.id === item.product_id);
+      if (!product) return { ...item, item_subtype: subtype };
+      let newUnitPrice: number;
+      if (subtype === 'invoice') {
+        newUnitPrice = Number(product.price_invoice || 0);
+      } else {
+        switch (subtype) {
+          case 'super_gros': newUnitPrice = Number(product.price_super_gros || product.price_no_invoice || 0); break;
+          case 'retail': newUnitPrice = Number(product.price_retail || 0); break;
+          default: newUnitPrice = Number(product.price_gros || product.price_no_invoice || 0); break;
+        }
+      }
+      return { ...item, unit_price: newUnitPrice, item_subtype: subtype };
+    }));
+  }, [products]);
+
   const workerChanged = assignedWorkerId !== (order.assigned_worker_id || '');
   const deliveryDateChanged = (() => {
     const origDate = order.delivery_date ? order.delivery_date.split('T')[0] : '';
@@ -297,8 +318,10 @@ const ModifyOrderDialog: React.FC<ModifyOrderDialogProps> = ({
   const originalRemainingAmount = Number((order as any).remaining_amount || 0);
   const paymentAmountChanged = order.status === 'delivered' && (adjustPaidAmount !== originalPaidAmount || adjustRemainingAmount !== originalRemainingAmount);
 
+  const hasItemSubtypeChanges = items.some(i => i.item_subtype !== undefined);
+
   const hasChanges = items.some(i => i.new_quantity !== i.original_quantity) ||
-    items.some(i => !i.id && i.new_quantity > 0) || workerChanged || deliveryDateChanged || paymentTypeChanged || invoiceMethodChanged || priceSubTypeChanged || paymentAmountChanged;
+    items.some(i => !i.id && i.new_quantity > 0) || workerChanged || deliveryDateChanged || paymentTypeChanged || invoiceMethodChanged || priceSubTypeChanged || paymentAmountChanged || hasItemSubtypeChanges;
 
   const getBoxPrice = useCallback((item: ModifiedItem) => {
     const multiplier = getBoxMultiplier(item.pricing_unit, item.weight_per_box, item.pieces_per_box);
@@ -369,7 +392,11 @@ const ModifyOrderDialog: React.FC<ModifyOrderDialogProps> = ({
       const changes: Record<string, any>[] = [];
 
       for (const item of items) {
-        if (item.id && item.new_quantity !== item.original_quantity) {
+        const itemSubtype = item.item_subtype || (paymentType === 'with_invoice' ? 'invoice' : priceSubType);
+        const itemPayType = itemSubtype === 'invoice' ? 'with_invoice' : 'without_invoice';
+        const itemInvMethod = itemSubtype === 'invoice' ? (invoicePaymentMethod || null) : null;
+
+        if (item.id && (item.new_quantity !== item.original_quantity || item.item_subtype !== undefined)) {
           if (item.new_quantity === 0) {
             // Delete the item
             await supabase.from('order_items').delete().eq('id', item.id);
@@ -390,8 +417,11 @@ const ModifyOrderDialog: React.FC<ModifyOrderDialogProps> = ({
               .update({
                 quantity: item.new_quantity,
                 gift_quantity: item.gift_quantity || 0,
-                unit_price: boxPrice, // store as box price (consistent with creation)
+                unit_price: boxPrice,
                 total_price: paidQty * boxPrice,
+                price_subtype: itemSubtype,
+                payment_type: itemPayType,
+                invoice_payment_method: itemInvMethod,
               })
               .eq('id', item.id);
             changes.push({
@@ -400,7 +430,8 @@ const ModifyOrderDialog: React.FC<ModifyOrderDialogProps> = ({
               كمية_جديدة: item.new_quantity,
               هدية_سابقة: item.original_gift_quantity || 0,
               هدية_جديدة: item.gift_quantity || 0,
-              عملية: 'تعديل كمية',
+              تسعير: itemSubtype,
+              عملية: item.item_subtype ? 'تعديل تسعير' : 'تعديل كمية',
             });
           }
         } else if (!item.id && item.new_quantity > 0) {
@@ -413,16 +444,20 @@ const ModifyOrderDialog: React.FC<ModifyOrderDialogProps> = ({
             product_id: item.product_id,
             quantity: item.new_quantity,
             gift_quantity: item.gift_quantity || 0,
-            unit_price: boxPrice, // store as box price (consistent with creation)
+            unit_price: boxPrice,
             total_price: paidQty * boxPrice,
             pricing_unit: item.pricing_unit,
             weight_per_box: item.weight_per_box,
             pieces_per_box: item.pieces_per_box,
+            price_subtype: itemSubtype,
+            payment_type: itemPayType,
+            invoice_payment_method: itemInvMethod,
           });
           changes.push({
             منتج: item.product_name,
             كمية: item.new_quantity,
             هدية: item.gift_quantity || 0,
+            تسعير: itemSubtype,
             عملية: 'إضافة جديد',
           });
         }
@@ -732,7 +767,7 @@ const ModifyOrderDialog: React.FC<ModifyOrderDialogProps> = ({
       }
 
       // Update receipt if anything changed (so reprinted receipts reflect the change)
-      const shouldUpdateReceipt = paymentAmountChanged || paymentTypeChanged || invoiceMethodChanged || priceSubTypeChanged || productChanges.length > 0;
+      const shouldUpdateReceipt = paymentAmountChanged || paymentTypeChanged || invoiceMethodChanged || priceSubTypeChanged || hasItemSubtypeChanges || productChanges.length > 0;
       if (shouldUpdateReceipt) {
         // Re-fetch updated order items for receipt sync
         const { data: freshItems } = await supabase
@@ -1051,6 +1086,30 @@ const ModifyOrderDialog: React.FC<ModifyOrderDialogProps> = ({
                     {!item.id && (
                       <Badge className="bg-green-100 text-green-800 text-xs">{t('common.new')}</Badge>
                     )}
+                  </div>
+                  {/* Per-item pricing subtype override */}
+                  <div className="flex items-center gap-1 flex-wrap">
+                    {([
+                      { value: 'invoice', label: 'F1', color: 'bg-blue-600 text-white border-blue-600' },
+                      { value: 'super_gros', label: 'SG', color: 'bg-indigo-600 text-white border-indigo-600' },
+                      { value: 'gros', label: 'G', color: 'bg-cyan-600 text-white border-cyan-600' },
+                      { value: 'retail', label: 'D', color: 'bg-rose-600 text-white border-rose-600' },
+                    ]).map((opt) => {
+                      const currentSubtype = item.item_subtype || (paymentType === 'with_invoice' ? 'invoice' : priceSubType);
+                      const isActive = currentSubtype === opt.value;
+                      return (
+                        <Button
+                          key={opt.value}
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className={`h-6 px-2 text-[10px] font-bold transition-all ${isActive ? `${opt.color} ring-1 ring-offset-1` : `${opt.color} opacity-30`}`}
+                          onClick={() => changeItemSubtype(index, opt.value)}
+                        >
+                          {opt.label}
+                        </Button>
+                      );
+                    })}
                   </div>
                 </div>
               );
