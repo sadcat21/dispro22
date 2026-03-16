@@ -228,7 +228,16 @@ const ModifyOrderDialog: React.FC<ModifyOrderDialogProps> = ({
     if (!product) return;
 
     const initialPaidQuantity = 1;
-    const unitPrice = Number(product.price_gros || product.price_invoice || 0);
+    let unitPrice: number;
+    if (paymentType === 'with_invoice') {
+      unitPrice = Number(product.price_invoice || 0);
+    } else {
+      switch (priceSubType) {
+        case 'super_gros': unitPrice = Number(product.price_super_gros || product.price_no_invoice || 0); break;
+        case 'retail': unitPrice = Number(product.price_retail || 0); break;
+        default: unitPrice = Number(product.price_gros || product.price_no_invoice || 0); break;
+      }
+    }
     const piecesPerBox = Number(product.pieces_per_box || 1);
     const pricingUnit = product.pricing_unit || 'box';
     const weightPerBox = Number(product.weight_per_box || 1);
@@ -254,6 +263,25 @@ const ModifyOrderDialog: React.FC<ModifyOrderDialogProps> = ({
     if (item.id) return; // Can't remove existing items, set qty to 0
     setItems(prev => prev.filter((_, i) => i !== index));
   };
+
+  // Recalculate item prices when payment type or price subtype changes
+  const recalcItemPrices = useCallback((pt: string, pst: PriceSubType) => {
+    setItems(prev => prev.map(item => {
+      const product = products.find(p => p.id === item.product_id);
+      if (!product) return item;
+      let newUnitPrice: number;
+      if (pt === 'with_invoice') {
+        newUnitPrice = Number(product.price_invoice || 0);
+      } else {
+        switch (pst) {
+          case 'super_gros': newUnitPrice = Number(product.price_super_gros || product.price_no_invoice || 0); break;
+          case 'retail': newUnitPrice = Number(product.price_retail || 0); break;
+          default: newUnitPrice = Number(product.price_gros || product.price_no_invoice || 0); break;
+        }
+      }
+      return { ...item, unit_price: newUnitPrice };
+    }));
+  }, [products]);
 
   const workerChanged = assignedWorkerId !== (order.assigned_worker_id || '');
   const deliveryDateChanged = (() => {
@@ -818,7 +846,7 @@ const ModifyOrderDialog: React.FC<ModifyOrderDialogProps> = ({
                   type="button"
                   variant={paymentType === 'with_invoice' ? 'default' : 'outline'}
                   className={`h-10 text-sm font-bold ${paymentType === 'with_invoice' ? '' : 'opacity-60'}`}
-                  onClick={() => setPaymentType('with_invoice')}
+                  onClick={() => { setPaymentType('with_invoice'); recalcItemPrices('with_invoice', priceSubType); }}
                 >
                   بفاتورة
                 </Button>
@@ -826,7 +854,7 @@ const ModifyOrderDialog: React.FC<ModifyOrderDialogProps> = ({
                   type="button"
                   variant={paymentType === 'without_invoice' ? 'default' : 'outline'}
                   className={`h-10 text-sm font-bold ${paymentType === 'without_invoice' ? '' : 'opacity-60'}`}
-                  onClick={() => { setPaymentType('without_invoice'); setInvoicePaymentMethod(null); }}
+                  onClick={() => { setPaymentType('without_invoice'); setInvoicePaymentMethod(null); recalcItemPrices('without_invoice', priceSubType); }}
                 >
                   بدون فاتورة
                 </Button>
@@ -844,7 +872,7 @@ const ModifyOrderDialog: React.FC<ModifyOrderDialogProps> = ({
                       variant={priceSubType === option.value ? 'default' : 'outline'}
                       size="sm"
                       className={`h-10 text-sm font-bold transition-opacity ${priceSubType === option.value ? option.colors.active : option.colors.inactive} ${priceSubType !== option.value ? 'opacity-50' : ''}`}
-                      onClick={() => setPriceSubType(option.value)}
+                      onClick={() => { setPriceSubType(option.value); recalcItemPrices('without_invoice', option.value); }}
                     >
                       {option.label}
                     </Button>
