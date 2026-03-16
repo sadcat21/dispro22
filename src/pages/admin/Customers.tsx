@@ -544,7 +544,8 @@ const Customers: React.FC = () => {
                         <BadgeCheck className="w-4 h-4 text-blue-500 shrink-0" />
                       ) : null;
                       if (!shortLabel) return <>{storeName}{verifiedBadge}{pendingBadge}</>;
-                      return <><Badge variant="destructive" className="text-[10px] px-1.5 py-0 font-mono uppercase ml-1">{shortLabel}</Badge>{storeName}{verifiedBadge}{pendingBadge}</>;
+                      const typeColors = getCustomerTypeColor(typeEntry?.short || '', customerTypes.indexOf(typeEntry!), typeEntry);
+                      return <><span className="inline-flex items-center text-[10px] px-1.5 py-0 font-mono uppercase ml-1 rounded-md font-semibold" style={{ backgroundColor: typeColors.bg, color: typeColors.text }}>{shortLabel}</span>{storeName}{verifiedBadge}{pendingBadge}</>;
                     })()}
                   </p>
                   <div className="flex items-center gap-1 flex-wrap mt-0.5">
@@ -728,9 +729,11 @@ const Customers: React.FC = () => {
           <Button size="icon" variant={expandAllSectors ? "default" : "secondary"} className="h-9 w-9" onClick={() => setExpandAllSectors(!expandAllSectors)} title={expandAllSectors ? t('customers.collapse_all') : t('customers.expand_all')}>
             {expandAllSectors ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
           </Button>
-          <Button size="icon" variant="outline" className="h-9 w-9" onClick={() => setShowSectorsDialog(true)} title={t('customers.sectors')}>
-            <MapPinPlus className="w-4 h-4" />
-          </Button>
+          {isManager && (
+            <Button size="icon" variant="outline" className="h-9 w-9" onClick={() => setShowSectorsDialog(true)} title={t('customers.sectors')}>
+              <MapPinPlus className="w-4 h-4" />
+            </Button>
+          )}
           {isManager && (
             <Button size="icon" variant="outline" className="h-9 w-9" onClick={() => setShowFieldSettingsDialog(true)} title="إعدادات حقول العميل">
               <Settings2 className="w-4 h-4" />

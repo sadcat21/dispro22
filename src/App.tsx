@@ -261,7 +261,7 @@ const AppRoutes = () => {
       } />
 
       <Route path="/load-stock" element={
-        <ProtectedRoute allowedRoles={['admin', 'branch_admin']}>
+        <ProtectedRoute allowedRoles={['admin', 'branch_admin', 'supervisor']}>
           <LoadStock />
         </ProtectedRoute>
       } />
