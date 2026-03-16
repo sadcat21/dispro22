@@ -65,6 +65,17 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
 
   // Real-time worker GPS position for distance sorting/badges
   const { position: workerPosition } = useWorkerGeoPosition(open && sortByDistance);
+  const [workerAddress, setWorkerAddress] = useState<string>('');
+
+  // Reverse geocode worker position to get current address
+  useEffect(() => {
+    if (!workerPosition) { setWorkerAddress(''); return; }
+    let cancelled = false;
+    reverseGeocode(workerPosition.lat, workerPosition.lng).then(addr => {
+      if (!cancelled) setWorkerAddress(addr);
+    });
+    return () => { cancelled = true; };
+  }, [workerPosition?.lat, workerPosition?.lng]);
 
   // Admin worker picker state
   const [selectedAdminWorkerId, setSelectedAdminWorkerId] = useState<string | null>(targetWorkerId || null);
