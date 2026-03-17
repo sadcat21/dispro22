@@ -656,7 +656,7 @@ const WorkerActions: React.FC = () => {
                             </span>
                             <span className="flex items-center gap-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 px-1.5 py-0.5 rounded">
                               <TrendingDown className="w-3 h-3" />
-                              مباع: {sold}
+                              {t('worker_actions.sold')} {sold}
                             </span>
                             {giftQty > 0 && (
                               <span className="flex items-center gap-0.5 bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 px-1.5 py-0.5 rounded">
