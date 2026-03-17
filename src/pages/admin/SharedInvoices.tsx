@@ -147,7 +147,7 @@ const SharedInvoices: React.FC = () => {
       {/* Header */}
       <div className="flex items-center gap-3">
         <FolderOpen className="w-6 h-6 text-primary" />
-        <h1 className="text-lg font-bold">الفواتير المشاركة</h1>
+        <h1 className="text-lg font-bold">{t('shared_invoices.title')}</h1>
         <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
           {filtered.length}
         </span>
@@ -157,7 +157,7 @@ const SharedInvoices: React.FC = () => {
       <div className="relative">
         <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <Input
-          placeholder="بحث بالاسم..."
+          placeholder={t('shared_invoices.search')}
           value={search}
           onChange={e => setSearch(e.target.value)}
           className="pr-9"
