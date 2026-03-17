@@ -206,6 +206,7 @@ export interface ReceiptData {
   replaceNameWithLogo?: boolean;
   companyLogoUrl?: string;
   receiptTitleOverride?: string;
+  hidePaymentDetails?: boolean;
 }
 
 export interface AdvancedReceiptOptions {
