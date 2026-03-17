@@ -11,8 +11,8 @@ const installRuntimeErrorGuard = () => {
   if (guardInstalled || typeof window === 'undefined') return;
 
   const suppressIgnoredError = (value: unknown, fallbackMessage?: string): boolean => {
-    if (!shouldIgnoreError(value)) return false;
-    console.warn('Ignored external UIStyleError:', fallbackMessage ?? toSafeText(value));
+    if (!shouldIgnoreRuntimeIssue(value)) return false;
+    console.warn('Ignored external UIStyleError:', fallbackMessage ?? describeRuntimeIssue(value));
     return true;
   };
 

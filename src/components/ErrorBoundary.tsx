@@ -19,15 +19,15 @@ export class ErrorBoundary extends Component<Props, State> {
     };
 
     public static getDerivedStateFromError(error: Error): State {
-        if (isIgnoredRuntimeError(error)) {
+        if (shouldIgnoreRuntimeIssue(error)) {
             return { hasError: false, error: null, errorInfo: null };
         }
         return { hasError: true, error, errorInfo: null };
     }
 
     public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-        if (isIgnoredRuntimeError(error)) {
-            console.warn("Ignored external UIStyleError in ErrorBoundary", error.message);
+        if (shouldIgnoreRuntimeIssue(error)) {
+            console.warn("Ignored external UIStyleError in ErrorBoundary", describeRuntimeIssue(error));
             return;
         }
 
