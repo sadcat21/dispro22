@@ -58,9 +58,9 @@ const Workers: React.FC = () => {
     branch_admin: t('workers.role_branch_admin'),
     supervisor: t('workers.role_supervisor'),
     worker: t('workers.role_worker'),
-    project_manager: 'مدير المشروع',
-    accountant: 'المحاسب',
-    admin_assistant: 'عون إداري',
+    project_manager: t('workers.project_manager'),
+    accountant: t('workers.accountant'),
+    admin_assistant: t('workers.admin_assistant'),
   };
 
   const ALL_ROLES: AppRole[] = ['worker', 'branch_admin', 'supervisor', 'admin'];
@@ -208,11 +208,11 @@ const Workers: React.FC = () => {
       await supabase.from('user_roles').delete().eq('worker_id', worker.id);
       const { error } = await supabase.from('workers').delete().eq('id', worker.id);
       if (error) throw error;
-      toast.success(`تم حذف العامل "${worker.full_name}" بنجاح`);
+      toast.success(t('workers.delete_success'));
       fetchData();
     } catch (error: any) {
       console.error('Error deleting worker:', error);
-      toast.error('فشل في حذف العامل: ' + error.message);
+      toast.error(t('workers.delete_error') + ': ' + error.message);
     }
   };
 
@@ -544,11 +544,11 @@ const Workers: React.FC = () => {
         <TabsList className="w-full">
           <TabsTrigger value="workers" className="flex-1 gap-1">
             <Users className="w-4 h-4" />
-            العمال
+            {t('workers.tab_workers')}
           </TabsTrigger>
           <TabsTrigger value="test" className="flex-1 gap-1">
             <FlaskConical className="w-4 h-4" />
-            تجريبي
+            {t('workers.tab_test')}
           </TabsTrigger>
         </TabsList>
 
@@ -710,7 +710,7 @@ const Workers: React.FC = () => {
                     size="icon"
                     className="h-8 w-8 text-destructive hover:bg-destructive hover:text-destructive-foreground border-destructive/30"
                     onClick={() => setDeleteWorker(worker)}
-                    title="حذف العامل"
+                    title={t('workers.delete_worker')}
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </Button>
@@ -767,12 +767,12 @@ const Workers: React.FC = () => {
       <AlertDialog open={!!deleteWorker} onOpenChange={() => setDeleteWorker(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2"><Trash2 className="w-5 h-5 text-destructive" />حذف العامل</AlertDialogTitle>
-            <AlertDialogDescription>هل أنت متأكد من حذف العامل "{deleteWorker?.full_name}"؟ سيتم حذف جميع بياناته ولا يمكن التراجع.</AlertDialogDescription>
+            <AlertDialogTitle className="flex items-center gap-2"><Trash2 className="w-5 h-5 text-destructive" />{t('workers.delete_worker')}</AlertDialogTitle>
+            <AlertDialogDescription>{t('workers.delete_confirm')}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>إلغاء</AlertDialogCancel>
-            <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => { if (deleteWorker) handleDeleteWorker(deleteWorker); setDeleteWorker(null); }}>حذف</AlertDialogAction>
+            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
+            <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => { if (deleteWorker) handleDeleteWorker(deleteWorker); setDeleteWorker(null); }}>{t('common.delete')}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

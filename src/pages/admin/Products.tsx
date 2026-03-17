@@ -84,7 +84,7 @@ const Products: React.FC = () => {
 
   const handleImageSelect = (file: File | null, setFile: (f: File | null) => void, setPreview: (p: string | null) => void) => {
     if (!file) { setFile(null); setPreview(null); return; }
-    if (file.size > 5 * 1024 * 1024) { toast.error('حجم الصورة يجب أن يكون أقل من 5 ميجا'); return; }
+    if (file.size > 5 * 1024 * 1024) { toast.error(t('products.image_too_large')); return; }
     setFile(file);
     const reader = new FileReader();
     reader.onload = (e) => setPreview(e.target?.result as string);
@@ -302,7 +302,7 @@ const Products: React.FC = () => {
   const handleSaveProductOnly = async () => {
     if (!editingProduct) return;
     if (!editProductName.trim()) {
-      toast.error('الرجاء إدخال اسم المنتج');
+      toast.error(t('products.enter_name_error'));
       return;
     }
 
@@ -352,12 +352,12 @@ const Products: React.FC = () => {
           : p
       ));
 
-      toast.success('تم تحديث المنتج بنجاح');
+      toast.success(t('products.updated'));
       setEditingProduct(null);
       setProductGroup(null);
     } catch (error: any) {
       console.error('Error updating product:', error);
-      toast.error(error.message || 'فشل تحديث المنتج');
+      toast.error(error.message || t('products.update_failed'));
     } finally {
       setIsUpdating(false);
     }
@@ -380,12 +380,12 @@ const Products: React.FC = () => {
     if (!editingProduct) return;
 
     if (!editProductName.trim()) {
-      toast.error('الرجاء إدخال اسم المنتج');
+      toast.error(t('products.enter_name_error'));
       return;
     }
 
     if (editPiecesPerBox < 1) {
-      toast.error('عدد القطع يجب أن يكون 1 على الأقل');
+      toast.error(t('products.min_pieces_error'));
       return;
     }
 
@@ -427,11 +427,11 @@ const Products: React.FC = () => {
           : p
       ));
 
-      toast.success('تم تحديث المنتج بنجاح');
+      toast.success(t('products.updated'));
       setEditingProduct(null);
     } catch (error: any) {
       console.error('Error updating product:', error);
-      toast.error(error.message || 'فشل تحديث المنتج');
+      toast.error(error.message || t('products.update_failed'));
     } finally {
       setIsUpdating(false);
     }
@@ -537,7 +537,7 @@ const Products: React.FC = () => {
                 />
                 {productImagePreview ? (
                   <div className="relative w-20 h-20">
-                    <img src={productImagePreview} alt="معاينة" className="w-20 h-20 rounded-lg object-cover border" />
+                    <img src={productImagePreview} alt={t('products.preview')} className="w-20 h-20 rounded-lg object-cover border" />
                     <button type="button" onClick={() => { setProductImage(null); setProductImagePreview(null); }} className="absolute -top-2 -left-2 bg-destructive text-destructive-foreground rounded-full p-0.5">
                       <X className="w-3 h-3" />
                     </button>
@@ -756,7 +756,7 @@ const Products: React.FC = () => {
                       ? 'bg-primary/10 text-primary' 
                       : 'bg-destructive/10 text-destructive'
                   }`}>
-                    {product.is_active ? 'نشط' : 'معطل'}
+                    {product.is_active ? t('common.active') : t('common.inactive')}
                   </span>
                 </div>
                 
@@ -808,15 +808,15 @@ const Products: React.FC = () => {
       <Dialog open={!!editingProduct} onOpenChange={(open) => !open && setEditingProduct(null)}>
         <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto" dir="rtl">
           <DialogHeader>
-            <DialogTitle>تعديل المنتج</DialogTitle>
+            <DialogTitle>{t('products.edit')}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleUpdateProduct} className="space-y-4">
             <div className="space-y-2">
-              <Label>اسم المنتج</Label>
+              <Label>{t('products.name')}</Label>
               <Input
                 value={editProductName}
                 onChange={(e) => setEditProductName(e.target.value)}
-                placeholder="أدخل اسم المنتج"
+                placeholder={t('products.enter_name')}
                 className="text-right"
                 autoFocus
               />
@@ -826,7 +826,7 @@ const Products: React.FC = () => {
             <div className="space-y-2">
               <Label className="flex items-center gap-2">
                 <Layers className="w-4 h-4" />
-                رتبة العرض
+                {t('products.sort_order')}
               </Label>
               <Input
                 type="number"
@@ -854,7 +854,7 @@ const Products: React.FC = () => {
               />
               {editProductImagePreview ? (
                 <div className="relative w-20 h-20">
-                  <img src={editProductImagePreview} alt="معاينة" className="w-20 h-20 rounded-lg object-cover border" />
+                  <img src={editProductImagePreview} alt={t('products.preview')} className="w-20 h-20 rounded-lg object-cover border" />
                   <button type="button" onClick={() => { setEditProductImage(null); setEditProductImagePreview(null); }} className="absolute -top-2 -left-2 bg-destructive text-destructive-foreground rounded-full p-0.5">
                     <X className="w-3 h-3" />
                   </button>
@@ -876,7 +876,7 @@ const Products: React.FC = () => {
                 min={1}
                 value={editPiecesPerBox}
                 onChange={(e) => setEditPiecesPerBox(parseInt(e.target.value) || 1)}
-                placeholder="أدخل عدد القطع"
+                placeholder={t('products.enter_pieces')}
                 className="text-right"
               />
             </div>
@@ -1058,10 +1058,10 @@ const Products: React.FC = () => {
               {isDeleting ? (
                 <>
                   <Loader2 className="w-4 h-4 ml-2 animate-spin" />
-                  جاري الحذف...
+                  {t('products.deleting')}
                 </>
               ) : (
-                'حذف'
+                t('common.delete')
               )}
             </AlertDialogAction>
           </AlertDialogFooter>

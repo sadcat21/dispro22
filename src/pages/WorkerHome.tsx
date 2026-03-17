@@ -74,12 +74,12 @@ const WorkerHome: React.FC = () => {
   const JS_DAY_TO_NAME: Record<number, string> = {
     6: 'saturday', 0: 'sunday', 1: 'monday', 2: 'tuesday', 3: 'wednesday', 4: 'thursday',
   };
-  const DAY_NAMES_AR: Record<string, string> = {
-    saturday: 'السبت', sunday: 'الأحد', monday: 'الإثنين',
-    tuesday: 'الثلاثاء', wednesday: 'الأربعاء', thursday: 'الخميس',
+  const DAY_NAMES: Record<string, string> = {
+    saturday: t('days.saturday'), sunday: t('days.sunday'), monday: t('days.monday'),
+    tuesday: t('days.tuesday'), wednesday: t('days.wednesday'), thursday: t('days.thursday'),
   };
   const todayName = JS_DAY_TO_NAME[new Date().getDay()] || '';
-  const todayDayAr = DAY_NAMES_AR[todayName] || todayName;
+  const todayDayLabel = DAY_NAMES[todayName] || todayName;
 
   // Fetch today's scheduled sectors for current worker
   const { data: todaySectorNames = [] } = useQuery({
@@ -104,10 +104,10 @@ const WorkerHome: React.FC = () => {
   });
 
   const todayCustomersLabel = useMemo(() => {
-    const parts = ['عملاء اليوم', todayDayAr];
+    const parts = [t('worker.today_customers'), todayDayLabel];
     if (todaySectorNames.length > 0) parts.push(todaySectorNames.join(' / '));
     return parts.join(' — ');
-  }, [todayDayAr, todaySectorNames]);
+  }, [todayDayLabel, todaySectorNames]);
 
   const { data: stockItems } = useQuery({
     queryKey: ['my-worker-stock', workerId],
@@ -240,21 +240,21 @@ const WorkerHome: React.FC = () => {
             <button
               onClick={() => setShowPalletCalculator(true)}
               className="bg-white/20 hover:bg-white/30 rounded-xl p-2.5 transition-colors"
-              title="حاسبة الطبقات"
+              title={t('worker.pallet_calculator')}
             >
               <Package className="w-5 h-5" />
             </button>
             <Link
               to="/chat"
               className="bg-white/20 hover:bg-white/30 rounded-xl p-2.5 transition-colors"
-              title="المحادثات"
+              title={t('worker.chat')}
             >
               <MessageCircle className="w-5 h-5" />
             </Link>
             <button
               onClick={() => setShowHandoverPreview(true)}
               className="bg-white/20 hover:bg-white/30 rounded-xl p-2.5 transition-colors"
-              title="ملخص التسليم"
+              title={t('worker.handover_summary')}
             >
               <ClipboardList className="w-5 h-5" />
             </button>
@@ -272,7 +272,7 @@ const WorkerHome: React.FC = () => {
             <CalendarCheck className="w-8 h-8 text-sky-600 shrink-0" />
             <div>
               <p className="font-bold text-sm text-sky-900">{todayCustomersLabel}</p>
-              <p className="text-xs text-sky-700">عرض جدول العملاء والتوصيلات المجدولة لليوم</p>
+              <p className="text-xs text-sky-700">{t('worker.today_schedule_desc')}</p>
             </div>
           </div>
         </div>
@@ -287,7 +287,7 @@ const WorkerHome: React.FC = () => {
               className="w-full rounded-2xl bg-gradient-to-br from-purple-500 to-purple-700 text-white p-4 flex items-center justify-center gap-2 shadow-lg active:scale-[0.97] transition-all"
             >
               <Gift className="w-5 h-5" />
-              <span className="font-bold text-sm">تسجيل عروض يدوية</span>
+              <span className="font-bold text-sm">{t('worker.manual_promo')}</span>
             </button>
           </div>
 
@@ -347,15 +347,15 @@ const WorkerHome: React.FC = () => {
           quickActions.push({ key: 'today-customers', icon: <MapPin className="w-6 h-6" />, label: todayCustomersLabel, onClick: () => setShowTodayCustomers(true) });
           // Rewards page
           if (!isRewardsHidden && !isRewardsPageHidden) {
-            quickActions.push({ key: 'rewards', icon: <Trophy className="w-6 h-6" />, label: 'المكافآت', onClick: () => navigate('/my-rewards') });
+            quickActions.push({ key: 'rewards', icon: <Trophy className="w-6 h-6" />, label: t('worker.rewards'), onClick: () => navigate('/my-rewards') });
           }
           // Worker Actions for supervisor
           if (isSupervisor && !isWorkerActionsHidden) {
-            quickActions.push({ key: 'worker-actions', icon: <HardHat className="w-6 h-6" />, label: 'إجراءات العمال', onClick: () => navigate('/worker-actions') });
+            quickActions.push({ key: 'worker-actions', icon: <HardHat className="w-6 h-6" />, label: t('worker.worker_actions'), onClick: () => navigate('/worker-actions') });
           }
           // Worker Actions for regular workers (self-view)
           if (!isSupervisor && !isWorkerActionsHidden) {
-            quickActions.push({ key: 'worker-actions', icon: <HardHat className="w-6 h-6" />, label: 'إجراءاتي', onClick: () => navigate('/worker-actions') });
+            quickActions.push({ key: 'worker-actions', icon: <HardHat className="w-6 h-6" />, label: t('worker.my_actions'), onClick: () => navigate('/worker-actions') });
           }
 
           const colorSchemes: Record<string, { bg: string; iconBg: string; iconColor: string; text: string; border: string }> = {

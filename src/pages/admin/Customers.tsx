@@ -670,7 +670,7 @@ const Customers: React.FC = () => {
                     {renderBtn('special_prices', <Tag className="w-3.5 h-3.5" />, () => setCustomerForPrices(customer))}
                     {isManager && (pendingRequestsMap[customer.id]?.length || 0) > 0 && (
                       <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
-                        onClick={() => setReviewCustomer(customer)} title="مراجعة طلبات التعديل">
+                        onClick={() => setReviewCustomer(customer)} title={t('customers.review_changes')}>
                         <FileEdit className="w-3.5 h-3.5" />
                       </Button>
                     )}
@@ -736,7 +736,7 @@ const Customers: React.FC = () => {
             </Button>
           )}
           {isManager && (
-            <Button size="icon" variant="outline" className="h-9 w-9" onClick={() => setShowFieldSettingsDialog(true)} title="إعدادات حقول العميل">
+            <Button size="icon" variant="outline" className="h-9 w-9" onClick={() => setShowFieldSettingsDialog(true)} title={t('customers.field_settings')}>
               <Settings2 className="w-4 h-4" />
             </Button>
           )}
@@ -799,11 +799,11 @@ const Customers: React.FC = () => {
           {sectorZones.length > 0 && sectorFilter !== 'all' && sectorFilter !== 'none' && (
             <Select value={zoneFilter} onValueChange={setZoneFilter}>
               <SelectTrigger className="flex-1 h-8 text-xs">
-                <SelectValue placeholder="كل المناطق" />
+                <SelectValue placeholder={t('customers.all_areas')} />
               </SelectTrigger>
               <SelectContent className="bg-popover z-[100]">
-                <SelectItem value="all">كل المناطق</SelectItem>
-                <SelectItem value="none">بدون منطقة ({filteredByBranch.filter(c => c.sector_id === sectorFilter && !c.zone_id).length})</SelectItem>
+                <SelectItem value="all">{t('customers.all_areas')}</SelectItem>
+                <SelectItem value="none">{t('customers.no_sector')} ({filteredByBranch.filter(c => c.sector_id === sectorFilter && !c.zone_id).length})</SelectItem>
                 {sectorZones.map(z => {
                   const count = filteredByBranch.filter(c => c.zone_id === z.id).length;
                   return <SelectItem key={z.id} value={z.id}>{getLocalizedName(z, language)} ({count})</SelectItem>;
@@ -852,19 +852,19 @@ const Customers: React.FC = () => {
         <div className="flex gap-1 flex-wrap">
           <span className="text-[10px] text-muted-foreground flex items-center gap-0.5 ml-1">
             <AlertTriangle className="w-3 h-3" />
-            ناقص:
+            {t('common.filter')}:
           </span>
           {[
-            { value: 'all', label: 'الكل' },
-            { value: 'incomplete', label: 'غير مكتمل' },
-            { value: 'phone', label: 'الهاتف' },
-            { value: 'location', label: 'الموقع' },
-            { value: 'type', label: 'النوع' },
-            { value: 'sector', label: 'القطاع' },
-            { value: 'store', label: 'المحل' },
-            { value: 'address', label: 'العنوان' },
-            { value: 'wilaya', label: 'الولاية' },
-            { value: 'zone', label: 'المنطقة' },
+            { value: 'all', label: t('customers.filter_all') },
+            { value: 'incomplete', label: t('customers.filter_incomplete') },
+            { value: 'phone', label: t('customers.filter_phone') },
+            { value: 'location', label: t('customers.filter_location') },
+            { value: 'type', label: t('customers.filter_type') },
+            { value: 'sector', label: t('customers.filter_sector_label') },
+            { value: 'store', label: t('customers.filter_store') },
+            { value: 'address', label: t('customers.filter_address') },
+            { value: 'wilaya', label: t('customers.filter_wilaya') },
+            { value: 'zone', label: t('customers.filter_zone') },
           ].map(opt => (
             <Button
               key={opt.value}
