@@ -7,7 +7,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { MapPin, Truck, ShoppingCart, Landmark, User, Phone, Eye, EyeOff, CheckCircle, PackageX, PackageCheck, Navigation, Loader2, MapPinOff, Clock, Check, X, DoorClosed, UserX, ShoppingBag, Printer, XCircle, Search, BanknoteIcon, Pencil, CalendarClock } from 'lucide-react';
 import { useWorkerGeoPosition } from '@/hooks/useWorkerGeoPosition';
 import { reverseGeocode } from '@/utils/geoUtils';
@@ -161,6 +163,7 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [showBulkPostpone, setShowBulkPostpone] = useState(false);
   const [postponeCustomer, setPostponeCustomer] = useState<any>(null);
+  const [postponeWorkerId, setPostponeWorkerId] = useState<string | null>(null);
 
   // Fetch workers list for admin picker
   const { data: workersList = [] } = useQuery({
@@ -1471,11 +1474,16 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
     if (customerOrders.length === 0) { toast.info('لا توجد طلبيات لهذا العميل'); return; }
     const dateStr = format(newDate, 'yyyy-MM-dd');
     try {
-      // Increment postpone_count for each order individually
+      // Increment postpone_count and optionally reassign worker
       for (const order of customerOrders) {
+        const updateData: any = { delivery_date: dateStr, postpone_count: ((order as any).postpone_count || 0) + 1 };
+        if (postponeWorkerId) {
+          updateData.assigned_worker_id = postponeWorkerId;
+          updateData.status = 'assigned';
+        }
         const { error } = await supabase
           .from('orders')
-          .update({ delivery_date: dateStr, postpone_count: ((order as any).postpone_count || 0) + 1 })
+          .update(updateData)
           .eq('id', order.id);
         if (error) throw error;
       }
@@ -1960,7 +1968,7 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
         </DialogContent>
       </Dialog>
       {/* Single Customer Postpone Dialog */}
-      <Dialog open={!!postponeCustomer} onOpenChange={(open) => { if (!open) setPostponeCustomer(null); }}>
+      <Dialog open={!!postponeCustomer} onOpenChange={(open) => { if (!open) { setPostponeCustomer(null); setPostponeWorkerId(null); } }}>
         <DialogContent className="max-w-xs" dir="rtl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -1968,6 +1976,21 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
               تأجيل توصيل {postponeCustomer?.name}
             </DialogTitle>
           </DialogHeader>
+          {/* Worker reassignment */}
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium">عامل التوصيل:</Label>
+            <Select value={postponeWorkerId || '_same'} onValueChange={(v) => setPostponeWorkerId(v === '_same' ? null : v)}>
+              <SelectTrigger className="h-9 text-sm">
+                <SelectValue placeholder="نفس العامل الحالي" />
+              </SelectTrigger>
+              <SelectContent dir="rtl">
+                <SelectItem value="_same">نفس العامل الحالي</SelectItem>
+                {workersList.map(w => (
+                  <SelectItem key={w.id} value={w.id}>{w.full_name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           <p className="text-sm text-muted-foreground">اختر يوم التوصيل الجديد:</p>
           <div className="grid grid-cols-2 gap-2">
             {getNextWorkDays().map(({ date, label }) => (
