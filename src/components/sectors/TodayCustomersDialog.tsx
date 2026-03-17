@@ -69,17 +69,38 @@ const normalizeSaleItem = (item: any) => ({
 // Resolve paid/remaining amounts from order fields (partial_amount + payment_status)
 const resolveOrderPayment = (order: any, isOrderRequest: boolean) => {
   const totalAmount = Number(order.total_amount || 0);
-  const paymentStatus = order.payment_status;
+  const paymentStatus = String(order.payment_status || '').toLowerCase();
   const partialAmount = order.partial_amount != null ? Number(order.partial_amount) : null;
 
   if (isOrderRequest) return { paidAmount: 0, remainingAmount: totalAmount };
-  if (paymentStatus === 'payment_pending' || paymentStatus === 'no_payment') return { paidAmount: 0, remainingAmount: totalAmount };
-  if (paymentStatus === 'payment_partial' && partialAmount != null) return { paidAmount: partialAmount, remainingAmount: Math.max(0, totalAmount - partialAmount) };
-  if (paymentStatus === 'payment_full' || paymentStatus === 'paid') return { paidAmount: totalAmount, remainingAmount: 0 };
+
+  // Prefer explicit partial amount when valid (covers old/new status naming mismatches)
+  if (partialAmount != null && partialAmount >= 0 && partialAmount < totalAmount) {
+    return { paidAmount: partialAmount, remainingAmount: Math.max(0, totalAmount - partialAmount) };
+  }
+
+  // Unpaid / debt states
+  if (['pending', 'payment_pending', 'no_payment', 'credit'].includes(paymentStatus)) {
+    return { paidAmount: 0, remainingAmount: totalAmount };
+  }
+
+  // Partial states
+  if (['partial', 'payment_partial'].includes(paymentStatus)) {
+    const paid = Math.max(0, Math.min(totalAmount, partialAmount ?? 0));
+    return { paidAmount: paid, remainingAmount: Math.max(0, totalAmount - paid) };
+  }
+
+  // Fully paid states (cash/check/full)
+  if (['cash', 'check', 'payment_full', 'paid', 'full'].includes(paymentStatus)) {
+    return { paidAmount: totalAmount, remainingAmount: 0 };
+  }
+
+  // Legacy fallback if remaining_amount exists on hydrated payloads
   if (order.remaining_amount != null) {
     const rem = Number(order.remaining_amount);
-    return { paidAmount: totalAmount - rem, remainingAmount: rem };
+    return { paidAmount: Math.max(0, totalAmount - rem), remainingAmount: Math.max(0, rem) };
   }
+
   return { paidAmount: totalAmount, remainingAmount: 0 };
 };
 
