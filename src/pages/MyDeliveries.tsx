@@ -1469,7 +1469,7 @@ const MyDeliveries: React.FC = () => {
                 orders={previewOrders}
                 orderItems={toMap(previewItems)}
                 products={products}
-                title="قائمة التوصيلات"
+                title={t('deliveries.delivery_list')}
                 isVisible={true}
                 columnConfig={previewColumnConfig}
               />
