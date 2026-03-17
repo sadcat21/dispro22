@@ -2021,7 +2021,30 @@ const OrderDetailsDialog: React.FC<{ order: any; onClose: () => void }> = ({ ord
   const customer = isDirectSale ? order.customer : order.customer;
   const totalAmount = Number(order.total_amount || 0);
   const isOrderRequest = !isDirectSale && !!order._isOrderRequest;
-  const { paidAmount, remainingAmount } = resolveOrderPayment(order, isOrderRequest);
+  const fallback = resolveOrderPayment(order, isOrderRequest);
+
+  // For delivered orders, fetch the actual debt from customer_debts to stay in sync
+  const { data: orderDebt } = useQuery({
+    queryKey: ['order-debt-details', order.id],
+    queryFn: async () => {
+      if (!order.id) return null;
+      const { data } = await supabase
+        .from('customer_debts')
+        .select('total_amount, paid_amount, remaining_amount')
+        .eq('order_id', order.id)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!order.id && order.status === 'delivered',
+  });
+
+  // Use actual debt data when available, otherwise fall back to calculated values
+  const paidAmount = orderDebt
+    ? totalAmount - Number(orderDebt.remaining_amount || 0)
+    : fallback.paidAmount;
+  const remainingAmount = orderDebt
+    ? Number(orderDebt.remaining_amount || 0)
+    : fallback.remainingAmount;
 
   const handlePrint = () => {
     setShowReceiptDialog(true);
