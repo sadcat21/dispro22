@@ -202,7 +202,7 @@ const Attendance: React.FC = () => {
                           )}
                         </>
                       ) : (
-                        <p className="text-xs text-muted-foreground">لم يسجل بعد</p>
+                        <p className="text-xs text-muted-foreground">{t('attendance.not_recorded')}</p>
                       )}
                     </CardContent>
                   </Card>
