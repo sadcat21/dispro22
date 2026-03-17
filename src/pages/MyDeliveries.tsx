@@ -234,7 +234,7 @@ const MyDeliveries: React.FC = () => {
         setPrintWorkerName(null);
       }, 500);
     } catch (error: any) {
-      toast.error('خطأ في الطباعة');
+      toast.error(t('deliveries.print_error'));
       console.error(error);
     }
   };
