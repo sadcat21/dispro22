@@ -325,7 +325,7 @@ const DailyReceipts: React.FC = () => {
                   <div className="flex-1 min-w-0 space-y-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-bold text-sm">
-                        {receipt.receipt_number ? `#${receipt.receipt_number}` : (receipt as any)._isOrderOnly ? 'طلبية' : '#0'}
+                        {receipt.receipt_number ? `#${receipt.receipt_number}` : (receipt as any)._isOrderOnly ? t('receipts.order_label') : '#0'}
                       </span>
                       <Badge variant="outline" className={`text-[10px] ${typeInfo.color}`}>
                         <TIcon className="w-3 h-3 ml-0.5" />
