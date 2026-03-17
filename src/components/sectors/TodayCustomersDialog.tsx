@@ -1316,6 +1316,7 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
           paymentMethod: null,
           notes: null,
           receiptTitleOverride: 'BON DE LIVRAISON',
+          hidePaymentDetails: true,
         });
         setShowPrintReceipt(true);
       } else {
