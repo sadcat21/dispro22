@@ -291,15 +291,15 @@ const DailyReceipts: React.FC = () => {
       {/* Summary */}
       <div className="grid grid-cols-3 gap-2">
         <Card className="p-2 text-center">
-          <p className="text-[10px] text-muted-foreground">العدد</p>
+          <p className="text-[10px] text-muted-foreground">{t('receipts.count')}</p>
           <p className="text-base font-bold">{filteredReceipts.length}</p>
         </Card>
         <Card className="p-2 text-center">
-          <p className="text-[10px] text-muted-foreground">الإجمالي</p>
+          <p className="text-[10px] text-muted-foreground">{t('receipts.total')}</p>
           <p className="text-base font-bold">{totalAmount.toLocaleString()}</p>
         </Card>
         <Card className="p-2 text-center">
-          <p className="text-[10px] text-muted-foreground">المحصل</p>
+          <p className="text-[10px] text-muted-foreground">{t('receipts.collected')}</p>
           <p className="text-base font-bold text-green-600">{totalPaid.toLocaleString()}</p>
         </Card>
       </div>
