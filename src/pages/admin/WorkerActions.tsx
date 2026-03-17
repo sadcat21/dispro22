@@ -492,7 +492,7 @@ const WorkerActions: React.FC = () => {
           </button>
         )}
         <h2 className="text-xl font-bold">
-          {isSelfMode ? 'إجراءاتي' : selectedWorker ? selectedWorker.full_name : t('worker_actions.title')}
+          {isSelfMode ? t('worker_actions.my_actions') : selectedWorker ? selectedWorker.full_name : t('worker_actions.title')}
         </h2>
         {selectedWorker && liability && (
           <Badge variant={liability.totalLiability > 0 ? 'destructive' : 'outline'} className="mr-auto text-xs">
