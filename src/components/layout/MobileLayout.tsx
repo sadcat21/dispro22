@@ -105,12 +105,18 @@ const MobileLayout: React.FC<MobileLayoutProps> = ({ children }) => {
     const parts: string[] = [];
     
     // Add system role (صفة)
-    if (isAdminRole(role)) {
+    if (role === 'admin') {
       parts.push(t('workers.role_admin'));
+    } else if (role === 'project_manager') {
+      parts.push('مدير المشروع');
     } else if (role === 'branch_admin') {
       parts.push(t('workers.role_branch_admin'));
     } else if (role === 'supervisor') {
       parts.push(t('workers.role_supervisor'));
+    } else if (role === 'accountant') {
+      parts.push('محاسب');
+    } else if (role === 'admin_assistant') {
+      parts.push('عون إداري');
     } else if (role === 'worker') {
       parts.push(t('workers.role_worker'));
     }
