@@ -152,28 +152,28 @@ const AdminHome: React.FC = () => {
             onClick={() => navigate('/surplus-deficit')}
           >
             <Scale className="w-6 h-6 text-violet-600 mb-1" />
-            <p className="font-bold text-[10px] text-violet-900">خزينة الفائض</p>
+            <p className="font-bold text-[10px] text-violet-900">{t('admin.surplus_treasury')}</p>
           </div>
           <div
             className="relative overflow-hidden rounded-xl border-2 border-yellow-300 bg-gradient-to-br from-yellow-50 to-yellow-100 p-3 cursor-pointer active:scale-[0.97] transition-all hover:shadow-lg"
             onClick={() => navigate('/rewards')}
           >
             <Trophy className="w-6 h-6 text-yellow-600 mb-1" />
-            <p className="font-bold text-[10px] text-yellow-900">المكافآت</p>
+            <p className="font-bold text-[10px] text-yellow-900">{t('admin.rewards')}</p>
           </div>
           <div
             className="relative overflow-hidden rounded-xl border-2 border-emerald-300 bg-gradient-to-br from-emerald-50 to-emerald-100 p-3 cursor-pointer active:scale-[0.97] transition-all hover:shadow-lg"
             onClick={() => navigate('/attendance')}
           >
             <CalendarDays className="w-6 h-6 text-emerald-600 mb-1" />
-            <p className="font-bold text-[10px] text-emerald-900">المداومة</p>
+            <p className="font-bold text-[10px] text-emerald-900">{t('admin.attendance')}</p>
           </div>
           <div
             className="relative overflow-hidden rounded-xl border-2 border-purple-300 bg-gradient-to-br from-purple-50 to-purple-100 p-3 cursor-pointer active:scale-[0.97] transition-all hover:shadow-lg"
             onClick={() => { setGiftsWorkerIdx(0); setGiftsOpen(true); }}
           >
             <Gift className="w-6 h-6 text-purple-600 mb-1" />
-            <p className="font-bold text-[10px] text-purple-900">تتبع العروض</p>
+            <p className="font-bold text-[10px] text-purple-900">{t('admin.promo_tracking')}</p>
           </div>
         </div>
       )}
