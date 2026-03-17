@@ -537,7 +537,7 @@ const MyDeliveries: React.FC = () => {
         actionType: 'status_change',
         entityType: 'order',
         entityId: orderId,
-        details: { الحالة_الجديدة: STATUS_CONFIG[status].label },
+        details: { [t('common.status')]: STATUS_CONFIG[status].label },
       });
       
       toast.success(t('orders.worker_assigned'));
