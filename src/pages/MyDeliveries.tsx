@@ -206,7 +206,7 @@ const MyDeliveries: React.FC = () => {
   const handlePrint = async (_filterWorkerId: string | null, _printPerWorker: boolean, filteredOrders: OrderWithDetails[], _groupCustomers: boolean = true, _groupProducts: boolean = true, columnConfig?: PrintColumnConfig[]) => {
     if (columnConfig) setPrintColumnConfig(columnConfig);
     if (!filteredOrders || filteredOrders.length === 0) {
-      toast.error('لا توجد طلبيات للطباعة');
+      toast.error(t('deliveries.no_orders_print'));
       return;
     }
     try {
