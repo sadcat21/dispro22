@@ -218,11 +218,11 @@ const StockReceipts: React.FC = () => {
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-bold flex items-center gap-2">
           <ClipboardList className="w-5 h-5 text-primary" />
-          أوامر الاستلام والتسليم
+          {t('stock_receipts.title')}
         </h2>
         <Button size="sm" variant="outline" onClick={() => navigate('/warehouse')}>
           <BarChart3 className="w-4 h-4 ml-1" />
-          مخزون الفرع
+          {t('stock_receipts.branch_stock')}
         </Button>
       </div>
 
@@ -235,15 +235,15 @@ const StockReceipts: React.FC = () => {
       )}
 
       {branchId && (
-        <Tabs value={activeTab} onValueChange={setActiveTab} dir="rtl">
+        <Tabs value={activeTab} onValueChange={setActiveTab} dir={language === 'ar' ? 'rtl' : 'ltr'}>
           <TabsList className="w-full grid grid-cols-2">
             <TabsTrigger value="receiving" className="gap-1.5">
               <ArrowDownToLine className="w-4 h-4" />
-              استلام
+              {t('stock_receipts.receiving')}
             </TabsTrigger>
             <TabsTrigger value="sending" className="gap-1.5">
               <ArrowUpFromLine className="w-4 h-4" />
-              تسليم
+              {t('stock_receipts.sending')}
             </TabsTrigger>
           </TabsList>
 
@@ -298,13 +298,13 @@ const StockReceipts: React.FC = () => {
           <TabsContent value="sending" className="space-y-3 mt-3">
             <Button size="sm" onClick={() => setShowDeliveryDialog(true)} className="w-full" variant="destructive">
               <Truck className="w-4 h-4 ml-1" />
-              تسليم جديد للمصنع
+              {t('stock_receipts.new_delivery')}
             </Button>
 
             {sendingOrders.length === 0 ? (
               <Card>
                 <CardContent className="py-8 text-center text-muted-foreground">
-                  لا توجد عمليات تسليم للمصنع
+                  {t('stock_receipts.no_sending')}
                 </CardContent>
               </Card>
             ) : (
@@ -314,7 +314,7 @@ const StockReceipts: React.FC = () => {
                     <div className="flex items-center justify-between mb-1">
                       <div className="flex items-center gap-2">
                         <Truck className="w-4 h-4 text-destructive" />
-                        <span className="text-sm font-medium">تسليم للمصنع</span>
+                        <span className="text-sm font-medium">{t('stock_receipts.delivery_to_factory')}</span>
                       </div>
                       <span className="text-xs text-muted-foreground">
                         {formatDate(order.created_at, 'dd/MM/yyyy HH:mm', language)}
@@ -322,7 +322,7 @@ const StockReceipts: React.FC = () => {
                     </div>
                     <div className="flex items-center gap-2 text-xs">
                       <Badge variant={order.status === 'confirmed' ? 'default' : 'secondary'} className="text-[10px]">
-                        {order.status === 'confirmed' ? 'مؤكد' : 'معلق'}
+                        {order.status === 'confirmed' ? t('stock_receipts.confirmed') : t('stock_receipts.pending')}
                       </Badge>
                       {order.notes && <span className="text-muted-foreground truncate">{order.notes}</span>}
                     </div>
@@ -336,7 +336,7 @@ const StockReceipts: React.FC = () => {
 
       {/* View Receipt Details Dialog */}
       <Dialog open={!!viewReceipt} onOpenChange={(open) => { if (!open) setViewReceipt(null); }}>
-        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto" dir="rtl">
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto" dir={language === 'ar' ? 'rtl' : 'ltr'}>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <ClipboardList className="w-5 h-5 text-primary" />
@@ -392,7 +392,7 @@ const StockReceipts: React.FC = () => {
                         </div>
                         {item.pallet_quantity > 0 && (
                           <div className="flex items-center justify-end">
-                            <span className="text-xs font-medium text-amber-600">🪵 باليطات: {item.pallet_quantity}</span>
+                          <span className="text-xs font-medium text-amber-600">🪵 {t('stock_receipts.pallets')}: {item.pallet_quantity}</span>
                           </div>
                         )}
                       </div>
@@ -407,11 +407,11 @@ const StockReceipts: React.FC = () => {
 
       {/* View Sending Order Details */}
       <Dialog open={!!viewSendingOrder} onOpenChange={(open) => { if (!open) setViewSendingOrder(null); }}>
-        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto" dir="rtl">
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto" dir={language === 'ar' ? 'rtl' : 'ltr'}>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Truck className="w-5 h-5 text-destructive" />
-              تفاصيل التسليم للمصنع
+              {t('stock_receipts.delivery_details')}
             </DialogTitle>
           </DialogHeader>
 
@@ -419,31 +419,31 @@ const StockReceipts: React.FC = () => {
             <div className="space-y-4">
               <div className="space-y-1 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">التاريخ</span>
+                  <span className="text-muted-foreground">{t('common.date')}</span>
                   <span>{formatDate(viewSendingOrder.created_at, 'dd/MM/yyyy HH:mm', language)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">الحالة</span>
+                  <span className="text-muted-foreground">{t('common.status')}</span>
                   <Badge variant={viewSendingOrder.status === 'confirmed' ? 'default' : 'secondary'}>
-                    {viewSendingOrder.status === 'confirmed' ? 'مؤكد' : 'معلق'}
+                    {viewSendingOrder.status === 'confirmed' ? t('stock_receipts.confirmed') : t('stock_receipts.pending')}
                   </Badge>
                 </div>
                 {viewSendingOrder.notes && (
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">ملاحظات</span>
+                  <span className="text-muted-foreground">{t('common.notes')}</span>
                     <span>{viewSendingOrder.notes}</span>
                   </div>
                 )}
               </div>
 
               <div className="border-t pt-3">
-                <Label className="text-sm font-semibold mb-2 block">المنتجات والباليطات</Label>
+                <Label className="text-sm font-semibold mb-2 block">{t('stock_receipts.products_pallets')}</Label>
                 {isLoadingSending ? (
                   <div className="flex justify-center py-4">
                     <Loader2 className="w-5 h-5 animate-spin text-primary" />
                   </div>
                 ) : sendingItems.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-4">لا توجد بنود</p>
+                  <p className="text-sm text-muted-foreground text-center py-4">{t('stock_receipts.no_items')}</p>
                 ) : (
                   <div className="space-y-2">
                     {sendingItems.map((item) => (
@@ -454,10 +454,10 @@ const StockReceipts: React.FC = () => {
                         </div>
                         <div className="flex items-center gap-4 text-xs">
                           {item.product_quantity > 0 && (
-                            <span className="text-destructive font-medium">تالف: {item.product_quantity} صندوق</span>
+                            <span className="text-destructive font-medium">{t('stock_receipts.damaged')}: {item.product_quantity} {t('common.box')}</span>
                           )}
                           {item.pallet_quantity > 0 && (
-                            <span className="text-amber-600 font-medium">باليطات: {item.pallet_quantity}</span>
+                            <span className="text-amber-600 font-medium">{t('stock_receipts.pallets')}: {item.pallet_quantity}</span>
                           )}
                         </div>
                       </div>
@@ -472,7 +472,7 @@ const StockReceipts: React.FC = () => {
 
       {/* Create Receipt Dialog */}
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
-        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto" dir="rtl">
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto" dir={language === 'ar' ? 'rtl' : 'ltr'}>
           <DialogHeader>
             <DialogTitle>{t('stock.new_receipt')}</DialogTitle>
           </DialogHeader>
@@ -547,7 +547,7 @@ const StockReceipts: React.FC = () => {
             </div>
 
             <div className="space-y-2">
-              <Label>🪵 عدد الباليطات المستلمة (اختياري)</Label>
+              <Label>🪵 {t('stock_receipts.pallets_received')}</Label>
               <Input
                 type="number"
                 min={0}

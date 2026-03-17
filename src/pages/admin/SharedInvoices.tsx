@@ -84,11 +84,11 @@ const SharedInvoices: React.FC = () => {
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success('تم حذف الملف');
+      toast.success(t('shared_invoices.deleted'));
       queryClient.invalidateQueries({ queryKey: ['shared-invoices'] });
       setDeleteTarget(null);
     },
-    onError: () => toast.error('فشل حذف الملف'),
+    onError: () => toast.error(t('shared_invoices.delete_failed')),
   });
 
   const handleDownload = async (folder: string, name: string) => {
@@ -98,7 +98,7 @@ const SharedInvoices: React.FC = () => {
       .from('shared-invoices')
       .createSignedUrl(`${folder}/${name}`, 300);
     if (error || !signedData?.signedUrl) {
-      toast.error('فشل تحميل الملف');
+      toast.error(t('shared_invoices.download_failed'));
       return;
     }
     window.open(signedData.signedUrl, '_blank');
@@ -109,7 +109,7 @@ const SharedInvoices: React.FC = () => {
       .from('shared-invoices')
       .createSignedUrl(`${folder}/${name}`, 300);
     if (error || !data?.signedUrl) {
-      toast.error('فشل معاينة الملف');
+      toast.error(t('shared_invoices.preview_failed'));
       return;
     }
     try {
@@ -119,7 +119,7 @@ const SharedInvoices: React.FC = () => {
       if (previewUrl) URL.revokeObjectURL(previewUrl);
       setPreviewUrl(URL.createObjectURL(blob));
     } catch {
-      toast.error('فشل تحميل الملف للمعاينة');
+      toast.error(t('shared_invoices.preview_failed'));
     }
   };
 
@@ -147,7 +147,7 @@ const SharedInvoices: React.FC = () => {
       {/* Header */}
       <div className="flex items-center gap-3">
         <FolderOpen className="w-6 h-6 text-primary" />
-        <h1 className="text-lg font-bold">الفواتير المشاركة</h1>
+        <h1 className="text-lg font-bold">{t('shared_invoices.title')}</h1>
         <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
           {filtered.length}
         </span>
@@ -157,7 +157,7 @@ const SharedInvoices: React.FC = () => {
       <div className="relative">
         <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <Input
-          placeholder="بحث بالاسم..."
+          placeholder={t('shared_invoices.search')}
           value={search}
           onChange={e => setSearch(e.target.value)}
           className="pr-9"
@@ -173,8 +173,8 @@ const SharedInvoices: React.FC = () => {
         <Card>
           <CardContent className="py-12 text-center">
             <FileText className="w-12 h-12 mx-auto text-muted-foreground mb-3" />
-            <p className="text-sm text-muted-foreground">لا توجد فواتير مشاركة بعد</p>
-            <p className="text-xs text-muted-foreground mt-1">شارك ملف PDF من واتساب ليظهر هنا</p>
+            <p className="text-sm text-muted-foreground">{t('shared_invoices.no_invoices')}</p>
+            <p className="text-xs text-muted-foreground mt-1">{t('shared_invoices.share_hint')}</p>
           </CardContent>
         </Card>
       ) : (
@@ -212,13 +212,13 @@ const SharedInvoices: React.FC = () => {
       <AlertDialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
         <AlertDialogContent dir={dir}>
           <AlertDialogHeader>
-            <AlertDialogTitle>حذف الملف؟</AlertDialogTitle>
-            <AlertDialogDescription>سيتم حذف هذا الملف نهائياً ولا يمكن استرجاعه.</AlertDialogDescription>
+            <AlertDialogTitle>{t('shared_invoices.delete_file')}</AlertDialogTitle>
+            <AlertDialogDescription>{t('shared_invoices.delete_confirm')}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>إلغاء</AlertDialogCancel>
+            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
             <AlertDialogAction onClick={() => deleteTarget && deleteMutation.mutate(deleteTarget)} className="bg-destructive text-destructive-foreground">
-              حذف
+              {t('common.delete')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -229,11 +229,11 @@ const SharedInvoices: React.FC = () => {
         <div className="fixed inset-0 z-50 bg-black/80 flex flex-col items-center justify-center p-2" onClick={() => { URL.revokeObjectURL(previewUrl); setPreviewUrl(null); }}>
           <div className="bg-background rounded-lg w-full max-w-2xl flex flex-col" style={{ height: '90vh' }} onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between p-3 border-b shrink-0">
-              <span className="text-sm font-medium">معاينة الملف</span>
+              <span className="text-sm font-medium">{t('shared_invoices.preview')}</span>
               <div className="flex items-center gap-2">
                 <Button variant="outline" size="sm" onClick={() => window.open(previewUrl, '_blank')}>
                   <Download className="w-4 h-4 me-1" />
-                  فتح
+                  {t('shared_invoices.open')}
                 </Button>
                 <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { URL.revokeObjectURL(previewUrl); setPreviewUrl(null); }}>✕</Button>
               </div>
