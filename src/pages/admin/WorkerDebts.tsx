@@ -94,11 +94,11 @@ const WorkerDebtsPage: React.FC = () => {
         current_paid: Number(payDebt.paid_amount),
         total_amount: Number(payDebt.amount),
       });
-      toast.success('تم تسجيل الدفع بنجاح');
+      toast.success(t('worker_debts.pay_success'));
       setShowPay(false);
       setPayDebt(null);
     } catch {
-      toast.error('خطأ في تسجيل الدفع');
+      toast.error(t('worker_debts.pay_error'));
     }
   };
 
