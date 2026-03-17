@@ -433,7 +433,7 @@ const PromoTable: React.FC = () => {
         }}>
           <SelectTrigger className="flex-1 min-w-[140px]">
             <Package className="w-4 h-4 ml-2" />
-            <SelectValue placeholder="المنتج" />
+            <SelectValue placeholder={t('products.name')} />
           </SelectTrigger>
           <SelectContent className="bg-popover z-50">
             <div className="p-2">
