@@ -441,7 +441,7 @@ const MyDeliveries: React.FC = () => {
         .eq('order_id', order.id);
 
       if (!items || items.length === 0) {
-        toast.error('لا توجد بنود لهذه الطلبية');
+        toast.error(t('deliveries.no_items'));
         return;
       }
 

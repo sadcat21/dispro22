@@ -191,7 +191,7 @@ const CustomerDebts: React.FC = () => {
                           <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
                             {group.phone && <span>{group.phone}</span>}
                             {group.wilaya && <span>• {group.wilaya}</span>}
-                            <span>• {group.debts.length} {group.debts.length === 1 ? 'دين' : 'ديون'}</span>
+                            <span>• {group.debts.length} {group.debts.length === 1 ? t('debts.debt_count_singular') : t('debts.debt_count_plural')}</span>
                           </div>
                           {group.nextDueDate && (
                             <div className="flex items-center gap-1 text-xs mt-1">

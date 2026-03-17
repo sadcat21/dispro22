@@ -13,7 +13,7 @@ import RewardNotificationsTab from '@/components/rewards/RewardNotificationsTab'
 import { useAllDisputes } from '@/hooks/useRewardDisputes';
 
 const Rewards: React.FC = () => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [activeTab, setActiveTab] = useState('dashboard');
   const { data: disputes } = useAllDisputes();
   const pendingCount = disputes?.length || 0;
