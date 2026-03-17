@@ -254,7 +254,7 @@ const ManagerTreasury = () => {
         }
       }
 
-      toast.success(`تمت مزامنة ${unsynced.length} جلسة (${totalInserted} سجل)`);
+      toast.success(`${t('treasury.sync_success')} (${unsynced.length} / ${totalInserted})`);
       queryClient.invalidateQueries({ queryKey: ['manager-treasury'] });
       queryClient.invalidateQueries({ queryKey: ['treasury-summary'] });
     } catch (err: any) {
