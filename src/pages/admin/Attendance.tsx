@@ -43,7 +43,7 @@ const Attendance: React.FC = () => {
     return new Date(dateStr).toLocaleTimeString('ar-DZ', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
   };
 
-  const displayDate = format(new Date(selectedDate), 'EEEE d MMMM yyyy', { locale: ar });
+  const displayDate = format(new Date(selectedDate), 'EEEE d MMMM yyyy', { locale: getDateLocale() });
 
   const getDuration = (clockIn: any, clockOut: any) => {
     const diff = new Date(clockOut.recorded_at).getTime() - new Date(clockIn.recorded_at).getTime();
