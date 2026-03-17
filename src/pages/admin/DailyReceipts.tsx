@@ -388,7 +388,7 @@ const DailyReceipts: React.FC = () => {
         <Dialog open={!!previewReceipt} onOpenChange={() => setPreviewReceipt(null)}>
           <DialogContent className="max-w-[95vw] sm:max-w-sm max-h-[85vh] p-0 gap-0" dir={dir}>
             <DialogHeader className="p-3 border-b">
-              <DialogTitle className="text-sm">وصل #{previewReceipt.receipt_number}</DialogTitle>
+              <DialogTitle className="text-sm">{t('receipts.receipt_preview')}{previewReceipt.receipt_number}</DialogTitle>
             </DialogHeader>
             <ScrollArea className="max-h-[60vh] p-3">
               <div
