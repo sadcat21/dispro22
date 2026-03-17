@@ -979,7 +979,7 @@ const MyDeliveries: React.FC = () => {
           </TabsTrigger>
           <TabsTrigger value="postponed" className="flex-1 gap-1.5 data-[state=active]:shadow-sm">
             <CalendarClock className="w-4 h-4" />
-            <span className="text-xs font-bold">التأجيل ({postponedCount})</span>
+            <span className="text-xs font-bold">{t('deliveries.postponed')} ({postponedCount})</span>
           </TabsTrigger>
           <TabsTrigger value="direct_sales" className="flex-1 gap-1.5 data-[state=active]:shadow-sm">
             <ShoppingCart className="w-4 h-4" />
