@@ -1491,7 +1491,7 @@ const MyDeliveries: React.FC = () => {
               }, 500);
             }}>
               <Printer className="w-4 h-4 ms-2" />
-              طباعة
+              {t('common.print')}
             </Button>
           </div>
         </DialogContent>
