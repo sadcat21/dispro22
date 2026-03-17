@@ -266,10 +266,10 @@ const DailyReceipts: React.FC = () => {
         <div className="flex gap-2">
           <Select value={filterCustomer} onValueChange={setFilterCustomer}>
             <SelectTrigger className="h-8 text-xs flex-1">
-              <SelectValue placeholder="كل العملاء" />
+              <SelectValue placeholder={t('receipts.all_customers')} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">كل العملاء</SelectItem>
+              <SelectItem value="all">{t('receipts.all_customers')}</SelectItem>
               {customers?.filter(c => c.id).map(c => (
                 <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
               ))}
