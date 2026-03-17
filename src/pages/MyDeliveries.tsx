@@ -74,7 +74,7 @@ const MyDeliveries: React.FC = () => {
   const { data: workerPrintInfo } = useWorkerPrintInfo(workerId);
   const { activeOffers } = useProductOffers();
   
-  const [activeTab, setActiveTab] = useState<TabStatus>('assigned');
+  const [activeTab, setActiveTab] = useState<TabStatus>('all');
   const [deliveryType, setDeliveryType] = useState<DeliveryType>('orders');
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
@@ -611,6 +611,7 @@ const MyDeliveries: React.FC = () => {
   // Tab definitions
   const tabs: { value: TabStatus; label: string; icon: React.ElementType; color: string }[] = [
     { value: 'all', label: t('deliveries.tab_all'), icon: ListFilter, color: 'text-foreground' },
+    { value: 'pending', label: t('orders.pending'), icon: Clock, color: 'text-yellow-600' },
     { value: 'assigned', label: t('orders.assigned'), icon: UserCheck, color: 'text-blue-600' },
     { value: 'in_progress', label: t('orders.in_progress'), icon: Truck, color: 'text-purple-600' },
     { value: 'delivered', label: t('orders.delivered'), icon: CheckCircle, color: 'text-green-600' },
