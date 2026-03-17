@@ -14,6 +14,8 @@ import WorkerAttendanceLocationDialog from '@/components/attendance/WorkerAttend
 
 const Attendance: React.FC = () => {
   const { activeBranch } = useAuth();
+  const { t, language } = useLanguage();
+  const getDateLocale = () => language === 'fr' ? fr : language === 'en' ? enUS : ar;
   const [selectedDate, setSelectedDate] = useState(() => format(new Date(), 'yyyy-MM-dd'));
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [workerLocationOpen, setWorkerLocationOpen] = useState(false);
