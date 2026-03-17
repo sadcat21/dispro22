@@ -1301,7 +1301,14 @@ const DeliverySaleDialog: React.FC<DeliverySaleDialogProps> = ({ open, onOpenCha
       {receiptDataState && (
         <ReceiptDialog
           open={showReceiptDialog}
-          onOpenChange={setShowReceiptDialog}
+          onOpenChange={(val) => {
+            setShowReceiptDialog(val);
+            if (!val) {
+              // Worker closed receipt — now close the main dialog
+              setReceiptDataState(null);
+              onOpenChange(false);
+            }
+          }}
           receiptData={receiptDataState}
         />
       )}
