@@ -204,11 +204,11 @@ const DailyReceipts: React.FC = () => {
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-bold flex items-center gap-2">
           <FileText className="w-5 h-5" />
-          الفواتير اليومية
+          {t('receipts.title')}
         </h1>
         {isConnected && (
           <Badge variant="outline" className="bg-green-100 text-green-800 gap-1 text-xs">
-            <Printer className="w-3 h-3" /> متصل
+            <Printer className="w-3 h-3" /> {t('receipts.connected')}
           </Badge>
         )}
       </div>
