@@ -1143,18 +1143,18 @@ const MyDeliveries: React.FC = () => {
                 <>
                   <div className="flex items-center justify-between p-3 bg-primary/10 rounded-lg font-bold">
                     <span>{t('orders.grand_total')}</span>
-                    <span className="text-primary">{Number(selectedOrder.total_amount).toLocaleString()} دج</span>
+                    <span className="text-primary">{Number(selectedOrder.total_amount).toLocaleString()} {t('common.currency')}</span>
                   </div>
                   {Number(selectedOrder.prepaid_amount || 0) > 0 && (
                     <div className="border-2 border-emerald-400 dark:border-emerald-600 bg-emerald-50 dark:bg-emerald-950/30 rounded-lg p-3 space-y-1">
-                      <p className="font-bold text-emerald-700 dark:text-emerald-400 text-sm">💰 طلبية بدفع مسبق!</p>
+                      <p className="font-bold text-emerald-700 dark:text-emerald-400 text-sm">💰 {t('deliveries.prepaid_order')}</p>
                       <div className="flex items-center justify-between text-sm">
-                        <span className="text-emerald-600 dark:text-emerald-400">المبلغ المدفوع مسبقاً:</span>
-                        <span className="text-emerald-700 dark:text-emerald-300 font-bold">{Number(selectedOrder.prepaid_amount).toLocaleString()} دج</span>
+                        <span className="text-emerald-600 dark:text-emerald-400">{t('deliveries.prepaid_amount')}</span>
+                        <span className="text-emerald-700 dark:text-emerald-300 font-bold">{Number(selectedOrder.prepaid_amount).toLocaleString()} {t('common.currency')}</span>
                       </div>
                       <div className="flex items-center justify-between text-sm font-bold">
-                        <span className="text-primary">المتبقي للتحصيل:</span>
-                        <span className="text-primary">{Math.max(0, Number(selectedOrder.total_amount || 0) - Number(selectedOrder.prepaid_amount || 0)).toLocaleString()} دج</span>
+                        <span className="text-primary">{t('deliveries.remaining_to_collect')}</span>
+                        <span className="text-primary">{Math.max(0, Number(selectedOrder.total_amount || 0) - Number(selectedOrder.prepaid_amount || 0)).toLocaleString()} {t('common.currency')}</span>
                       </div>
                     </div>
                   )}
