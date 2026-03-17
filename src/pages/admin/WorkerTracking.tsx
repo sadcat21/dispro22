@@ -68,7 +68,7 @@ const WorkerTracking: React.FC = () => {
         <div className="flex items-center gap-2 flex-wrap" dir={dir}>
           <div className="flex items-center gap-2">
             <Store className="w-4 h-4 text-muted-foreground" />
-            <span className="text-sm text-muted-foreground">عملاء قريبون</span>
+            <span className="text-sm text-muted-foreground">{t('tracking.nearby_customers')}</span>
             <Switch checked={showNearbyCustomers} onCheckedChange={setShowNearbyCustomers} />
           </div>
           {showNearbyCustomers && (
