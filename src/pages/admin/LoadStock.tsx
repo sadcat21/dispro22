@@ -839,7 +839,7 @@ const LoadStock: React.FC = () => {
         const diffCustom = totalPiecesToCustom(Math.abs(diff), piecesPerBox);
         const warehouseItem = warehouseStock.find(s => s.product_id === editingItem.product_id);
         if (!warehouseItem || customToTotalPieces(warehouseItem.quantity, piecesPerBox) < Math.abs(diff)) {
-          toast.error('الكمية المتاحة في المخزن غير كافية');
+          toast.error(t('load_stock.insufficient_stock'));
           setIsEditSaving(false);
           return;
         }
