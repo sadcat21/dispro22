@@ -166,9 +166,9 @@ const DailyReceipts: React.FC = () => {
   }, [mergedReceipts, searchQuery, filterCustomer]);
 
   const typeLabels: Record<string, { label: string; icon: React.ElementType; color: string }> = {
-    direct_sale: { label: 'بيع مباشر', icon: Receipt, color: 'bg-green-100 text-green-800' },
-    delivery: { label: 'توصيل', icon: Truck, color: 'bg-blue-100 text-blue-800' },
-    debt_payment: { label: 'تسديد دين', icon: CreditCard, color: 'bg-amber-100 text-amber-800' },
+    direct_sale: { label: t('receipts.direct_sale'), icon: Receipt, color: 'bg-green-100 text-green-800' },
+    delivery: { label: t('receipts.delivery'), icon: Truck, color: 'bg-blue-100 text-blue-800' },
+    debt_payment: { label: t('receipts.debt_payment'), icon: CreditCard, color: 'bg-amber-100 text-amber-800' },
   };
 
   const handleReprint = async (receipt: ReceiptWithDetails) => {
