@@ -1,4 +1,4 @@
-export type AppRole = 'admin' | 'worker' | 'supervisor' | 'branch_admin';
+export type AppRole = 'admin' | 'worker' | 'supervisor' | 'branch_admin' | 'project_manager' | 'accountant' | 'admin_assistant';
 
 export type OrderStatus = 'pending' | 'assigned' | 'in_progress' | 'delivered' | 'cancelled';
 
