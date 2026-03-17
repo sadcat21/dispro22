@@ -876,7 +876,7 @@ const Products: React.FC = () => {
                 min={1}
                 value={editPiecesPerBox}
                 onChange={(e) => setEditPiecesPerBox(parseInt(e.target.value) || 1)}
-                placeholder="أدخل عدد القطع"
+                placeholder={t('products.enter_pieces')}
                 className="text-right"
               />
             </div>
