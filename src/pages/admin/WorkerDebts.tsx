@@ -303,35 +303,35 @@ const WorkerDebtsPage: React.FC = () => {
       <Dialog open={showPay} onOpenChange={setShowPay}>
         <DialogContent className="max-w-sm" dir={dir}>
           <DialogHeader>
-            <DialogTitle>تسديد دين</DialogTitle>
+            <DialogTitle>{t('worker_debts.pay_title')}</DialogTitle>
           </DialogHeader>
           {payDebt && (
             <div className="space-y-3">
               <div className="text-center">
-                <p className="text-sm text-muted-foreground">المتبقي</p>
+                <p className="text-sm text-muted-foreground">{t('worker_debts.remaining_label')}</p>
                 <p className="text-2xl font-bold text-destructive">{Number(payDebt.remaining_amount).toLocaleString()} DA</p>
               </div>
               <div>
-                <Label>المبلغ</Label>
+                <Label>{t('worker_debts.amount_label')}</Label>
                 <Input type="number" value={payAmount} onChange={e => setPayAmount(e.target.value)} max={Number(payDebt.remaining_amount)} />
               </div>
               <div>
-                <Label>طريقة الدفع</Label>
+                <Label>{t('worker_debts.payment_method')}</Label>
                 <Select value={payMethod} onValueChange={setPayMethod}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="cash">كاش</SelectItem>
-                    <SelectItem value="deduction">خصم من الراتب</SelectItem>
-                    <SelectItem value="transfer">تحويل</SelectItem>
+                    <SelectItem value="cash">{t('worker_debts.cash')}</SelectItem>
+                    <SelectItem value="deduction">{t('worker_debts.deduction')}</SelectItem>
+                    <SelectItem value="transfer">{t('worker_debts.transfer')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div>
-                <Label>ملاحظات</Label>
+                <Label>{t('worker_debts.notes')}</Label>
                 <Input value={payNotes} onChange={e => setPayNotes(e.target.value)} />
               </div>
               <Button className="w-full" onClick={handlePay} disabled={payMutation.isPending}>
-                {payMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'تأكيد الدفع'}
+                {payMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : t('worker_debts.confirm_pay')}
               </Button>
             </div>
           )}
