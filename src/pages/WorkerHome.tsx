@@ -240,21 +240,21 @@ const WorkerHome: React.FC = () => {
             <button
               onClick={() => setShowPalletCalculator(true)}
               className="bg-white/20 hover:bg-white/30 rounded-xl p-2.5 transition-colors"
-              title="حاسبة الطبقات"
+              title={t('worker.pallet_calculator')}
             >
               <Package className="w-5 h-5" />
             </button>
             <Link
               to="/chat"
               className="bg-white/20 hover:bg-white/30 rounded-xl p-2.5 transition-colors"
-              title="المحادثات"
+              title={t('worker.chat')}
             >
               <MessageCircle className="w-5 h-5" />
             </Link>
             <button
               onClick={() => setShowHandoverPreview(true)}
               className="bg-white/20 hover:bg-white/30 rounded-xl p-2.5 transition-colors"
-              title="ملخص التسليم"
+              title={t('worker.handover_summary')}
             >
               <ClipboardList className="w-5 h-5" />
             </button>
