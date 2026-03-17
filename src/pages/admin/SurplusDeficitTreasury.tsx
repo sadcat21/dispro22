@@ -150,7 +150,7 @@ const SurplusDeficitTreasury: React.FC = () => {
           <ScrollArea className="max-h-[60vh]">
             <div className="space-y-2 mt-2">
               {customerSurplusEntries.length === 0 && (
-                <p className="text-center text-muted-foreground text-sm py-8">لا توجد فوائض عملاء مسجلة</p>
+                <p className="text-center text-muted-foreground text-sm py-8">{t('surplus.no_customer_surplus')}</p>
               )}
               {customerSurplusEntries.map((entry: any) => (
                 <div key={entry.id} className="rounded-xl border border-blue-200 bg-blue-50/50 dark:bg-blue-900/10 p-3">
