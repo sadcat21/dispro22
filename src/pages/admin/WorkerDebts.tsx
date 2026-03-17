@@ -174,7 +174,7 @@ const WorkerDebtsPage: React.FC = () => {
       {totalRemaining > 0 && (
         <Card className="border-destructive/30 bg-destructive/5">
           <CardContent className="p-3 flex items-center justify-between">
-            <span className="text-sm font-medium">إجمالي الديون المتبقية</span>
+            <span className="text-sm font-medium">{t('worker_debts.total_remaining')}</span>
             <span className="text-lg font-bold text-destructive">{totalRemaining.toLocaleString()} DA</span>
           </CardContent>
         </Card>
