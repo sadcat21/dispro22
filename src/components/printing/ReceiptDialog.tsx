@@ -282,8 +282,11 @@ const ReceiptDialog: React.FC<ReceiptDialogProps> = ({ open, onOpenChange, recei
             <StIcon className={`w-3 h-3 ${status === 'connecting' || status === 'printing' ? 'animate-spin' : ''}`} />
             {st.label}
           </Badge>
-          {!isConnected && (
-            <p className="text-xs text-muted-foreground">اربط الطابعة من القائمة ⋮</p>
+          {!isConnected && status !== 'connecting' && (
+            <Button variant="outline" size="sm" className="gap-1.5 text-xs h-7" onClick={scanAndConnect}>
+              <Bluetooth className="w-3 h-3" />
+              اتصال بالطابعة
+            </Button>
           )}
         </div>
 
