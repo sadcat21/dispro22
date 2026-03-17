@@ -421,7 +421,7 @@ const MyDeliveries: React.FC = () => {
       }
       return true;
     } catch {
-      toast.error('تعذر تحديد موقعك. يرجى تفعيل خدمة الموقع.');
+      toast.error(t('deliveries.location_error'));
       return false;
     } finally {
       setCheckingLocation(false);
