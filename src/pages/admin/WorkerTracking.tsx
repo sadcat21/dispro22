@@ -152,7 +152,7 @@ const WorkerTracking: React.FC = () => {
           {selectedWorkerStops.length === 0 ? (
             <div className="text-center py-4 text-muted-foreground text-sm bg-muted/50 rounded-lg">
               <Clock className="w-5 h-5 mx-auto mb-1 opacity-40" />
-              لا توجد توقفات مسجلة (أكثر من 15 دقيقة)
+              {t('tracking.no_stops')}
             </div>
           ) : (
             <div className="space-y-1.5">

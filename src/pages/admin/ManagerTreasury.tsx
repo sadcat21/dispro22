@@ -258,7 +258,7 @@ const ManagerTreasury = () => {
       queryClient.invalidateQueries({ queryKey: ['manager-treasury'] });
       queryClient.invalidateQueries({ queryKey: ['treasury-summary'] });
     } catch (err: any) {
-      toast.error('خطأ في المزامنة: ' + (err.message || ''));
+      toast.error(t('treasury.sync_error') + ': ' + (err.message || ''));
     } finally {
       setSyncing(false);
     }

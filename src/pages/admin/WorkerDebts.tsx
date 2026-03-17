@@ -342,34 +342,34 @@ const WorkerDebtsPage: React.FC = () => {
       <Dialog open={showPayAll} onOpenChange={setShowPayAll}>
         <DialogContent className="max-w-sm" dir={dir}>
           <DialogHeader>
-            <DialogTitle>تسديد جميع الديون</DialogTitle>
+            <DialogTitle>{t('worker_debts.pay_all_title')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             <div className="text-center">
-              <p className="text-sm text-muted-foreground">إجمالي المتبقي</p>
+              <p className="text-sm text-muted-foreground">{t('worker_debts.total_remaining_label')}</p>
               <p className="text-2xl font-bold text-destructive">{Math.ceil(totalRemaining).toLocaleString()} DA</p>
             </div>
             <div className="text-xs text-muted-foreground bg-muted/50 rounded p-2">
-              <p>سيتم تسديد {debts?.filter(d => d.status !== 'paid' && Number(d.remaining_amount) > 0).length || 0} دين نشط</p>
+              <p>{t('worker_debts.will_pay')} {debts?.filter(d => d.status !== 'paid' && Number(d.remaining_amount) > 0).length || 0} {t('worker_debts.active_debts_count')}</p>
             </div>
             <div>
-              <Label>طريقة الدفع</Label>
+              <Label>{t('worker_debts.payment_method')}</Label>
               <Select value={payAllMethod} onValueChange={setPayAllMethod}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="cash">كاش</SelectItem>
-                  <SelectItem value="deduction">خصم من الراتب</SelectItem>
-                  <SelectItem value="transfer">تحويل</SelectItem>
+                  <SelectItem value="cash">{t('worker_debts.cash')}</SelectItem>
+                  <SelectItem value="deduction">{t('worker_debts.deduction')}</SelectItem>
+                  <SelectItem value="transfer">{t('worker_debts.transfer')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div>
-              <Label>ملاحظات</Label>
-              <Input value={payAllNotes} onChange={e => setPayAllNotes(e.target.value)} placeholder="ملاحظات اختيارية" />
+              <Label>{t('worker_debts.notes')}</Label>
+              <Input value={payAllNotes} onChange={e => setPayAllNotes(e.target.value)} placeholder={t('worker_debts.optional_notes')} />
             </div>
             <Button className="w-full" variant="destructive" onClick={handlePayAll} disabled={payMutation.isPending}>
               {payMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin ml-1" /> : <CheckCheck className="w-4 h-4 ml-1" />}
-              تأكيد تسديد الكل ({Math.ceil(totalRemaining).toLocaleString()} DA)
+              {t('worker_debts.confirm_pay_all')} ({Math.ceil(totalRemaining).toLocaleString()} DA)
             </Button>
           </div>
         </DialogContent>
