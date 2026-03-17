@@ -2267,11 +2267,11 @@ const CustomerList: React.FC<{
                </Badge>
              )}
              {postponedBadgeIds?.has(c.id) && (
-               <Badge className="text-[9px] px-1.5 py-0 h-4 bg-purple-100 text-purple-700 border-0 font-medium">
-                 <CalendarClock className="w-3 h-3 ml-0.5" />
-                 مؤجلة
-               </Badge>
-             )}
+                <Badge className="text-[9px] px-1.5 py-0 h-4 bg-purple-600 text-white border-0 font-medium gap-0.5">
+                  <CalendarClock className="w-3 h-3" />
+                  {postponeCountMap?.get(c.id) || 1}
+                </Badge>
+              )}
              {salesRepStatusMap && salesRepStatusMap.has(c.id) && (() => {
                const status = salesRepStatusMap.get(c.id);
                if (status === 'not_visited') return <Badge className="text-[9px] px-1.5 py-0 h-4 bg-amber-100 text-amber-700 border-0">بدون زيارة</Badge>;
