@@ -99,6 +99,8 @@ export const useCreateDebt = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['customer-debts'] });
       queryClient.invalidateQueries({ queryKey: ['customer-debt-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['customer-debts-summary-all'] });
+      queryClient.invalidateQueries({ queryKey: ['due-debts'] });
     },
   });
 };
