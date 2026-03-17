@@ -812,7 +812,7 @@ const Products: React.FC = () => {
           </DialogHeader>
           <form onSubmit={handleUpdateProduct} className="space-y-4">
             <div className="space-y-2">
-              <Label>اسم المنتج</Label>
+              <Label>{t('products.name')}</Label>
               <Input
                 value={editProductName}
                 onChange={(e) => setEditProductName(e.target.value)}
