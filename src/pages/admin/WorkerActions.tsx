@@ -546,7 +546,7 @@ const WorkerActions: React.FC = () => {
                     {todaySectors.sales.length > 0 && (
                       <div className="flex items-center gap-1 text-[9px] text-muted-foreground bg-background/60 rounded px-1.5 py-0.5">
                         <ShoppingCart className="w-3 h-3 shrink-0" />
-                        <span className="truncate">طلبيات: {todaySectors.sales.join('، ')}</span>
+                        <span className="truncate">{t('worker_actions.sales_sectors')} {todaySectors.sales.join('، ')}</span>
                       </div>
                     )}
                   </div>
