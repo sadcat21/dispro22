@@ -648,7 +648,7 @@ const WorkerActions: React.FC = () => {
                           <div className="flex items-center gap-2 text-xs border-t pt-1.5 mt-1 flex-wrap">
                             <span className="flex items-center gap-0.5 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 px-1.5 py-0.5 rounded font-semibold">
                               <Package className="w-3 h-3" />
-                              رصيد: {totalLoad}
+                              {t('worker_actions.balance')} {totalLoad}
                             </span>
                             <span className="flex items-center gap-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded">
                               <TrendingUp className="w-3 h-3" />
