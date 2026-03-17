@@ -74,12 +74,12 @@ const WorkerHome: React.FC = () => {
   const JS_DAY_TO_NAME: Record<number, string> = {
     6: 'saturday', 0: 'sunday', 1: 'monday', 2: 'tuesday', 3: 'wednesday', 4: 'thursday',
   };
-  const DAY_NAMES_AR: Record<string, string> = {
-    saturday: 'السبت', sunday: 'الأحد', monday: 'الإثنين',
-    tuesday: 'الثلاثاء', wednesday: 'الأربعاء', thursday: 'الخميس',
+  const DAY_NAMES: Record<string, string> = {
+    saturday: t('days.saturday'), sunday: t('days.sunday'), monday: t('days.monday'),
+    tuesday: t('days.tuesday'), wednesday: t('days.wednesday'), thursday: t('days.thursday'),
   };
   const todayName = JS_DAY_TO_NAME[new Date().getDay()] || '';
-  const todayDayAr = DAY_NAMES_AR[todayName] || todayName;
+  const todayDayLabel = DAY_NAMES[todayName] || todayName;
 
   // Fetch today's scheduled sectors for current worker
   const { data: todaySectorNames = [] } = useQuery({
