@@ -229,11 +229,11 @@ const SharedInvoices: React.FC = () => {
         <div className="fixed inset-0 z-50 bg-black/80 flex flex-col items-center justify-center p-2" onClick={() => { URL.revokeObjectURL(previewUrl); setPreviewUrl(null); }}>
           <div className="bg-background rounded-lg w-full max-w-2xl flex flex-col" style={{ height: '90vh' }} onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between p-3 border-b shrink-0">
-              <span className="text-sm font-medium">معاينة الملف</span>
+              <span className="text-sm font-medium">{t('shared_invoices.preview')}</span>
               <div className="flex items-center gap-2">
                 <Button variant="outline" size="sm" onClick={() => window.open(previewUrl, '_blank')}>
                   <Download className="w-4 h-4 me-1" />
-                  فتح
+                  {t('shared_invoices.open')}
                 </Button>
                 <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { URL.revokeObjectURL(previewUrl); setPreviewUrl(null); }}>✕</Button>
               </div>

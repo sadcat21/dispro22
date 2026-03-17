@@ -547,7 +547,7 @@ const StockReceipts: React.FC = () => {
             </div>
 
             <div className="space-y-2">
-              <Label>🪵 عدد الباليطات المستلمة (اختياري)</Label>
+              <Label>🪵 {t('stock_receipts.pallets_received')}</Label>
               <Input
                 type="number"
                 min={0}
