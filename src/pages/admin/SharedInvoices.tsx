@@ -84,11 +84,11 @@ const SharedInvoices: React.FC = () => {
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success('تم حذف الملف');
+      toast.success(t('shared_invoices.deleted'));
       queryClient.invalidateQueries({ queryKey: ['shared-invoices'] });
       setDeleteTarget(null);
     },
-    onError: () => toast.error('فشل حذف الملف'),
+    onError: () => toast.error(t('shared_invoices.delete_failed')),
   });
 
   const handleDownload = async (folder: string, name: string) => {
