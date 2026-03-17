@@ -687,7 +687,7 @@ const MyDeliveries: React.FC = () => {
                   
                   {order.total_amount && Number(order.total_amount) > 0 && (
                     <Badge variant="outline" className="font-bold text-[10px] px-1.5 py-0.5 text-primary border-primary/30">
-                      {Number(order.total_amount).toLocaleString()} دج
+                      {Number(order.total_amount).toLocaleString()} {t('common.currency')}
                     </Badge>
                   )}
 
