@@ -98,7 +98,7 @@ const SharedInvoices: React.FC = () => {
       .from('shared-invoices')
       .createSignedUrl(`${folder}/${name}`, 300);
     if (error || !signedData?.signedUrl) {
-      toast.error('فشل تحميل الملف');
+      toast.error(t('shared_invoices.download_failed'));
       return;
     }
     window.open(signedData.signedUrl, '_blank');
