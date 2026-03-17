@@ -1384,10 +1384,10 @@ const MyDeliveries: React.FC = () => {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <CalendarClock className="w-5 h-5 text-amber-600" />
-              تأجيل التوصيل
+              {t('deliveries.postpone_delivery')}
             </DialogTitle>
           </DialogHeader>
-          <p className="text-sm text-muted-foreground">اختر يوم التوصيل الجديد:</p>
+          <p className="text-sm text-muted-foreground">{t('deliveries.choose_new_date')}</p>
           <div className="grid grid-cols-2 gap-2">
             {getNextWorkDays().map(({ date, label }) => (
               <Button
