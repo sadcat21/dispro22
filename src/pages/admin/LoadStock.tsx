@@ -972,10 +972,10 @@ const LoadStock: React.FC = () => {
 
   const handleCompleteSession = async () => {
     const sessionToComplete = activeSessionId || sessions.find(s => s.status === 'open')?.id;
-    if (!sessionToComplete) { toast.error('لا توجد جلسة شحن مفتوحة'); return; }
+    if (!sessionToComplete) { toast.error(t('load_stock.no_open_session')); return; }
     try {
       await completeSession.mutateAsync(sessionToComplete);
-      toast.success('تم تأكيد جلسة الشحن بنجاح');
+      toast.success(t('load_stock.session_confirmed'));
       setActiveSessionId(null);
       setSessionItems([]);
     } catch (err: any) { toast.error(err.message); }
