@@ -104,7 +104,7 @@ const WorkerDebtsPage: React.FC = () => {
 
   const handlePayAll = async () => {
     const activeDebts = debts?.filter(d => d.status !== 'paid' && Number(d.remaining_amount) > 0) || [];
-    if (activeDebts.length === 0) { toast.info('لا توجد ديون نشطة'); return; }
+    if (activeDebts.length === 0) { toast.info(t('worker_debts.no_active')); return; }
     try {
       for (const debt of activeDebts) {
         const remaining = Math.ceil(Number(debt.remaining_amount));
@@ -113,15 +113,15 @@ const WorkerDebtsPage: React.FC = () => {
           worker_debt_id: debt.id,
           amount: remaining,
           payment_method: payAllMethod,
-          notes: payAllNotes || 'تسديد جماعي',
+          notes: payAllNotes || t('worker_debts.bulk_note'),
           current_paid: Number(debt.paid_amount),
           total_amount: Number(debt.amount),
         });
       }
-      toast.success(`تم تسديد ${activeDebts.length} دين بنجاح`);
+      toast.success(`${t('worker_debts.bulk_pay_success')} (${activeDebts.length})`);
       setShowPayAll(false);
     } catch {
-      toast.error('خطأ في التسديد الجماعي');
+      toast.error(t('worker_debts.bulk_pay_error'));
     }
   };
 
