@@ -1460,7 +1460,7 @@ const MyDeliveries: React.FC = () => {
           <DialogHeader className="p-4 pb-2 border-b">
             <DialogTitle className="flex items-center gap-2">
               <Eye className="w-5 h-5" />
-              معاينة
+              {t('deliveries.preview')}
             </DialogTitle>
           </DialogHeader>
           <div className="overflow-auto max-h-[calc(90vh-8rem)] p-2">
