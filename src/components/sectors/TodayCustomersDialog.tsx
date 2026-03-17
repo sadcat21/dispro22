@@ -65,6 +65,24 @@ const normalizeSaleItem = (item: any) => ({
   pricingUnit: item?.pricing_unit ?? item?.pricingUnit ?? item?.product?.pricing_unit ?? undefined,
   weightPerBox: toNullableNumber(item?.weight_per_box ?? item?.weightPerBox ?? item?.product?.weight_per_box),
 });
+
+// Resolve paid/remaining amounts from order fields (partial_amount + payment_status)
+const resolveOrderPayment = (order: any, isOrderRequest: boolean) => {
+  const totalAmount = Number(order.total_amount || 0);
+  const paymentStatus = order.payment_status;
+  const partialAmount = order.partial_amount != null ? Number(order.partial_amount) : null;
+
+  if (isOrderRequest) return { paidAmount: 0, remainingAmount: totalAmount };
+  if (paymentStatus === 'payment_pending' || paymentStatus === 'no_payment') return { paidAmount: 0, remainingAmount: totalAmount };
+  if (paymentStatus === 'payment_partial' && partialAmount != null) return { paidAmount: partialAmount, remainingAmount: Math.max(0, totalAmount - partialAmount) };
+  if (paymentStatus === 'payment_full' || paymentStatus === 'paid') return { paidAmount: totalAmount, remainingAmount: 0 };
+  if (order.remaining_amount != null) {
+    const rem = Number(order.remaining_amount);
+    return { paidAmount: totalAmount - rem, remainingAmount: rem };
+  }
+  return { paidAmount: totalAmount, remainingAmount: 0 };
+};
+
 // Generate next work days (Sat-Thu, skip Friday) starting from tomorrow
 const getNextWorkDays = (): { date: Date; label: string }[] => {
   const days: { date: Date; label: string }[] = [];
@@ -1144,13 +1162,13 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
     return [];
   };
 
+
   const buildReceiptDataFromOrder = (order: any, isDirectSale: boolean) => {
     const customer = order.customer;
     const items = order.items || [];
     const totalAmount = Number(order.total_amount || 0);
     const isOrderRequest = !isDirectSale && !!order._isOrderRequest;
-    const paidAmount = Number(order.paid_amount ?? order.paidAmount ?? (isOrderRequest ? 0 : totalAmount));
-    const remainingAmount = Number(order.remaining_amount ?? order.remainingAmount ?? (isOrderRequest ? totalAmount : 0));
+    const { paidAmount, remainingAmount } = resolveOrderPayment(order, isOrderRequest);
 
     return {
       receiptType: (isDirectSale ? 'direct_sale' : 'delivery') as any,
@@ -1848,8 +1866,7 @@ const OrderDetailsDialog: React.FC<{ order: any; onClose: () => void }> = ({ ord
   const customer = isDirectSale ? order.customer : order.customer;
   const totalAmount = Number(order.total_amount || 0);
   const isOrderRequest = !isDirectSale && !!order._isOrderRequest;
-  const paidAmount = Number(order.paid_amount ?? order.paidAmount ?? (isOrderRequest ? 0 : totalAmount));
-  const remainingAmount = Number(order.remaining_amount ?? order.remainingAmount ?? (isOrderRequest ? totalAmount : 0));
+  const { paidAmount, remainingAmount } = resolveOrderPayment(order, isOrderRequest);
 
   const handlePrint = () => {
     setShowReceiptDialog(true);
@@ -1947,6 +1964,20 @@ const OrderDetailsDialog: React.FC<{ order: any; onClose: () => void }> = ({ ord
             <span className="font-bold">المجموع</span>
             <span className="font-bold text-lg text-primary">{Number(totalAmount || 0).toLocaleString()} DA</span>
           </div>
+
+          {/* Paid / Remaining - show only when partial or no payment */}
+          {remainingAmount > 0 && (
+            <div className="bg-muted/30 rounded-lg p-3 space-y-1.5">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">المبلغ المدفوع</span>
+                <span className="font-bold text-emerald-600">{paidAmount.toLocaleString()} DA</span>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">المتبقي (دين)</span>
+                <span className="font-bold text-destructive">{remainingAmount.toLocaleString()} DA</span>
+              </div>
+            </div>
+          )}
 
           {!isDirectSale && order.notes && (
             <div className="text-xs text-muted-foreground bg-muted/30 rounded p-2">
