@@ -1299,7 +1299,7 @@ const MyDeliveries: React.FC = () => {
                 onClick={() => { setShowDetailsDialog(false); setCheckVerifyOrder(selectedOrder); }}
               >
                 <FileCheck className="w-4 h-4" />
-                {isDocumentVerificationPending(selectedOrder) ? 'إكمال التحقق' : 'تعديل التحقق'}
+                {isDocumentVerificationPending(selectedOrder) ? t('deliveries.complete_verification') : t('deliveries.edit_verification')}
               </Button>
             </div>
           )}
