@@ -352,7 +352,7 @@ const DailyReceipts: React.FC = () => {
                       {receipt.print_count > 0 && (
                         <span className="flex items-center gap-0.5">
                           <Printer className="w-2.5 h-2.5" />
-                          طُبع {receipt.print_count}×
+                           طُبع {receipt.print_count}×
                         </span>
                       )}
                     </div>
