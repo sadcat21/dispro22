@@ -522,10 +522,19 @@ const ModifyOrderDialog: React.FC<ModifyOrderDialogProps> = ({
         }
       }
 
-      // Update paid/remaining amounts for delivered orders
+      // Update paid/remaining amounts for delivered orders using partial_amount + payment_status
       if (paymentAmountChanged) {
-        orderUpdate.paid_amount = adjustPaidAmount;
-        orderUpdate.remaining_amount = adjustRemainingAmount;
+        // Map to actual DB columns
+        if (adjustRemainingAmount <= 0) {
+          orderUpdate.payment_status = 'cash';
+          orderUpdate.partial_amount = null;
+        } else if (adjustPaidAmount <= 0) {
+          orderUpdate.payment_status = 'pending';
+          orderUpdate.partial_amount = null;
+        } else {
+          orderUpdate.payment_status = 'partial';
+          orderUpdate.partial_amount = adjustPaidAmount;
+        }
         changes.push({
           عملية: 'تعديل المبلغ المدفوع',
           مدفوع_سابق: originalPaidAmount,
