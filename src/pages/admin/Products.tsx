@@ -826,7 +826,7 @@ const Products: React.FC = () => {
             <div className="space-y-2">
               <Label className="flex items-center gap-2">
                 <Layers className="w-4 h-4" />
-                رتبة العرض
+                {t('products.sort_order')}
               </Label>
               <Input
                 type="number"
