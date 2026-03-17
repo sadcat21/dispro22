@@ -385,48 +385,41 @@ const DebtDetailDialog: React.FC<{
   onOpenChange: (o: boolean) => void;
   onPay: (d: WorkerDebt) => void;
 }> = ({ debt, open, onOpenChange, onPay }) => {
-  const { dir } = useLanguage();
+  const { dir, t } = useLanguage();
   const { data: payments, isLoading } = useWorkerDebtPayments(debt.id);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-sm max-h-[85vh] p-0 gap-0 overflow-hidden" dir={dir}>
         <DialogHeader className="p-4 pb-2 border-b">
-          <DialogTitle>تفاصيل الدين - {debt.worker?.full_name}</DialogTitle>
+          <DialogTitle>{t('worker_debts.details_title')} - {debt.worker?.full_name}</DialogTitle>
         </DialogHeader>
         <ScrollArea className="max-h-[calc(85vh-6rem)] px-4 py-3">
           <div className="space-y-3">
             <div className="grid grid-cols-3 gap-2 text-center text-sm">
               <div>
-                <p className="text-muted-foreground text-xs">المبلغ</p>
+                <p className="text-muted-foreground text-xs">{t('worker_debts.amount_label')}</p>
                 <p className="font-bold">{Number(debt.amount).toLocaleString()}</p>
               </div>
               <div>
-                <p className="text-muted-foreground text-xs">المسدد</p>
+                <p className="text-muted-foreground text-xs">{t('worker_debts.paid_label')}</p>
                 <p className="font-bold text-green-600">{Number(debt.paid_amount).toLocaleString()}</p>
               </div>
               <div>
-                <p className="text-muted-foreground text-xs">المتبقي</p>
+                <p className="text-muted-foreground text-xs">{t('worker_debts.remaining_label')}</p>
                 <p className="font-bold text-destructive">{Number(debt.remaining_amount).toLocaleString()}</p>
               </div>
             </div>
 
             <div className="text-xs space-y-1 text-muted-foreground">
-              <p>النوع: <Badge variant="outline" className="text-xs">{debt.debt_type === 'advance' ? 'سلفة' : 'عجز محاسبة'}</Badge></p>
-              {debt.session_id && (
-                <p className="flex items-center gap-1">
-                  <Link2 className="w-3 h-3" />
-                  مرتبط بجلسة محاسبة: {debt.session_id.slice(0, 8)}...
-                </p>
-              )}
-              {debt.description && <p>ملاحظات: {debt.description}</p>}
-              <p>أُضيف بواسطة: {debt.created_by_worker?.full_name}</p>
-              <p>التاريخ: {format(new Date(debt.created_at), 'dd/MM/yyyy HH:mm')}</p>
+              <p>{t('worker_debts.type')}: <Badge variant="outline" className="text-xs">{debt.debt_type === 'advance' ? t('worker_debts.advance') : t('worker_debts.accounting_deficit')}</Badge></p>
+              {debt.description && <p>{t('worker_debts.notes')}: {debt.description}</p>}
+              <p>{format(new Date(debt.created_at), 'dd/MM/yyyy HH:mm')}</p>
             </div>
 
             {/* Payments */}
             <div className="border-t pt-2">
-              <p className="text-sm font-medium mb-2">سجل المدفوعات</p>
+              <p className="text-sm font-medium mb-2">{t('worker_debts.payment_history')}</p>
               {isLoading ? (
                 <Loader2 className="w-4 h-4 animate-spin mx-auto" />
               ) : payments && payments.length > 0 ? (
@@ -443,14 +436,14 @@ const DebtDetailDialog: React.FC<{
                   ))}
                 </div>
               ) : (
-                <p className="text-xs text-center text-muted-foreground">لا توجد مدفوعات</p>
+                <p className="text-xs text-center text-muted-foreground">{t('worker_debts.no_payments')}</p>
               )}
             </div>
 
             {debt.status !== 'paid' && (
               <Button className="w-full" onClick={() => onPay(debt)}>
                 <ArrowDownCircle className="w-4 h-4 ml-1" />
-                تسديد
+                {t('worker_debts.pay_btn')}
               </Button>
             )}
           </div>
