@@ -332,7 +332,7 @@ const DailyReceipts: React.FC = () => {
                         {typeInfo.label}
                       </Badge>
                       {receipt.is_modified && (
-                        <Badge variant="outline" className="text-[10px] bg-orange-100 text-orange-800">معدل</Badge>
+                        <Badge variant="outline" className="text-[10px] bg-orange-100 text-orange-800">{t('receipts.modified')}</Badge>
                       )}
                     </div>
                     <p className="text-sm font-medium truncate">{receipt.customer_name}</p>
