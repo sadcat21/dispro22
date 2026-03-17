@@ -558,14 +558,14 @@ const MyDeliveries: React.FC = () => {
         actionType: 'postpone',
         entityType: 'order',
         entityId: orderId,
-        details: { التاريخ_الجديد: dateStr },
+        details: { [t('deliveries.csv_date')]: dateStr },
       });
       queryClient.invalidateQueries({ queryKey: ['orders'] });
       queryClient.invalidateQueries({ queryKey: ['assigned-orders'] });
-      toast.success(`تم تأجيل الطلبية إلى ${format(newDate, 'dd/MM/yyyy')}`);
+      toast.success(`${t('deliveries.postpone_success')} ${format(newDate, 'dd/MM/yyyy')}`);
       setPostponeOrderId(null);
     } catch {
-      toast.error('فشل في تأجيل الطلبية');
+      toast.error(t('deliveries.postpone_failed'));
     }
   };
 
