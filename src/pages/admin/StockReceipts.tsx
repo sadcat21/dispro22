@@ -392,7 +392,7 @@ const StockReceipts: React.FC = () => {
                         </div>
                         {item.pallet_quantity > 0 && (
                           <div className="flex items-center justify-end">
-                            <span className="text-xs font-medium text-amber-600">🪵 باليطات: {item.pallet_quantity}</span>
+                          <span className="text-xs font-medium text-amber-600">🪵 {t('stock_receipts.pallets')}: {item.pallet_quantity}</span>
                           </div>
                         )}
                       </div>
