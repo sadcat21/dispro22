@@ -68,6 +68,7 @@ interface ReceiptDialogProps {
     nextCollectionTime?: string | null;
     customerSurplusAmount?: number;
     receiptTitleOverride?: string;
+    hidePaymentDetails?: boolean;
   };
 }
 const ReceiptDialog: React.FC<ReceiptDialogProps> = ({ open, onOpenChange, receiptData }) => {
