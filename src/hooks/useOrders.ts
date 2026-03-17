@@ -78,7 +78,7 @@ export const useAssignedOrders = () => {
         `)
         .order('created_at', { ascending: false });
 
-      if isAdminRole(role) {
+      if (isAdminRole(role)) {
         if (activeBranch) {
           query = query.eq('branch_id', activeBranch.id);
         }
