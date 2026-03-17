@@ -380,7 +380,7 @@ const Products: React.FC = () => {
     if (!editingProduct) return;
 
     if (!editProductName.trim()) {
-      toast.error('الرجاء إدخال اسم المنتج');
+      toast.error(t('products.enter_name_error'));
       return;
     }
 
