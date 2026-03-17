@@ -56,7 +56,7 @@ const WorkerTracking: React.FC = () => {
           {highlightWorkerId && (
             <div className="flex items-center gap-2">
               <Users className="w-4 h-4 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">كل العمال</span>
+              <span className="text-sm text-muted-foreground">{t('tracking.all_workers')}</span>
               <Switch checked={showAll} onCheckedChange={setShowAll} />
             </div>
           )}
