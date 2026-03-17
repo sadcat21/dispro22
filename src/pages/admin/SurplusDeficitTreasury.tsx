@@ -179,7 +179,7 @@ const SurplusDeficitTreasury: React.FC = () => {
           <ScrollArea className="max-h-[60vh]">
             <div className="space-y-2 mt-2">
               {stockEntries.length === 0 && (
-                <p className="text-center text-muted-foreground text-sm py-8">لا توجد سجلات</p>
+                <p className="text-center text-muted-foreground text-sm py-8">{t('surplus.no_records')}</p>
               )}
               {stockEntries.map((entry: any) => {
                 const isSurplus = entry.discrepancy_type === 'surplus';
