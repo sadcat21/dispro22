@@ -272,7 +272,7 @@ const WorkerHome: React.FC = () => {
             <CalendarCheck className="w-8 h-8 text-sky-600 shrink-0" />
             <div>
               <p className="font-bold text-sm text-sky-900">{todayCustomersLabel}</p>
-              <p className="text-xs text-sky-700">عرض جدول العملاء والتوصيلات المجدولة لليوم</p>
+              <p className="text-xs text-sky-700">{t('worker.today_schedule_desc')}</p>
             </div>
           </div>
         </div>
