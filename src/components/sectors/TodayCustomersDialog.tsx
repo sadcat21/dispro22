@@ -1681,6 +1681,11 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
                     تم الاستلام
                     {deliveryReceived.length > 0 && <Badge className="text-[9px] px-1 h-4 bg-green-500">{deliveryReceived.length}</Badge>}
                   </TabsTrigger>
+                  <TabsTrigger value="postponed" className="flex-1 gap-1 text-[10px] px-1.5 py-1.5 data-[state=active]:bg-purple-100 data-[state=active]:text-purple-700">
+                    <CalendarClock className="w-3 h-3" />
+                    مؤجلة
+                    {deliveryPostponed.length > 0 && <Badge className="text-[9px] px-1 h-4 bg-purple-500">{deliveryPostponed.length}</Badge>}
+                  </TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="not-delivered" className="m-0 flex-1 min-h-0" style={{ overflow: 'auto', maxHeight: '55vh' }}>
