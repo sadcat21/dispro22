@@ -425,7 +425,7 @@ const DailyReceipts: React.FC = () => {
                 disabled={!isConnected}
               >
                 <Printer className="w-4 h-4 ml-1" />
-                إعادة طباعة
+                {t('receipts.reprint')}
               </Button>
             </div>
           </DialogContent>
