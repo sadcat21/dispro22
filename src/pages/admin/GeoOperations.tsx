@@ -180,11 +180,11 @@ const GeoOperations: React.FC = () => {
   }, [visits, allCustomers]);
 
   return (
-    <div className="p-4 space-y-4" dir="rtl">
+    <div className="p-4 space-y-4" dir={dir}>
       {/* Header */}
       <div className="flex items-center gap-2">
         <MapPin className="w-6 h-6 text-primary" />
-        <h2 className="text-xl font-bold">العمليات الجغرافية</h2>
+        <h2 className="text-xl font-bold">{t('geo.title')}</h2>
       </div>
 
       {/* Stats Cards */}
@@ -192,25 +192,25 @@ const GeoOperations: React.FC = () => {
         <Card className="bg-blue-50 dark:bg-blue-950/20">
           <CardContent className="p-3 text-center">
             <p className="text-2xl font-bold text-blue-600">{stats.orders}</p>
-            <p className="text-xs text-muted-foreground">طلبيات</p>
+            <p className="text-xs text-muted-foreground">{t('geo.orders')}</p>
           </CardContent>
         </Card>
         <Card className="bg-green-50 dark:bg-green-950/20">
           <CardContent className="p-3 text-center">
             <p className="text-2xl font-bold text-green-600">{stats.sales}</p>
-            <p className="text-xs text-muted-foreground">بيع مباشر</p>
+            <p className="text-xs text-muted-foreground">{t('geo.direct_sale')}</p>
           </CardContent>
         </Card>
         <Card className="bg-purple-50 dark:bg-purple-950/20">
           <CardContent className="p-3 text-center">
             <p className="text-2xl font-bold text-purple-600">{stats.deliveries}</p>
-            <p className="text-xs text-muted-foreground">توصيلات</p>
+            <p className="text-xs text-muted-foreground">{t('geo.deliveries')}</p>
           </CardContent>
         </Card>
         <Card className="bg-orange-50 dark:bg-orange-950/20">
           <CardContent className="p-3 text-center">
             <p className="text-2xl font-bold text-orange-600">{stats.customers}</p>
-            <p className="text-xs text-muted-foreground">عملاء جدد</p>
+            <p className="text-xs text-muted-foreground">{t('geo.new_customers')}</p>
           </CardContent>
         </Card>
       </div>
@@ -220,25 +220,25 @@ const GeoOperations: React.FC = () => {
         <CardContent className="p-3 space-y-3">
           <div className="flex items-center gap-1 text-sm font-semibold text-muted-foreground">
             <Filter className="w-4 h-4" />
-            تصفية
+            {t('geo.filter')}
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <Label className="text-xs">من تاريخ</Label>
+              <Label className="text-xs">{t('geo.date_from')}</Label>
               <Input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="text-sm" />
             </div>
             <div>
-              <Label className="text-xs">إلى تاريخ</Label>
+              <Label className="text-xs">{t('geo.date_to')}</Label>
               <Input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="text-sm" />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-2">
             <Select value={selectedWorker} onValueChange={setSelectedWorker}>
               <SelectTrigger className="text-sm">
-                <SelectValue placeholder="العامل" />
+                <SelectValue placeholder={t('geo.worker')} />
               </SelectTrigger>
               <SelectContent className="bg-popover z-50">
-                <SelectItem value="all">كل العمال</SelectItem>
+                <SelectItem value="all">{t('geo.all_workers')}</SelectItem>
                 {workers?.map(w => (
                   <SelectItem key={w.id} value={w.id}>{w.full_name}</SelectItem>
                 ))}
@@ -246,17 +246,17 @@ const GeoOperations: React.FC = () => {
             </Select>
             <Select value={selectedType} onValueChange={setSelectedType}>
               <SelectTrigger className="text-sm">
-                <SelectValue placeholder="نوع العملية" />
+                <SelectValue placeholder={t('geo.operation_type')} />
               </SelectTrigger>
               <SelectContent className="bg-popover z-50">
-                <SelectItem value="all">كل العمليات</SelectItem>
-                <SelectItem value="order">طلبية</SelectItem>
-                <SelectItem value="direct_sale">بيع مباشر</SelectItem>
-                <SelectItem value="delivery">توصيل</SelectItem>
-                <SelectItem value="add_customer">إضافة عميل</SelectItem>
-                <SelectItem value="update_customer">تعديل زبون</SelectItem>
-                <SelectItem value="delete_customer">حذف زبون</SelectItem>
-                <SelectItem value="debt_collection">تحصيل دين</SelectItem>
+                <SelectItem value="all">{t('geo.all_operations')}</SelectItem>
+                <SelectItem value="order">{t('geo.order')}</SelectItem>
+                <SelectItem value="direct_sale">{t('geo.direct_sale')}</SelectItem>
+                <SelectItem value="delivery">{t('geo.delivery')}</SelectItem>
+                <SelectItem value="add_customer">{t('geo.add_customer')}</SelectItem>
+                <SelectItem value="update_customer">{t('geo.update_customer')}</SelectItem>
+                <SelectItem value="delete_customer">{t('geo.delete_customer')}</SelectItem>
+                <SelectItem value="debt_collection">{t('geo.debt_collection')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
