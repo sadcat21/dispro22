@@ -34,6 +34,8 @@ const RoleSelectionDialog: React.FC<RoleSelectionDialogProps> = ({
     switch (role) {
       case 'admin':
         return <Shield className="w-6 h-6" />;
+      case 'project_manager':
+        return <Shield className="w-6 h-6" />;
       case 'branch_admin':
         return <Building2 className="w-6 h-6" />;
       case 'supervisor':
@@ -49,12 +51,18 @@ const RoleSelectionDialog: React.FC<RoleSelectionDialogProps> = ({
     switch (role) {
       case 'admin':
         return t('workers.role_admin');
+      case 'project_manager':
+        return 'مدير المشروع';
       case 'branch_admin':
         return t('workers.role_branch_admin');
       case 'supervisor':
         return t('workers.role_supervisor');
       case 'worker':
         return t('workers.role_worker');
+      case 'accountant':
+        return 'المحاسب';
+      case 'admin_assistant':
+        return 'عون إداري';
       default:
         return role;
     }
@@ -64,12 +72,18 @@ const RoleSelectionDialog: React.FC<RoleSelectionDialogProps> = ({
     switch (role) {
       case 'admin':
         return t('role_selection.admin_desc');
+      case 'project_manager':
+        return 'صلاحيات كاملة مثل مدير النظام';
       case 'branch_admin':
         return t('role_selection.branch_admin_desc');
       case 'supervisor':
         return t('role_selection.supervisor_desc');
       case 'worker':
         return t('role_selection.worker_desc');
+      case 'accountant':
+        return 'إدارة الحسابات والمالية';
+      case 'admin_assistant':
+        return 'مساعدة إدارية';
       default:
         return '';
     }
@@ -79,12 +93,18 @@ const RoleSelectionDialog: React.FC<RoleSelectionDialogProps> = ({
     switch (role) {
       case 'admin':
         return 'bg-red-500/10 text-red-500 border-red-500/30';
+      case 'project_manager':
+        return 'bg-purple-500/10 text-purple-500 border-purple-500/30';
       case 'branch_admin':
         return 'bg-orange-500/10 text-orange-500 border-orange-500/30';
       case 'supervisor':
         return 'bg-blue-500/10 text-blue-500 border-blue-500/30';
       case 'worker':
         return 'bg-green-500/10 text-green-500 border-green-500/30';
+      case 'accountant':
+        return 'bg-teal-500/10 text-teal-500 border-teal-500/30';
+      case 'admin_assistant':
+        return 'bg-indigo-500/10 text-indigo-500 border-indigo-500/30';
       default:
         return 'bg-primary/10 text-primary border-primary/30';
     }
