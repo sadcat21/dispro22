@@ -670,7 +670,7 @@ const Customers: React.FC = () => {
                     {renderBtn('special_prices', <Tag className="w-3.5 h-3.5" />, () => setCustomerForPrices(customer))}
                     {isManager && (pendingRequestsMap[customer.id]?.length || 0) > 0 && (
                       <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
-                        onClick={() => setReviewCustomer(customer)} title="مراجعة طلبات التعديل">
+                        onClick={() => setReviewCustomer(customer)} title={t('customers.review_changes')}>
                         <FileEdit className="w-3.5 h-3.5" />
                       </Button>
                     )}
