@@ -510,7 +510,7 @@ const WorkerActions: React.FC = () => {
             className="inline-flex items-center gap-2 rounded-lg border border-border bg-secondary px-3 py-2 text-sm font-medium text-secondary-foreground transition-colors hover:bg-muted"
           >
             <Settings className="w-4 h-4" />
-            إعدادات بيانات العامل
+            {t('worker_actions.worker_settings')}
           </button>
         </div>
       )}
