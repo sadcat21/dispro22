@@ -199,7 +199,7 @@ const WorkerDebtsPage: React.FC = () => {
                     <span className="font-bold text-sm">{debt.worker?.full_name}</span>
                   </div>
                   <Badge className={statusColor(debt.status)}>
-                    {debt.status === 'active' ? 'نشط' : debt.status === 'partially_paid' ? 'مسدد جزئياً' : 'مسدد'}
+                    {debt.status === 'active' ? t('worker_debts.active') : debt.status === 'partially_paid' ? t('worker_debts.partially_paid') : t('worker_debts.paid')}
                   </Badge>
                 </div>
                 <div className="flex items-center justify-between text-xs">
