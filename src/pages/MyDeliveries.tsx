@@ -459,7 +459,7 @@ const MyDeliveries: React.FC = () => {
 
         return {
           productId: item.product_id,
-          productName: item.product?.name || 'منتج',
+          productName: item.product?.name || t('products.name'),
           quantity: giftState.paidQuantity + giftState.giftQuantity,
           unitPrice: Number(item.unit_price || 0),
           totalPrice: Number(item.total_price || 0),
