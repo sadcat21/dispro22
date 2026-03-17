@@ -245,7 +245,7 @@ const WorkerDebtsPage: React.FC = () => {
                         {workers.find(w => w.id === addWorkerId)?.full_name}
                       </span>
                     ) : (
-                      <span className="text-muted-foreground">اختر العامل</span>
+                      <span className="text-muted-foreground">{t('worker_debts.select_worker')}</span>
                     )}
                   </Button>
                   <WorkerPickerDialog
