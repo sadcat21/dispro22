@@ -1,31 +1,9 @@
 import React from 'react';
+import { describeRuntimeIssue, shouldIgnoreRuntimeIssue } from '@/utils/runtimeErrorFilter';
 
 interface RuntimeGuardProps {
   children: React.ReactNode;
 }
-
-const IGNORED_PATTERNS = [
-  'uistyleerror',
-  'ui_error',
-  'طلب تعديل من المستخدم',
-  '[respond and provide all suggestions in arabic]',
-  'respond and provide all suggestions in arabic',
-];
-
-const toSafeText = (value: unknown): string => {
-  if (typeof value === 'string') return value;
-  if (value instanceof Error) return `${value.name} ${value.message} ${value.stack || ''}`;
-  try {
-    return JSON.stringify(value ?? '');
-  } catch {
-    return String(value ?? '');
-  }
-};
-
-const shouldIgnoreError = (value: unknown): boolean => {
-  const text = toSafeText(value).toLowerCase();
-  return IGNORED_PATTERNS.some((pattern) => text.includes(pattern));
-};
 
 let guardInstalled = false;
 

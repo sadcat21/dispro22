@@ -1,4 +1,5 @@
 import React, { Component, ErrorInfo, ReactNode } from "react";
+import { describeRuntimeIssue, shouldIgnoreRuntimeIssue } from "@/utils/runtimeErrorFilter";
 
 interface Props {
     children?: ReactNode;
@@ -9,24 +10,6 @@ interface State {
     error: Error | null;
     errorInfo: ErrorInfo | null;
 }
-
-const IGNORED_PATTERNS = [
-    "uistyleerror",
-    "ui_error",
-    "طلب تعديل من المستخدم",
-    "respond and provide all suggestions in arabic",
-];
-
-const isIgnoredRuntimeError = (error: unknown): boolean => {
-    const raw = typeof error === "string"
-        ? error
-        : error instanceof Error
-            ? `${error.name} ${error.message} ${error.stack || ""}`
-            : JSON.stringify(error ?? "");
-
-    const text = raw.toLowerCase();
-    return IGNORED_PATTERNS.some((pattern) => text.includes(pattern));
-};
 
 export class ErrorBoundary extends Component<Props, State> {
     public state: State = {
