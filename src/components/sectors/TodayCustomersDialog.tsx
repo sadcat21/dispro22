@@ -1315,7 +1315,7 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
           remainingAmount: 0,
           paymentMethod: null,
           notes: null,
-          receiptTitleOverride: 'BON DE LIVRAISON',
+          receiptTitleOverride: 'BON DE VERIFICATION',
           hidePaymentDetails: true,
         });
         setShowPrintReceipt(true);
