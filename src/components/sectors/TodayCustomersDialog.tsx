@@ -1966,7 +1966,7 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
         </DialogContent>
       </Dialog>
       {/* Single Customer Postpone Dialog */}
-      <Dialog open={!!postponeCustomer} onOpenChange={(open) => { if (!open) setPostponeCustomer(null); }}>
+      <Dialog open={!!postponeCustomer} onOpenChange={(open) => { if (!open) { setPostponeCustomer(null); setPostponeWorkerId(null); } }}>
         <DialogContent className="max-w-xs" dir="rtl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -1974,6 +1974,21 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
               تأجيل توصيل {postponeCustomer?.name}
             </DialogTitle>
           </DialogHeader>
+          {/* Worker reassignment */}
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium">عامل التوصيل:</Label>
+            <Select value={postponeWorkerId || '_same'} onValueChange={(v) => setPostponeWorkerId(v === '_same' ? null : v)}>
+              <SelectTrigger className="h-9 text-sm">
+                <SelectValue placeholder="نفس العامل الحالي" />
+              </SelectTrigger>
+              <SelectContent dir="rtl">
+                <SelectItem value="_same">نفس العامل الحالي</SelectItem>
+                {workersList.map(w => (
+                  <SelectItem key={w.id} value={w.id}>{w.full_name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           <p className="text-sm text-muted-foreground">اختر يوم التوصيل الجديد:</p>
           <div className="grid grid-cols-2 gap-2">
             {getNextWorkDays().map(({ date, label }) => (
