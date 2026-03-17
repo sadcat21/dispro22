@@ -430,7 +430,7 @@ const StockReceipts: React.FC = () => {
                 </div>
                 {viewSendingOrder.notes && (
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">ملاحظات</span>
+                  <span className="text-muted-foreground">{t('common.notes')}</span>
                     <span>{viewSendingOrder.notes}</span>
                   </div>
                 )}
