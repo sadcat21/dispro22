@@ -108,7 +108,7 @@ const Attendance: React.FC = () => {
             </div>
             <div>
               <p className="text-2xl font-bold">{workerGroups.length}</p>
-              <p className="text-[11px] opacity-80">عدد العمال</p>
+              <p className="text-[11px] opacity-80">{t('attendance.worker_count')}</p>
             </div>
           </CardContent>
         </Card>
