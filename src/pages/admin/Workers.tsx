@@ -710,7 +710,7 @@ const Workers: React.FC = () => {
                     size="icon"
                     className="h-8 w-8 text-destructive hover:bg-destructive hover:text-destructive-foreground border-destructive/30"
                     onClick={() => setDeleteWorker(worker)}
-                    title="حذف العامل"
+                    title={t('workers.delete_worker')}
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </Button>
