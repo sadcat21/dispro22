@@ -218,11 +218,11 @@ const StockReceipts: React.FC = () => {
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-bold flex items-center gap-2">
           <ClipboardList className="w-5 h-5 text-primary" />
-          أوامر الاستلام والتسليم
+          {t('stock_receipts.title')}
         </h2>
         <Button size="sm" variant="outline" onClick={() => navigate('/warehouse')}>
           <BarChart3 className="w-4 h-4 ml-1" />
-          مخزون الفرع
+          {t('stock_receipts.branch_stock')}
         </Button>
       </div>
 
