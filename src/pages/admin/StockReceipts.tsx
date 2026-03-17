@@ -472,7 +472,7 @@ const StockReceipts: React.FC = () => {
 
       {/* Create Receipt Dialog */}
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
-        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto" dir="rtl">
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto" dir={language === 'ar' ? 'rtl' : 'ltr'}>
           <DialogHeader>
             <DialogTitle>{t('stock.new_receipt')}</DialogTitle>
           </DialogHeader>
