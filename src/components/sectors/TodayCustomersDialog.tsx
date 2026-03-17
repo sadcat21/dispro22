@@ -852,17 +852,28 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
     return Array.from(custMap.values());
   }, [postponedDeliveryOrders, customers, postponedCustomerIds]);
 
-  // IDs of customers whose orders were rescheduled to today (for "مؤجلة" badge)
+  // Map of customer_id -> max postpone_count for badge display
+  const postponeCountMap = useMemo(() => {
+    const map = new Map<string, number>();
+    assignedOrders.forEach(o => {
+      if (o.customer_id && (o as any).postpone_count > 0) {
+        const current = map.get(o.customer_id) || 0;
+        map.set(o.customer_id, Math.max(current, (o as any).postpone_count));
+      }
+    });
+    return map;
+  }, [assignedOrders]);
+
+  // IDs of customers whose orders were rescheduled to today (for badge)
   const rescheduledToTodayIds = useMemo(() => {
     const ids = new Set<string>();
     assignedOrders.forEach(o => {
-      if (o.customer_id && o.delivery_date && o.delivery_date.startsWith(todayDateStr)) {
-        const createdDate = o.created_at.split('T')[0];
-        if (createdDate < todayDateStr) ids.add(o.customer_id);
+      if (o.customer_id && (o as any).postpone_count > 0) {
+        ids.add(o.customer_id);
       }
     });
     return ids;
-  }, [assignedOrders, todayDateStr]);
+  }, [assignedOrders]);
 
   const collectedDebtIds = useMemo(() => new Set(todayCollections.filter(c => c.action !== 'no_payment').map(c => c.debt_id)), [todayCollections]);
   const noPaymentDebtIds = useMemo(() => new Set(todayCollections.filter(c => c.action === 'no_payment').map(c => c.debt_id)), [todayCollections]);
@@ -1460,11 +1471,14 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
     if (customerOrders.length === 0) { toast.info('لا توجد طلبيات لهذا العميل'); return; }
     const dateStr = format(newDate, 'yyyy-MM-dd');
     try {
-      const { error } = await supabase
-        .from('orders')
-        .update({ delivery_date: dateStr })
-        .in('id', customerOrders.map(o => o.id));
-      if (error) throw error;
+      // Increment postpone_count for each order individually
+      for (const order of customerOrders) {
+        const { error } = await supabase
+          .from('orders')
+          .update({ delivery_date: dateStr, postpone_count: ((order as any).postpone_count || 0) + 1 })
+          .eq('id', order.id);
+        if (error) throw error;
+      }
       queryClient.invalidateQueries({ queryKey: ['orders'] });
       queryClient.invalidateQueries({ queryKey: ['assigned-orders'] });
       queryClient.invalidateQueries({ queryKey: ['today-cust-assigned-orders-full'] });
@@ -1702,7 +1716,7 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
                       </Button>
                     </div>
                   )}
-                  <CustomerList customers={deliveryNotDone} emptyMessage="تم توصيل جميع العملاء ✓" onCustomerClick={handleDeliveryCustomerClick} onVisitWithoutOrder={handleDeliveryVisitWithoutDelivery} onClosed={handleCustomerClosed} onUnavailable={handleCustomerUnavailable} onDebtRefused={handleDeliveryDebtRefused} onPostpone={(c) => setPostponeCustomer(c)} onPrint={handleQuickPrintTempReceipt} showVisitButton visitButtonLabel="بدون تسليم" showActionButtons showPrintButton checkingLocationFor={checkingLocationFor} loadingFor={loadingDeliveryFor} searchQuery={searchQuery} sectors={sectors} allZones={allZones} workerPosition={workerPosition} sortByDistance={sortByDistance} postponedBadgeIds={rescheduledToTodayIds} />
+                  <CustomerList customers={deliveryNotDone} emptyMessage="تم توصيل جميع العملاء ✓" onCustomerClick={handleDeliveryCustomerClick} onVisitWithoutOrder={handleDeliveryVisitWithoutDelivery} onClosed={handleCustomerClosed} onUnavailable={handleCustomerUnavailable} onDebtRefused={handleDeliveryDebtRefused} onPostpone={(c) => setPostponeCustomer(c)} onPrint={handleQuickPrintTempReceipt} showVisitButton visitButtonLabel="بدون تسليم" showActionButtons showPrintButton checkingLocationFor={checkingLocationFor} loadingFor={loadingDeliveryFor} searchQuery={searchQuery} sectors={sectors} allZones={allZones} workerPosition={workerPosition} sortByDistance={sortByDistance} postponedBadgeIds={rescheduledToTodayIds} postponeCountMap={postponeCountMap} />
                 </TabsContent>
                 <TabsContent value="not-received" className="m-0 flex-1 min-h-0" style={{ overflow: 'auto', maxHeight: '55vh' }}>
                   <CustomerList customers={deliveryNotReceived} emptyMessage="لا توجد زيارات بدون تسليم" onCustomerClick={handleDeliveryCustomerClick} showActionButtons onClosed={handleCustomerClosed} onUnavailable={handleCustomerUnavailable} onDebtRefused={handleDeliveryDebtRefused} onPrint={handleQuickPrintTempReceipt} showPrintButton checkingLocationFor={checkingLocationFor} loadingFor={loadingDeliveryFor} searchQuery={searchQuery} sectors={sectors} allZones={allZones} workerPosition={workerPosition} sortByDistance={sortByDistance} timeMap={visitTimeMap} distanceMap={customerDistanceMap} />
@@ -1711,7 +1725,7 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
                   <CustomerList customers={deliveryReceived} emptyMessage="لا توجد توصيلات بعد" onCustomerClick={handleShowDeliveredOrderDetails} showPrintButton onPrint={handlePrintDeliveredOrder} checkingLocationFor={checkingLocationFor} loadingFor={loadingDeliveryFor} searchQuery={searchQuery} sectors={sectors} allZones={allZones} workerPosition={workerPosition} sortByDistance={sortByDistance} deliveryTimeMap={customerDeliveryTimeMap} timeMap={customerDeliveryTimeMap} distanceMap={customerDistanceMap} />
                 </TabsContent>
                 <TabsContent value="postponed" className="m-0 flex-1 min-h-0" style={{ overflow: 'auto', maxHeight: '55vh' }}>
-                  <CustomerList customers={deliveryPostponed} emptyMessage="لا توجد طلبيات مؤجلة" onCustomerClick={handleDeliveryCustomerClick} onVisitWithoutOrder={handleDeliveryVisitWithoutDelivery} onClosed={handleCustomerClosed} onUnavailable={handleCustomerUnavailable} onDebtRefused={handleDeliveryDebtRefused} onPostpone={(c) => setPostponeCustomer(c)} onPrint={handleQuickPrintTempReceipt} showVisitButton visitButtonLabel="بدون تسليم" showActionButtons showPrintButton checkingLocationFor={checkingLocationFor} loadingFor={loadingDeliveryFor} searchQuery={searchQuery} sectors={sectors} allZones={allZones} workerPosition={workerPosition} sortByDistance={sortByDistance} postponedBadgeIds={postponedCustomerIds} />
+                  <CustomerList customers={deliveryPostponed} emptyMessage="لا توجد طلبيات مؤجلة" onCustomerClick={handleDeliveryCustomerClick} onVisitWithoutOrder={handleDeliveryVisitWithoutDelivery} onClosed={handleCustomerClosed} onUnavailable={handleCustomerUnavailable} onDebtRefused={handleDeliveryDebtRefused} onPostpone={(c) => setPostponeCustomer(c)} onPrint={handleQuickPrintTempReceipt} showVisitButton visitButtonLabel="بدون تسليم" showActionButtons showPrintButton checkingLocationFor={checkingLocationFor} loadingFor={loadingDeliveryFor} searchQuery={searchQuery} sectors={sectors} allZones={allZones} workerPosition={workerPosition} sortByDistance={sortByDistance} postponedBadgeIds={postponedCustomerIds} postponeCountMap={postponeCountMap} />
                 </TabsContent>
               </Tabs>
             </TabsContent>
@@ -2165,7 +2179,8 @@ const CustomerList: React.FC<{
   workerPosition?: { lat: number; lng: number } | null;
   sortByDistance?: boolean;
   postponedBadgeIds?: Set<string>;
-}> = ({ customers, emptyMessage, onCustomerClick, onVisitWithoutOrder, onClosed, onUnavailable, onDebtRefused, onNoSale, onPrint, onPostpone, showVisitButton, visitButtonLabel, showActionButtons, showPrintButton, showNoSaleButton, checkingLocationFor, loadingFor, searchQuery, sectors, allZones, salesRepStatusMap, deliveryTimeMap, timeMap, distanceMap, workerPosition, sortByDistance, postponedBadgeIds }) => {
+  postponeCountMap?: Map<string, number>;
+}> = ({ customers, emptyMessage, onCustomerClick, onVisitWithoutOrder, onClosed, onUnavailable, onDebtRefused, onNoSale, onPrint, onPostpone, showVisitButton, visitButtonLabel, showActionButtons, showPrintButton, showNoSaleButton, checkingLocationFor, loadingFor, searchQuery, sectors, allZones, salesRepStatusMap, deliveryTimeMap, timeMap, distanceMap, workerPosition, sortByDistance, postponedBadgeIds, postponeCountMap }) => {
   const { language } = useLanguage();
 
   // Compute live distance from worker to each customer
@@ -2266,11 +2281,11 @@ const CustomerList: React.FC<{
                </Badge>
              )}
              {postponedBadgeIds?.has(c.id) && (
-               <Badge className="text-[9px] px-1.5 py-0 h-4 bg-purple-100 text-purple-700 border-0 font-medium">
-                 <CalendarClock className="w-3 h-3 ml-0.5" />
-                 مؤجلة
-               </Badge>
-             )}
+                <Badge className="text-[9px] px-1.5 py-0 h-4 bg-purple-600 text-white border-0 font-medium gap-0.5">
+                  <CalendarClock className="w-3 h-3" />
+                  {postponeCountMap?.get(c.id) || 1}
+                </Badge>
+              )}
              {salesRepStatusMap && salesRepStatusMap.has(c.id) && (() => {
                const status = salesRepStatusMap.get(c.id);
                if (status === 'not_visited') return <Badge className="text-[9px] px-1.5 py-0 h-4 bg-amber-100 text-amber-700 border-0">بدون زيارة</Badge>;
