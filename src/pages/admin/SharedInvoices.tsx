@@ -212,8 +212,8 @@ const SharedInvoices: React.FC = () => {
       <AlertDialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
         <AlertDialogContent dir={dir}>
           <AlertDialogHeader>
-            <AlertDialogTitle>حذف الملف؟</AlertDialogTitle>
-            <AlertDialogDescription>سيتم حذف هذا الملف نهائياً ولا يمكن استرجاعه.</AlertDialogDescription>
+            <AlertDialogTitle>{t('shared_invoices.delete_file')}</AlertDialogTitle>
+            <AlertDialogDescription>{t('shared_invoices.delete_confirm')}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>إلغاء</AlertDialogCancel>
