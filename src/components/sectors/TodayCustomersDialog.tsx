@@ -102,7 +102,9 @@ const resolveOrderPayment = (order: any, isOrderRequest: boolean) => {
     return { paidAmount: Math.max(0, totalAmount - rem), remainingAmount: Math.max(0, rem) };
   }
 
-  return { paidAmount: totalAmount, remainingAmount: 0 };
+  const result = { paidAmount: totalAmount, remainingAmount: 0 };
+  console.log('[resolveOrderPayment] fallback result:', result);
+  return result;
 };
 
 // Generate next work days (Sat-Thu, skip Friday) starting from tomorrow
