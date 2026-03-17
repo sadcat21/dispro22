@@ -51,15 +51,15 @@ type TabStatus = 'all' | OrderStatus;
 type DeliveryType = 'orders' | 'direct_sales' | 'postponed';
 
 // Generate next work days (Sat-Thu, skip Friday) starting from tomorrow
-const getNextWorkDays = (): { date: Date; label: string }[] => {
+const getNextWorkDays = (lang: Language): { date: Date; label: string }[] => {
   const days: { date: Date; label: string }[] = [];
-  const dayNames = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+  const locale = lang === 'fr' ? fr : lang === 'en' ? enUS : ar;
   let current = addDays(new Date(), 1);
   while (days.length < 6) {
     if (!isFriday(current)) {
       days.push({
         date: new Date(current),
-        label: `${dayNames[current.getDay()]} ${format(current, 'dd/MM')}`,
+        label: `${format(current, 'EEEE', { locale })} ${format(current, 'dd/MM')}`,
       });
     }
     current = addDays(current, 1);
@@ -259,7 +259,7 @@ const MyDeliveries: React.FC = () => {
       });
 
       const productNames = products.map(p => p.name);
-      const headers = ['رقم الطلبية', 'العميل', 'الهاتف', 'العنوان', 'تاريخ التوصيل', 'الحالة', ...productNames];
+      const headers = [t('deliveries.csv_order_id'), t('deliveries.csv_customer'), t('deliveries.csv_phone'), t('deliveries.csv_address'), t('deliveries.csv_date'), t('deliveries.csv_status'), ...productNames];
 
       const rows = filteredOrders.map(order => {
         const orderItemsData = itemsMap[order.id] || [];
@@ -459,7 +459,7 @@ const MyDeliveries: React.FC = () => {
 
         return {
           productId: item.product_id,
-          productName: item.product?.name || 'منتج',
+          productName: item.product?.name || t('products.name'),
           quantity: giftState.paidQuantity + giftState.giftQuantity,
           unitPrice: Number(item.unit_price || 0),
           totalPrice: Number(item.total_price || 0),
@@ -504,13 +504,13 @@ const MyDeliveries: React.FC = () => {
         entityType: 'order',
         entityId: order.id,
         details: {
-          العميل: order.customer?.name,
-          المبلغ: totalAmount,
-          ملاحظة: 'إعادة طباعة وصل التوصيل',
+          [t('print.customer')]: order.customer?.name,
+          [t('orders.grand_total')]: totalAmount,
+          [t('common.notes')]: t('deliveries.print_receipt'),
         },
       }).catch(() => {});
     } catch {
-      toast.error('خطأ في تحضير الوصل');
+      toast.error(t('deliveries.receipt_error'));
     }
   };
 
@@ -521,7 +521,7 @@ const MyDeliveries: React.FC = () => {
         actionType: 'status_change',
         entityType: 'order',
         entityId: orderId,
-        details: { الحالة_الجديدة: t('orders.cancelled') },
+        details: { [t('common.status')]: t('orders.cancelled') },
       });
       toast.success(t('orders.cancel_success'));
     } catch (error: any) {
@@ -537,7 +537,7 @@ const MyDeliveries: React.FC = () => {
         actionType: 'status_change',
         entityType: 'order',
         entityId: orderId,
-        details: { الحالة_الجديدة: STATUS_CONFIG[status].label },
+        details: { [t('common.status')]: STATUS_CONFIG[status].label },
       });
       
       toast.success(t('orders.worker_assigned'));
@@ -558,14 +558,14 @@ const MyDeliveries: React.FC = () => {
         actionType: 'postpone',
         entityType: 'order',
         entityId: orderId,
-        details: { التاريخ_الجديد: dateStr },
+        details: { [t('deliveries.csv_date')]: dateStr },
       });
       queryClient.invalidateQueries({ queryKey: ['orders'] });
       queryClient.invalidateQueries({ queryKey: ['assigned-orders'] });
-      toast.success(`تم تأجيل الطلبية إلى ${format(newDate, 'dd/MM/yyyy')}`);
+      toast.success(`${t('deliveries.postpone_success')} ${format(newDate, 'dd/MM/yyyy')}`);
       setPostponeOrderId(null);
     } catch {
-      toast.error('فشل في تأجيل الطلبية');
+      toast.error(t('deliveries.postpone_failed'));
     }
   };
 
@@ -687,7 +687,7 @@ const MyDeliveries: React.FC = () => {
                   
                   {order.total_amount && Number(order.total_amount) > 0 && (
                     <Badge variant="outline" className="font-bold text-[10px] px-1.5 py-0.5 text-primary border-primary/30">
-                      {Number(order.total_amount).toLocaleString()} دج
+                      {Number(order.total_amount).toLocaleString()} {t('common.currency')}
                     </Badge>
                   )}
 
@@ -716,7 +716,7 @@ const MyDeliveries: React.FC = () => {
                   {isDocumentVerificationPending(order) && (
                     <Badge className="text-[10px] px-1.5 py-0.5 bg-accent/10 text-accent border border-accent/30 gap-0.5">
                       <FileCheck className="w-3 h-3" />
-                      تحقق معلق
+                      {t('deliveries.verification_pending')}
                     </Badge>
                   )}
 
@@ -773,7 +773,7 @@ const MyDeliveries: React.FC = () => {
                       variant="outline"
                       className="h-8 w-8 text-amber-600 border-amber-300 hover:bg-amber-50"
                       onClick={() => setPostponeOrderId(order.id)}
-                      title="تأجيل"
+                      title={t('deliveries.postpone')}
                     >
                       <CalendarClock className="w-4 h-4" />
                     </Button>
@@ -826,7 +826,7 @@ const MyDeliveries: React.FC = () => {
                       variant="outline"
                       className="h-8 w-8 text-amber-600 border-amber-300 hover:bg-amber-50"
                       onClick={() => setPostponeOrderId(order.id)}
-                      title="تأجيل"
+                      title={t('deliveries.postpone')}
                     >
                       <CalendarClock className="w-4 h-4" />
                     </Button>
@@ -879,7 +879,7 @@ const MyDeliveries: React.FC = () => {
                       variant="outline"
                       className="h-8 w-8 text-amber-600 border-amber-300 hover:bg-amber-50"
                       onClick={() => setPostponeOrderId(order.id)}
-                      title="تأجيل"
+                      title={t('deliveries.postpone')}
                     >
                       <CalendarClock className="w-4 h-4" />
                     </Button>
@@ -912,7 +912,7 @@ const MyDeliveries: React.FC = () => {
                       variant="outline"
                       className="h-8 w-8"
                       onClick={() => handleReprintReceipt(order)}
-                      title="طباعة الوصل"
+                      title={t('deliveries.print_receipt')}
                     >
                       <Printer className="w-4 h-4" />
                     </Button>
@@ -957,7 +957,7 @@ const MyDeliveries: React.FC = () => {
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" className="border-primary/30 text-primary" onClick={() => setShowLoadRequestDialog(true)}>
             <Truck className="w-4 h-4 me-1" />
-            طلب شحن
+            {t('deliveries.load_request')}
           </Button>
           <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setShowPrintDialog(true)} disabled={!orders || orders.length === 0}>
             <Printer className="w-4 h-4" />
@@ -979,7 +979,7 @@ const MyDeliveries: React.FC = () => {
           </TabsTrigger>
           <TabsTrigger value="postponed" className="flex-1 gap-1.5 data-[state=active]:shadow-sm">
             <CalendarClock className="w-4 h-4" />
-            <span className="text-xs font-bold">التأجيل ({postponedCount})</span>
+            <span className="text-xs font-bold">{t('deliveries.postponed')} ({postponedCount})</span>
           </TabsTrigger>
           <TabsTrigger value="direct_sales" className="flex-1 gap-1.5 data-[state=active]:shadow-sm">
             <ShoppingCart className="w-4 h-4" />
@@ -1015,7 +1015,7 @@ const MyDeliveries: React.FC = () => {
         <>
           {/* Group-by selector for postponed */}
           <div className="flex items-center gap-2 mb-2">
-            <span className="text-xs text-muted-foreground">ترتيب حسب:</span>
+            <span className="text-xs text-muted-foreground">{t('deliveries.sort_by')}</span>
             <Button
               variant={postponeGroupBy === 'date' ? 'default' : 'outline'}
               size="sm"
@@ -1023,7 +1023,7 @@ const MyDeliveries: React.FC = () => {
               onClick={() => setPostponeGroupBy('date')}
             >
               <Calendar className="w-3 h-3 me-1" />
-              التاريخ
+              {t('deliveries.by_date')}
             </Button>
             <Button
               variant={postponeGroupBy === 'sector' ? 'default' : 'outline'}
@@ -1032,7 +1032,7 @@ const MyDeliveries: React.FC = () => {
               onClick={() => setPostponeGroupBy('sector')}
             >
               <Map className="w-3 h-3 me-1" />
-              السيكتور
+              {t('deliveries.by_sector')}
             </Button>
           </div>
           {(() => {
@@ -1041,7 +1041,7 @@ const MyDeliveries: React.FC = () => {
               return (
                 <div className="text-center py-12 text-muted-foreground">
                   <CalendarClock className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                  <p className="text-sm">لا توجد طلبيات مؤجلة</p>
+                  <p className="text-sm">{t('deliveries.no_postponed')}</p>
                 </div>
               );
             }
@@ -1050,11 +1050,11 @@ const MyDeliveries: React.FC = () => {
             postponedOrders.forEach(order => {
               let key: string;
               if (postponeGroupBy === 'date') {
-                key = order.delivery_date || 'بدون تاريخ';
+                key = order.delivery_date || t('deliveries.no_date');
               } else {
                 const sectorName = (order.customer as any)?.sector
                   ? getLocalizedName((order.customer as any).sector, language)
-                  : 'بدون سيكتور';
+                  : t('deliveries.no_sector');
                 key = sectorName;
               }
               if (!groups[key]) groups[key] = [];
@@ -1074,7 +1074,7 @@ const MyDeliveries: React.FC = () => {
                         <Map className="w-4 h-4 text-amber-600" />
                       )}
                       <span className="font-bold text-sm">
-                        {postponeGroupBy === 'date' && key !== 'بدون تاريخ'
+                        {postponeGroupBy === 'date' && key !== t('deliveries.no_date')
                           ? format(new Date(key), 'EEEE dd MMMM', { locale: getDateLocale(language) })
                           : key}
                       </span>
@@ -1132,7 +1132,7 @@ const MyDeliveries: React.FC = () => {
                     </span>
                     {(item.unit_price || 0) > 0 && (
                       <p className="text-xs text-muted-foreground">
-                        {Number(item.unit_price).toLocaleString()} دج × {giftState.paidQuantity} = {Number(item.total_price || 0).toLocaleString()} دج
+                        {Number(item.unit_price).toLocaleString()} {t('common.currency')} × {giftState.paidQuantity} = {Number(item.total_price || 0).toLocaleString()} {t('common.currency')}
                       </p>
                     )}
                   </div>
@@ -1143,18 +1143,18 @@ const MyDeliveries: React.FC = () => {
                 <>
                   <div className="flex items-center justify-between p-3 bg-primary/10 rounded-lg font-bold">
                     <span>{t('orders.grand_total')}</span>
-                    <span className="text-primary">{Number(selectedOrder.total_amount).toLocaleString()} دج</span>
+                    <span className="text-primary">{Number(selectedOrder.total_amount).toLocaleString()} {t('common.currency')}</span>
                   </div>
                   {Number(selectedOrder.prepaid_amount || 0) > 0 && (
                     <div className="border-2 border-emerald-400 dark:border-emerald-600 bg-emerald-50 dark:bg-emerald-950/30 rounded-lg p-3 space-y-1">
-                      <p className="font-bold text-emerald-700 dark:text-emerald-400 text-sm">💰 طلبية بدفع مسبق!</p>
+                      <p className="font-bold text-emerald-700 dark:text-emerald-400 text-sm">💰 {t('deliveries.prepaid_order')}</p>
                       <div className="flex items-center justify-between text-sm">
-                        <span className="text-emerald-600 dark:text-emerald-400">المبلغ المدفوع مسبقاً:</span>
-                        <span className="text-emerald-700 dark:text-emerald-300 font-bold">{Number(selectedOrder.prepaid_amount).toLocaleString()} دج</span>
+                        <span className="text-emerald-600 dark:text-emerald-400">{t('deliveries.prepaid_amount')}</span>
+                        <span className="text-emerald-700 dark:text-emerald-300 font-bold">{Number(selectedOrder.prepaid_amount).toLocaleString()} {t('common.currency')}</span>
                       </div>
                       <div className="flex items-center justify-between text-sm font-bold">
-                        <span className="text-primary">المتبقي للتحصيل:</span>
-                        <span className="text-primary">{Math.max(0, Number(selectedOrder.total_amount || 0) - Number(selectedOrder.prepaid_amount || 0)).toLocaleString()} دج</span>
+                        <span className="text-primary">{t('deliveries.remaining_to_collect')}</span>
+                        <span className="text-primary">{Math.max(0, Number(selectedOrder.total_amount || 0) - Number(selectedOrder.prepaid_amount || 0)).toLocaleString()} {t('common.currency')}</span>
                       </div>
                     </div>
                   )}
@@ -1299,7 +1299,7 @@ const MyDeliveries: React.FC = () => {
                 onClick={() => { setShowDetailsDialog(false); setCheckVerifyOrder(selectedOrder); }}
               >
                 <FileCheck className="w-4 h-4" />
-                {isDocumentVerificationPending(selectedOrder) ? 'إكمال التحقق' : 'تعديل التحقق'}
+                {isDocumentVerificationPending(selectedOrder) ? t('deliveries.complete_verification') : t('deliveries.edit_verification')}
               </Button>
             </div>
           )}
@@ -1350,7 +1350,7 @@ const MyDeliveries: React.FC = () => {
               .eq('id', checkVerifyOrder.id);
 
             await refetchOrders();
-            toast.success('تم تحديث التحقق من الشيك');
+            toast.success(t('deliveries.verification_updated'));
             setCheckVerifyOrder(null);
           }}
         />
@@ -1369,12 +1369,12 @@ const MyDeliveries: React.FC = () => {
       <AlertDialog open={!!confirmCancelOrderId} onOpenChange={() => setConfirmCancelOrderId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>تأكيد إلغاء الطلبية</AlertDialogTitle>
-            <AlertDialogDescription>هل أنت متأكد من إلغاء هذه الطلبية؟ لا يمكن التراجع عن هذه العملية.</AlertDialogDescription>
+            <AlertDialogTitle>{t('deliveries.confirm_cancel_title')}</AlertDialogTitle>
+            <AlertDialogDescription>{t('deliveries.confirm_cancel_desc')}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>إلغاء</AlertDialogCancel>
-            <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => { if (confirmCancelOrderId) handleCancelOrder(confirmCancelOrderId); setConfirmCancelOrderId(null); }}>تأكيد الإلغاء</AlertDialogAction>
+            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
+            <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => { if (confirmCancelOrderId) handleCancelOrder(confirmCancelOrderId); setConfirmCancelOrderId(null); }}>{t('deliveries.confirm_cancel_action')}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -1384,12 +1384,12 @@ const MyDeliveries: React.FC = () => {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <CalendarClock className="w-5 h-5 text-amber-600" />
-              تأجيل التوصيل
+              {t('deliveries.postpone_delivery')}
             </DialogTitle>
           </DialogHeader>
-          <p className="text-sm text-muted-foreground">اختر يوم التوصيل الجديد:</p>
+          <p className="text-sm text-muted-foreground">{t('deliveries.choose_new_date')}</p>
           <div className="grid grid-cols-2 gap-2">
-            {getNextWorkDays().map(({ date, label }) => (
+            {getNextWorkDays(language).map(({ date, label }) => (
               <Button
                 key={date.toISOString()}
                 variant="outline"
@@ -1421,7 +1421,7 @@ const MyDeliveries: React.FC = () => {
         orders={filteredOrdersForPrint.length > 0 ? filteredOrdersForPrint : (orders || [])}
         orderItems={toMap(allOrderItems)}
         products={products}
-        title={printWorkerName ? `توصيلاتي - ${printWorkerName}` : 'قائمة التوصيلات'}
+        title={printWorkerName ? `${t('deliveries.my_deliveries_title')} - ${printWorkerName}` : t('deliveries.delivery_list')}
         isVisible={isPrintReady}
         columnConfig={printColumnConfig}
       />
@@ -1460,7 +1460,7 @@ const MyDeliveries: React.FC = () => {
           <DialogHeader className="p-4 pb-2 border-b">
             <DialogTitle className="flex items-center gap-2">
               <Eye className="w-5 h-5" />
-              معاينة
+              {t('deliveries.preview')}
             </DialogTitle>
           </DialogHeader>
           <div className="overflow-auto max-h-[calc(90vh-8rem)] p-2">
@@ -1469,7 +1469,7 @@ const MyDeliveries: React.FC = () => {
                 orders={previewOrders}
                 orderItems={toMap(previewItems)}
                 products={products}
-                title="قائمة التوصيلات"
+                title={t('deliveries.delivery_list')}
                 isVisible={true}
                 columnConfig={previewColumnConfig}
               />
@@ -1477,7 +1477,7 @@ const MyDeliveries: React.FC = () => {
           </div>
           <div className="p-3 border-t flex gap-2 justify-end">
             <Button variant="outline" onClick={() => setShowPreviewDialog(false)}>
-              إغلاق
+              {t('common.close')}
             </Button>
             <Button onClick={() => {
               setShowPreviewDialog(false);
@@ -1491,7 +1491,7 @@ const MyDeliveries: React.FC = () => {
               }, 500);
             }}>
               <Printer className="w-4 h-4 ms-2" />
-              طباعة
+              {t('common.print')}
             </Button>
           </div>
         </DialogContent>

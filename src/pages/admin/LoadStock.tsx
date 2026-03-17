@@ -643,14 +643,14 @@ const LoadStock: React.FC = () => {
   const handleStartSession = async () => {
     if (!selectedWorker) { toast.error(t('stock.select_worker')); return; }
     if (!hasReviewToday) {
-      toast.error('يجب إجراء جلسة مراجعة أولاً قبل بدء الشحن');
+      toast.error(t('load_stock.review_first'));
       setShowVerificationDialog(true);
       return;
     }
     try {
       const result = await createSession.mutateAsync({ workerId: selectedWorker });
       setActiveSessionId(result.id);
-      toast.success('تم بدء جلسة شحن جديدة');
+      toast.success(t('load_stock.session_started'));
     } catch (err: any) { toast.error(err.message); }
   };
 
@@ -706,14 +706,14 @@ const LoadStock: React.FC = () => {
       // Direct stock operations without full reload
       const warehouseItem = warehouseStock.find(s => s.product_id === addProductId);
       if (!warehouseItem) {
-        throw new Error(`الكمية المتاحة من ${product?.name || ''} غير كافية`);
+        throw new Error(`${t('load_stock.insufficient_stock')} - ${product?.name || ''}`);
       }
       
       // Compare in total pieces
       const warehousePieces = customToTotalPieces(warehouseItem.quantity, piecesPerBox);
       const loadPieces = customToTotalPieces(totalLoadQty, piecesPerBox);
       if (warehousePieces < loadPieces) {
-        throw new Error(`الكمية المتاحة من ${product?.name || ''} غير كافية`);
+        throw new Error(`${t('load_stock.insufficient_stock')} - ${product?.name || ''}`);
       }
 
       // Deduct from warehouse using piece-based math
@@ -781,7 +781,7 @@ const LoadStock: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['my-worker-stock'] });
       queryClient.invalidateQueries({ queryKey: ['worker-truck-stock'] });
 
-      toast.success(`تم شحن ${product?.name || ''} بنجاح`);
+      toast.success(t('load_stock.loaded_success'));
       setShowAddProductDialog(false);
     } catch (err: any) {
       toast.error(err.message);
@@ -802,7 +802,7 @@ const LoadStock: React.FC = () => {
       const { data } = await sessionItemsQuery(activeSessionId!);
       setSessionItems(data || []);
       await refresh();
-      toast.success('تم حذف المنتج واسترجاع الرصيد');
+      toast.success(t('load_stock.item_deleted'));
     } catch (err: any) { toast.error(err.message); }
   };
 
@@ -839,7 +839,7 @@ const LoadStock: React.FC = () => {
         const diffCustom = totalPiecesToCustom(Math.abs(diff), piecesPerBox);
         const warehouseItem = warehouseStock.find(s => s.product_id === editingItem.product_id);
         if (!warehouseItem || customToTotalPieces(warehouseItem.quantity, piecesPerBox) < Math.abs(diff)) {
-          toast.error('الكمية المتاحة في المخزن غير كافية');
+          toast.error(t('load_stock.insufficient_stock'));
           setIsEditSaving(false);
           return;
         }
@@ -876,7 +876,7 @@ const LoadStock: React.FC = () => {
         queryClient.invalidateQueries({ queryKey: ['my-worker-stock'] });
         queryClient.invalidateQueries({ queryKey: ['worker-truck-stock'] });
       }
-      toast.success('تم تعديل الكمية بنجاح');
+      toast.success(t('load_stock.qty_updated'));
       setEditingItem(null);
     } catch (err: any) { toast.error(err.message); }
     finally { setIsEditSaving(false); }
@@ -962,7 +962,7 @@ const LoadStock: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['worker-load-suggestions'] });
       queryClient.invalidateQueries({ queryKey: ['my-worker-stock'] });
       queryClient.invalidateQueries({ queryKey: ['worker-truck-stock'] });
-      toast.success(`تم شحن ${aggregatedProducts.length} منتج من الطلبيات بنجاح`);
+      toast.success(t('load_stock.products_loaded'));
     } catch (err: any) {
       toast.error(err.message);
     } finally {
@@ -972,10 +972,10 @@ const LoadStock: React.FC = () => {
 
   const handleCompleteSession = async () => {
     const sessionToComplete = activeSessionId || sessions.find(s => s.status === 'open')?.id;
-    if (!sessionToComplete) { toast.error('لا توجد جلسة شحن مفتوحة'); return; }
+    if (!sessionToComplete) { toast.error(t('load_stock.no_open_session')); return; }
     try {
       await completeSession.mutateAsync(sessionToComplete);
-      toast.success('تم تأكيد جلسة الشحن بنجاح');
+      toast.success(t('load_stock.session_confirmed'));
       setActiveSessionId(null);
       setSessionItems([]);
     } catch (err: any) { toast.error(err.message); }
@@ -990,7 +990,7 @@ const LoadStock: React.FC = () => {
         setSessionItems([]);
       }
       await refresh();
-      toast.success('تم حذف الجلسة واسترجاع الرصيد');
+      toast.success(t('load_stock.session_deleted'));
     } catch (err: any) { toast.error(err.message); }
   };
 
@@ -1003,7 +1003,7 @@ const LoadStock: React.FC = () => {
   const handleEmptyTruckPreview = async () => {
     if (!selectedWorker || !branchId || !currentWorkerId) return;
     if (!hasReviewToday) {
-      toast.error('يجب إجراء جلسة مراجعة أولاً قبل التفريغ');
+      toast.error(t('load_stock.review_first_unload'));
       setShowVerificationDialog(true);
       return;
     }
@@ -1052,7 +1052,7 @@ const LoadStock: React.FC = () => {
     try {
       const itemsToReturn = emptyTruckItems.filter(item => item.returnQty > 0);
       if (itemsToReturn.length === 0) {
-        toast.error('لم يتم تحديد أي كمية للإرجاع');
+        toast.error(t('load_stock.no_return_qty'));
         return;
       }
 
@@ -1192,12 +1192,12 @@ const LoadStock: React.FC = () => {
             <TabsList className="w-full h-7 p-0.5 bg-muted/60">
               <TabsTrigger value="session" className="flex-1 h-6 text-[10px] data-[state=active]:shadow-sm">
                 <Package className="w-3 h-3 me-1" />
-                الجلسة
+                {t('load_stock.session_tab')}
                 {activeSessionId && <Badge variant="secondary" className="text-[8px] px-1 py-0 rounded-full h-3.5 ms-1">{sessionItems.length}</Badge>}
               </TabsTrigger>
               <TabsTrigger value="stock" className="flex-1 h-6 text-[10px] data-[state=active]:shadow-sm">
                 {hasDeficit ? <AlertTriangle className="w-3 h-3 me-1 text-destructive" /> : <CheckCircle className="w-3 h-3 me-1 text-green-600" />}
-                المخزون
+                {t('load_stock.stock_tab')}
                 {hasDeficit && <Badge variant="destructive" className="text-[8px] px-1 py-0 rounded-full h-3.5 ms-1">{totalDeficit}</Badge>}
               </TabsTrigger>
             </TabsList>
@@ -1206,13 +1206,13 @@ const LoadStock: React.FC = () => {
               {activeSessionId ? (
                 <div className="flex items-center gap-1.5 bg-primary/5 ring-1 ring-primary/20 rounded-lg px-2.5 py-1.5">
                   <Package className="w-3.5 h-3.5 text-primary" />
-                  <span className="font-medium text-[11px]">جلسة نشطة</span>
-                  <Badge variant="secondary" className="text-[9px] rounded-full h-4">{sessionItems.length} منتج</Badge>
-                  {totalSessionQty > 0 && <Badge className="text-[9px] rounded-full h-4">{totalSessionQty} صندوق</Badge>}
+                  <span className="font-medium text-[11px]">{t('load_stock.active_session')}</span>
+                  <Badge variant="secondary" className="text-[9px] rounded-full h-4">{sessionItems.length} {t('load_stock.product_count')}</Badge>
+                  {totalSessionQty > 0 && <Badge className="text-[9px] rounded-full h-4">{totalSessionQty} {t('load_stock.box_count')}</Badge>}
                 </div>
               ) : (
                 <div className="text-center text-muted-foreground text-[11px] py-1.5">
-                  لا توجد جلسة نشطة
+                  {t('load_stock.no_active_session')}
                 </div>
               )}
             </TabsContent>
@@ -1249,23 +1249,23 @@ const LoadStock: React.FC = () => {
                         </div>
                         <div className={`grid ${hasGifts ? 'grid-cols-8' : 'grid-cols-7'} gap-0.5 text-[9px]`}>
                           <div className="bg-muted/50 rounded p-0.5 text-center">
-                            <div className="text-muted-foreground text-[7px]">المتبقي</div>
+                            <div className="text-muted-foreground text-[7px]">{t('load_stock.remaining')}</div>
                             <div className="font-bold">{fmtQty(oldStock)}</div>
                           </div>
                           <div className="bg-blue-50 dark:bg-blue-950/30 rounded p-0.5 text-center">
-                            <div className="text-muted-foreground text-[7px]">شحن</div>
+                            <div className="text-muted-foreground text-[7px]">{t('load_stock.loaded')}</div>
                             <div className="font-bold text-blue-600 dark:text-blue-400">{fmtQty((workerLoadedData || {})[s.product_id] || 0)}</div>
                           </div>
                           <div className="bg-orange-50 dark:bg-orange-950/30 rounded p-0.5 text-center">
-                            <div className="text-muted-foreground text-[7px]">بدون محاسبة</div>
+                            <div className="text-muted-foreground text-[7px]">{t('load_stock.without_accounting')}</div>
                             <div className="font-bold text-orange-600 dark:text-orange-400">{fmtQty((workerLoadedSinceAccounting || {})[s.product_id] || 0)}</div>
                           </div>
                           <div className="bg-primary/5 rounded p-0.5 text-center">
-                            <div className="text-muted-foreground text-[7px]">جديد</div>
+                            <div className="text-muted-foreground text-[7px]">{t('load_stock.new_load')}</div>
                             <div className="font-bold text-primary">{loadedBoxes > 0 ? `+${fmtQty(loadedBoxes)}` : '—'}</div>
                           </div>
                           <div className="bg-muted/50 rounded p-0.5 text-center">
-                            <div className="text-muted-foreground text-[7px]">الكلي</div>
+                            <div className="text-muted-foreground text-[7px]">{t('load_stock.total')}</div>
                             <div className="font-bold">{fmtQty(s.current_stock)}</div>
                           </div>
                           <div className="bg-muted/50 rounded p-0.5 text-center">
