@@ -504,13 +504,13 @@ const MyDeliveries: React.FC = () => {
         entityType: 'order',
         entityId: order.id,
         details: {
-          العميل: order.customer?.name,
-          المبلغ: totalAmount,
-          ملاحظة: 'إعادة طباعة وصل التوصيل',
+          [t('print.customer')]: order.customer?.name,
+          [t('orders.grand_total')]: totalAmount,
+          [t('common.notes')]: t('deliveries.print_receipt'),
         },
       }).catch(() => {});
     } catch {
-      toast.error('خطأ في تحضير الوصل');
+      toast.error(t('deliveries.receipt_error'));
     }
   };
 
