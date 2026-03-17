@@ -441,7 +441,7 @@ const ModifyOrderDialog: React.FC<ModifyOrderDialogProps> = ({
           const paidQty = Math.max(0, item.new_quantity - (item.gift_quantity || 0));
           const multiplier = getBoxMultiplier(item.pricing_unit, item.weight_per_box, item.pieces_per_box);
           const boxPrice = item.unit_price * multiplier;
-          await supabase.from('order_items').insert({
+          const { error: insErr } = await supabase.from('order_items').insert({
             order_id: order.id,
             product_id: item.product_id,
             quantity: item.new_quantity,
@@ -455,6 +455,7 @@ const ModifyOrderDialog: React.FC<ModifyOrderDialogProps> = ({
             payment_type: itemPayType,
             invoice_payment_method: itemInvMethod,
           });
+          if (insErr) throw new Error('فشل إضافة المنتج: ' + insErr.message);
           changes.push({
             منتج: item.product_name,
             كمية: item.new_quantity,
