@@ -352,7 +352,7 @@ const Products: React.FC = () => {
           : p
       ));
 
-      toast.success('تم تحديث المنتج بنجاح');
+      toast.success(t('products.updated'));
       setEditingProduct(null);
       setProductGroup(null);
     } catch (error: any) {
