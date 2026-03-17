@@ -357,7 +357,7 @@ const Products: React.FC = () => {
       setProductGroup(null);
     } catch (error: any) {
       console.error('Error updating product:', error);
-      toast.error(error.message || 'فشل تحديث المنتج');
+      toast.error(error.message || t('products.update_failed'));
     } finally {
       setIsUpdating(false);
     }
