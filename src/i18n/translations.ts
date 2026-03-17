@@ -1663,7 +1663,7 @@ export const translations: Translations = {
   'chat.select_or_start': { ar: 'اختر محادثة أو ابدأ محادثة جديدة', fr: 'Sélectionnez ou démarrez une conversation', en: 'Select or start a new conversation' },
 
   // ==================== Worker Actions ====================
-  'worker_actions.title': { ar: 'إجراءات العامل', fr: 'Actions employé', en: 'Worker Actions' },
+  // worker_actions.title already defined above
   'worker_actions.my_actions': { ar: 'إجراءاتي', fr: 'Mes actions', en: 'My Actions' },
   'worker_actions.worker_settings': { ar: 'إعدادات بيانات العامل', fr: 'Paramètres du profil', en: 'Worker Profile Settings' },
   'worker_actions.worker_profile': { ar: 'إعدادات البيانات', fr: 'Paramètres du profil', en: 'Profile Settings' },
