@@ -612,7 +612,7 @@ const WorkerActions: React.FC = () => {
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <Package className="w-5 h-5 text-primary" />
-                رصيد شاحنة {selectedWorker.full_name}
+                {t('worker_actions.truck_balance')} {selectedWorker.full_name}
               </DialogTitle>
             </DialogHeader>
             <ScrollArea className="max-h-[60vh]">
