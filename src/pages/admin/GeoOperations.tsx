@@ -325,7 +325,7 @@ const GeoOperations: React.FC = () => {
                           {warehouseDistance !== null && (
                             <div className="flex items-center gap-1 text-xs font-bold text-amber-600 dark:text-amber-400 border-r pr-2">
                               <Warehouse className="w-3 h-3" />
-                              <span>المخزن: {formatDistance(warehouseDistance)}</span>
+                              <span>{t('geo.warehouse')} {formatDistance(warehouseDistance)}</span>
                             </div>
                           )}
                         </div>
