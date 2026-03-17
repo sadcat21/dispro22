@@ -222,7 +222,7 @@ const ManagerTreasury = () => {
       let sessQ = supabase.from('accounting_sessions').select('id, branch_id, manager_id').eq('status', 'completed');
       if (activeBranch?.id) sessQ = sessQ.eq('branch_id', activeBranch.id);
       const { data: sessions } = await sessQ;
-      if (!sessions?.length) { toast.info('لا توجد جلسات للمزامنة'); setSyncing(false); return; }
+      if (!sessions?.length) { toast.info(t('treasury.no_sessions_sync')); setSyncing(false); return; }
 
       // Get existing treasury entries linked to sessions
       const { data: existing } = await supabase.from('manager_treasury').select('session_id').eq('source_type', 'accounting_session');
