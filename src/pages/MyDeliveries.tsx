@@ -1421,7 +1421,7 @@ const MyDeliveries: React.FC = () => {
         orders={filteredOrdersForPrint.length > 0 ? filteredOrdersForPrint : (orders || [])}
         orderItems={toMap(allOrderItems)}
         products={products}
-        title={printWorkerName ? `توصيلاتي - ${printWorkerName}` : 'قائمة التوصيلات'}
+        title={printWorkerName ? `${t('deliveries.my_deliveries_title')} - ${printWorkerName}` : t('deliveries.delivery_list')}
         isVisible={isPrintReady}
         columnConfig={printColumnConfig}
       />
