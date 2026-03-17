@@ -521,7 +521,7 @@ const MyDeliveries: React.FC = () => {
         actionType: 'status_change',
         entityType: 'order',
         entityId: orderId,
-        details: { الحالة_الجديدة: t('orders.cancelled') },
+        details: { [t('common.status')]: t('orders.cancelled') },
       });
       toast.success(t('orders.cancel_success'));
     } catch (error: any) {
