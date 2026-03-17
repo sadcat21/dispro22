@@ -74,9 +74,15 @@ const ModifyOrderDialog: React.FC<ModifyOrderDialogProps> = ({
   const [invoicePaymentMethod, setInvoicePaymentMethod] = useState<InvoicePaymentMethod | null>((order.invoice_payment_method as InvoicePaymentMethod) || null);
   const [priceSubType, setPriceSubType] = useState<PriceSubType>('gros');
 
-  // Payment adjustment for delivered orders
-  const [adjustPaidAmount, setAdjustPaidAmount] = useState<number>(Number((order as any).paid_amount || order.total_amount || 0));
-  const [adjustRemainingAmount, setAdjustRemainingAmount] = useState<number>(Number((order as any).remaining_amount || 0));
+  // Payment adjustment for delivered orders — use partial_amount (actual DB column)
+  const initPaid = (() => {
+    const ps = String(order.payment_status || '').toLowerCase();
+    if (ps === 'partial' && order.partial_amount != null) return Number(order.partial_amount);
+    if (['pending', 'credit'].includes(ps)) return 0;
+    return Number(order.total_amount || 0);
+  })();
+  const [adjustPaidAmount, setAdjustPaidAmount] = useState<number>(initPaid);
+  const [adjustRemainingAmount, setAdjustRemainingAmount] = useState<number>(Math.max(0, Number(order.total_amount || 0) - initPaid));
 
   const canChangeWorker = role === 'admin' || role === 'branch_admin' || order.created_by === workerId;
 
@@ -114,10 +120,17 @@ const ModifyOrderDialog: React.FC<ModifyOrderDialogProps> = ({
       const firstItemSubtype = orderItems[0] && (orderItems[0] as any).price_subtype;
       const customerDefault = order.customer?.default_price_subtype;
       setPriceSubType((firstItemSubtype || customerDefault || 'gros') as PriceSubType);
-      setAdjustPaidAmount(Number((order as any).paid_amount || order.total_amount || 0));
-      setAdjustRemainingAmount(Number((order as any).remaining_amount || 0));
+      // Resolve paid amount from partial_amount + payment_status
+      const ps = String(order.payment_status || '').toLowerCase();
+      const resolvedPaid = (() => {
+        if (ps === 'partial' && order.partial_amount != null) return Number(order.partial_amount);
+        if (['pending', 'credit'].includes(ps)) return 0;
+        return Number(order.total_amount || 0);
+      })();
+      setAdjustPaidAmount(resolvedPaid);
+      setAdjustRemainingAmount(Math.max(0, Number(order.total_amount || 0) - resolvedPaid));
     }
-  }, [open, orderItems, order.assigned_worker_id, order.delivery_date, order.payment_type, order.invoice_payment_method, (order as any).paid_amount, (order as any).remaining_amount, order.total_amount]);
+  }, [open, orderItems, order.assigned_worker_id, order.delivery_date, order.payment_type, order.invoice_payment_method, order.partial_amount, order.payment_status, order.total_amount]);
 
   // Fetch available products for adding
   useEffect(() => {
@@ -399,7 +412,8 @@ const ModifyOrderDialog: React.FC<ModifyOrderDialogProps> = ({
         if (item.id && (item.new_quantity !== item.original_quantity || item.item_subtype !== undefined)) {
           if (item.new_quantity === 0) {
             // Delete the item
-            await supabase.from('order_items').delete().eq('id', item.id);
+            const { error: delErr } = await supabase.from('order_items').delete().eq('id', item.id);
+            if (delErr) throw new Error('فشل حذف المنتج: ' + delErr.message);
             changes.push({
               منتج: item.product_name,
               كمية_سابقة: item.original_quantity,
@@ -413,7 +427,7 @@ const ModifyOrderDialog: React.FC<ModifyOrderDialogProps> = ({
             const paidQty = Math.max(0, item.new_quantity - (item.gift_quantity || 0));
             const multiplier = getBoxMultiplier(item.pricing_unit, item.weight_per_box, item.pieces_per_box);
             const boxPrice = item.unit_price * multiplier;
-            await supabase.from('order_items')
+            const { error: updErr } = await supabase.from('order_items')
               .update({
                 quantity: item.new_quantity,
                 gift_quantity: item.gift_quantity || 0,
@@ -424,6 +438,7 @@ const ModifyOrderDialog: React.FC<ModifyOrderDialogProps> = ({
                 invoice_payment_method: itemInvMethod,
               })
               .eq('id', item.id);
+            if (updErr) throw new Error('فشل تحديث المنتج: ' + updErr.message);
             changes.push({
               منتج: item.product_name,
               كمية_سابقة: item.original_quantity,
@@ -439,7 +454,7 @@ const ModifyOrderDialog: React.FC<ModifyOrderDialogProps> = ({
           const paidQty = Math.max(0, item.new_quantity - (item.gift_quantity || 0));
           const multiplier = getBoxMultiplier(item.pricing_unit, item.weight_per_box, item.pieces_per_box);
           const boxPrice = item.unit_price * multiplier;
-          await supabase.from('order_items').insert({
+          const { error: insErr } = await supabase.from('order_items').insert({
             order_id: order.id,
             product_id: item.product_id,
             quantity: item.new_quantity,
@@ -453,6 +468,7 @@ const ModifyOrderDialog: React.FC<ModifyOrderDialogProps> = ({
             payment_type: itemPayType,
             invoice_payment_method: itemInvMethod,
           });
+          if (insErr) throw new Error('فشل إضافة المنتج: ' + insErr.message);
           changes.push({
             منتج: item.product_name,
             كمية: item.new_quantity,
@@ -519,10 +535,19 @@ const ModifyOrderDialog: React.FC<ModifyOrderDialogProps> = ({
         }
       }
 
-      // Update paid/remaining amounts for delivered orders
+      // Update paid/remaining amounts for delivered orders using partial_amount + payment_status
       if (paymentAmountChanged) {
-        orderUpdate.paid_amount = adjustPaidAmount;
-        orderUpdate.remaining_amount = adjustRemainingAmount;
+        // Map to actual DB columns
+        if (adjustRemainingAmount <= 0) {
+          orderUpdate.payment_status = 'cash';
+          orderUpdate.partial_amount = null;
+        } else if (adjustPaidAmount <= 0) {
+          orderUpdate.payment_status = 'pending';
+          orderUpdate.partial_amount = null;
+        } else {
+          orderUpdate.payment_status = 'partial';
+          orderUpdate.partial_amount = adjustPaidAmount;
+        }
         changes.push({
           عملية: 'تعديل المبلغ المدفوع',
           مدفوع_سابق: originalPaidAmount,
@@ -609,9 +634,10 @@ const ModifyOrderDialog: React.FC<ModifyOrderDialogProps> = ({
       }
 
       if (Object.keys(orderUpdate).length > 0) {
-        await supabase.from('orders')
+        const { error: orderErr } = await supabase.from('orders')
           .update(orderUpdate)
           .eq('id', order.id);
+        if (orderErr) throw new Error('فشل تحديث الطلبية: ' + orderErr.message);
       }
 
       // Update worker_stock for delivered orders when quantities change
