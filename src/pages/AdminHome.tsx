@@ -196,8 +196,8 @@ const AdminHome: React.FC = () => {
       >
         <Gift className="w-8 h-8 text-purple-600" />
         <div>
-          <p className="font-bold text-sm text-purple-900">تسجيل عروض يدوي</p>
-          <p className="text-xs text-purple-700">تسجيل الهدايا المسلّمة حسب شرائح العروض</p>
+          <p className="font-bold text-sm text-purple-900">{t('admin.manual_promo')}</p>
+          <p className="text-xs text-purple-700">{t('admin.manual_promo_desc')}</p>
         </div>
       </div>
 
