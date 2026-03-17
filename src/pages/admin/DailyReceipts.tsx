@@ -282,7 +282,7 @@ const DailyReceipts: React.FC = () => {
           <Input
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            placeholder="بحث: اسم عميل، عامل، رقم وصل، رقم طلبية..."
+            placeholder={t('receipts.search_placeholder')}
             className="h-8 text-xs pr-8"
           />
         </div>
