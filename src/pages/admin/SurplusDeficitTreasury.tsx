@@ -79,25 +79,25 @@ const SurplusDeficitTreasury: React.FC = () => {
 
   return (
     <div className="p-4 space-y-4" dir={dir}>
-      <h2 className="text-xl font-bold">خزينة الفائض والعجز</h2>
+      <h2 className="text-xl font-bold">{t('surplus.title')}</h2>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 gap-3">
         <div className="rounded-xl border-2 border-green-300 bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 p-3">
           <div className="flex items-center gap-2 mb-1">
             <TrendingUp className="w-5 h-5 text-green-600" />
-            <span className="text-xs font-bold text-green-800 dark:text-green-300">إجمالي الفائض</span>
+            <span className="text-xs font-bold text-green-800 dark:text-green-300">{t('surplus.total_surplus')}</span>
           </div>
           <p className="text-lg font-bold text-green-700 dark:text-green-400">{fmt(totalCashSurplus + totalStockSurplus + totalCustomerSurplus)} DA</p>
-          <p className="text-[10px] text-green-600 dark:text-green-500">خزينة: {fmt(totalCashSurplus)} • عملاء: {fmt(totalCustomerSurplus)} • مخزون: {fmt(totalStockSurplus)}</p>
+          <p className="text-[10px] text-green-600 dark:text-green-500">{t('surplus.treasury_label')} {fmt(totalCashSurplus)} • {t('surplus.customers_label')} {fmt(totalCustomerSurplus)} • {t('surplus.stock_label')} {fmt(totalStockSurplus)}</p>
         </div>
         <div className="rounded-xl border-2 border-red-300 bg-gradient-to-br from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-800/20 p-3">
           <div className="flex items-center gap-2 mb-1">
             <TrendingDown className="w-5 h-5 text-destructive" />
-            <span className="text-xs font-bold text-red-800 dark:text-red-300">إجمالي العجز</span>
+            <span className="text-xs font-bold text-red-800 dark:text-red-300">{t('surplus.total_deficit')}</span>
           </div>
           <p className="text-lg font-bold text-destructive">{fmt(totalCashDeficit + totalStockDeficit)} DA</p>
-          <p className="text-[10px] text-red-600 dark:text-red-500">خزينة: {fmt(totalCashDeficit)} • مخزون: {fmt(totalStockDeficit)}</p>
+          <p className="text-[10px] text-red-600 dark:text-red-500">{t('surplus.treasury_label')} {fmt(totalCashDeficit)} • {t('surplus.stock_label')} {fmt(totalStockDeficit)}</p>
         </div>
       </div>
 
