@@ -134,7 +134,7 @@ const WorkerDebtsPage: React.FC = () => {
     }
   };
 
-  const typeLabel = (t: string) => t === 'advance' ? 'سلفة' : 'عجز محاسبة';
+  const typeLabel = (type: string) => type === 'advance' ? t('worker_debts.advance') : t('worker_debts.accounting_deficit');
 
   const totalRemaining = debts?.reduce((sum, d) => sum + Number(d.remaining_amount), 0) || 0;
 
