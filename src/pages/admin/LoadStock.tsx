@@ -876,7 +876,7 @@ const LoadStock: React.FC = () => {
         queryClient.invalidateQueries({ queryKey: ['my-worker-stock'] });
         queryClient.invalidateQueries({ queryKey: ['worker-truck-stock'] });
       }
-      toast.success('تم تعديل الكمية بنجاح');
+      toast.success(t('load_stock.qty_updated'));
       setEditingItem(null);
     } catch (err: any) { toast.error(err.message); }
     finally { setIsEditSaving(false); }
