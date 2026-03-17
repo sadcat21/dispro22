@@ -119,7 +119,7 @@ const SharedInvoices: React.FC = () => {
       if (previewUrl) URL.revokeObjectURL(previewUrl);
       setPreviewUrl(URL.createObjectURL(blob));
     } catch {
-      toast.error('فشل تحميل الملف للمعاينة');
+      toast.error(t('shared_invoices.preview_failed'));
     }
   };
 
