@@ -269,12 +269,12 @@ const WorkerDebtsPage: React.FC = () => {
               </Select>
             </div>
             <div>
-              <Label>المبلغ (DA)</Label>
+              <Label>{t('worker_debts.amount')}</Label>
               <Input type="number" value={addAmount} onChange={e => setAddAmount(e.target.value)} placeholder="0" />
             </div>
             <div>
-              <Label>ملاحظات</Label>
-              <Input value={addDesc} onChange={e => setAddDesc(e.target.value)} placeholder="وصف اختياري" />
+              <Label>{t('worker_debts.notes')}</Label>
+              <Input value={addDesc} onChange={e => setAddDesc(e.target.value)} placeholder={t('worker_debts.optional_desc')} />
             </div>
             <Button className="w-full" onClick={handleSaveDebt} disabled={createDebt.isPending}>
               {createDebt.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'حفظ'}
