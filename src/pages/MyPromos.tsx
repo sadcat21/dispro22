@@ -159,8 +159,8 @@ const MyPromosContent: React.FC = () => {
         entityType: 'promo',
         entityId: promo.id,
         details: {
-          العميل: promo.customer?.name,
-          المنتج: promo.product?.name,
+          [t('print.customer')]: promo.customer?.name,
+          [t('products.name')]: promo.product?.name,
         },
       });
 
