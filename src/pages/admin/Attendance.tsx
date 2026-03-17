@@ -160,13 +160,13 @@ const Attendance: React.FC = () => {
                     </div>
                     <div>
                       <p className="font-bold text-sm text-foreground">
-                        {group.worker?.full_name || 'عامل غير معروف'}
+                        {group.worker?.full_name || t('attendance.unknown_worker')}
                       </p>
                       {duration && (
                         <div className="flex items-center gap-1 mt-0.5">
                           <Timer className="w-3 h-3 text-muted-foreground" />
                           <span className="text-[11px] text-muted-foreground">
-                            {duration.hours} سا {duration.minutes} د
+                            {duration.hours} {t('attendance.hours')} {duration.minutes} {t('attendance.minutes')}
                           </span>
                         </div>
                       )}
