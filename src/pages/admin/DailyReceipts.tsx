@@ -241,10 +241,10 @@ const DailyReceipts: React.FC = () => {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">كل الأنواع</SelectItem>
-              <SelectItem value="direct_sale">بيع مباشر</SelectItem>
-              <SelectItem value="delivery">توصيل</SelectItem>
-              <SelectItem value="debt_payment">تسديد دين</SelectItem>
+              <SelectItem value="all">{t('receipts.all_types')}</SelectItem>
+              <SelectItem value="direct_sale">{t('receipts.direct_sale')}</SelectItem>
+              <SelectItem value="delivery">{t('receipts.delivery')}</SelectItem>
+              <SelectItem value="debt_payment">{t('receipts.debt_payment')}</SelectItem>
             </SelectContent>
           </Select>
 
