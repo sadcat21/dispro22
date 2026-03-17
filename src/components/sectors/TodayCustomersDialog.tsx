@@ -1864,8 +1864,7 @@ const OrderDetailsDialog: React.FC<{ order: any; onClose: () => void }> = ({ ord
   const customer = isDirectSale ? order.customer : order.customer;
   const totalAmount = Number(order.total_amount || 0);
   const isOrderRequest = !isDirectSale && !!order._isOrderRequest;
-  const paidAmount = Number(order.paid_amount ?? order.paidAmount ?? (isOrderRequest ? 0 : totalAmount));
-  const remainingAmount = Number(order.remaining_amount ?? order.remainingAmount ?? (isOrderRequest ? totalAmount : 0));
+  const { paidAmount, remainingAmount } = resolveOrderPayment(order, isOrderRequest);
 
   const handlePrint = () => {
     setShowReceiptDialog(true);
