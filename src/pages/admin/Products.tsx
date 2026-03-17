@@ -537,7 +537,7 @@ const Products: React.FC = () => {
                 />
                 {productImagePreview ? (
                   <div className="relative w-20 h-20">
-                    <img src={productImagePreview} alt="معاينة" className="w-20 h-20 rounded-lg object-cover border" />
+                    <img src={productImagePreview} alt={t('products.preview')} className="w-20 h-20 rounded-lg object-cover border" />
                     <button type="button" onClick={() => { setProductImage(null); setProductImagePreview(null); }} className="absolute -top-2 -left-2 bg-destructive text-destructive-foreground rounded-full p-0.5">
                       <X className="w-3 h-3" />
                     </button>
