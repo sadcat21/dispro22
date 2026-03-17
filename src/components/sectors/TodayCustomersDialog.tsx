@@ -1267,6 +1267,63 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
     }
   };
 
+  // Quick print a temporary receipt (no payment/debt info) for warehouse staff
+  const handleQuickPrintTempReceipt = async (customer: any) => {
+    try {
+      let query = supabase
+        .from('orders')
+        .select('*, customer:customers(*), items:order_items(*, product:products(*))')
+        .eq('customer_id', customer.id)
+        .in('status', ['pending', 'assigned', 'in_progress'])
+        .order('created_at', { ascending: false })
+        .limit(1);
+      if (!isAdmin) query = query.eq('assigned_worker_id', effectiveWorkerId!);
+      const { data } = await query;
+      if (data && data.length > 0) {
+        const hydratedItems = await hydrateOrderItems(data[0]);
+        const order = { ...data[0], items: hydratedItems };
+        const items = order.items || [];
+        const totalAmount = Number(order.total_amount || 0);
+        const cust = order.customer;
+        setPrintReceiptData({
+          receiptType: 'delivery' as any,
+          orderId: order.id || null,
+          customerId: cust?.id || '',
+          customerName: cust?.store_name || cust?.name || '—',
+          customerPhone: cust?.phone || null,
+          workerId: user?.id || '',
+          workerName: user?.full_name || '',
+          workerPhone: null,
+          branchId: user?.branch_id || null,
+          items: items.map((item: any) => {
+            const n = normalizeSaleItem(item);
+            return {
+              productId: n.productId,
+              productName: n.productName,
+              quantity: n.quantity,
+              unitPrice: n.unitPrice,
+              totalPrice: n.totalPrice,
+              giftQuantity: n.giftQuantity,
+              giftPieces: n.giftPieces,
+              piecesPerBox: n.piecesPerBox,
+              pricingUnit: n.pricingUnit,
+              weightPerBox: n.weightPerBox,
+            };
+          }),
+          totalAmount,
+          paidAmount: totalAmount,
+          remainingAmount: 0,
+          paymentMethod: null,
+          notes: null,
+          receiptTitleOverride: 'BON DE LIVRAISON',
+        });
+        setShowPrintReceipt(true);
+      } else {
+        toast.error('لا توجد طلبية لهذا العميل');
+      }
+    } catch { toast.error('خطأ في جلب بيانات الطباعة'); }
+  };
+
   const handleDeliveryVisitWithoutDelivery = async (customer: any) => {
     const allowed = await checkLocationBeforeAction(customer);
     if (!allowed) return;
@@ -1608,10 +1665,10 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
                       </Button>
                     </div>
                   )}
-                  <CustomerList customers={deliveryNotDone} emptyMessage="تم توصيل جميع العملاء ✓" onCustomerClick={handleDeliveryCustomerClick} onVisitWithoutOrder={handleDeliveryVisitWithoutDelivery} onClosed={handleCustomerClosed} onUnavailable={handleCustomerUnavailable} onDebtRefused={handleDeliveryDebtRefused} onPostpone={(c) => setPostponeCustomer(c)} showVisitButton visitButtonLabel="بدون تسليم" showActionButtons checkingLocationFor={checkingLocationFor} loadingFor={loadingDeliveryFor} searchQuery={searchQuery} sectors={sectors} allZones={allZones} workerPosition={workerPosition} sortByDistance={sortByDistance} />
+                  <CustomerList customers={deliveryNotDone} emptyMessage="تم توصيل جميع العملاء ✓" onCustomerClick={handleDeliveryCustomerClick} onVisitWithoutOrder={handleDeliveryVisitWithoutDelivery} onClosed={handleCustomerClosed} onUnavailable={handleCustomerUnavailable} onDebtRefused={handleDeliveryDebtRefused} onPostpone={(c) => setPostponeCustomer(c)} onPrint={handleQuickPrintTempReceipt} showVisitButton visitButtonLabel="بدون تسليم" showActionButtons showPrintButton checkingLocationFor={checkingLocationFor} loadingFor={loadingDeliveryFor} searchQuery={searchQuery} sectors={sectors} allZones={allZones} workerPosition={workerPosition} sortByDistance={sortByDistance} />
                 </TabsContent>
                 <TabsContent value="not-received" className="m-0 flex-1 min-h-0" style={{ overflow: 'auto', maxHeight: '55vh' }}>
-                  <CustomerList customers={deliveryNotReceived} emptyMessage="لا توجد زيارات بدون تسليم" onCustomerClick={handleDeliveryCustomerClick} showActionButtons onClosed={handleCustomerClosed} onUnavailable={handleCustomerUnavailable} onDebtRefused={handleDeliveryDebtRefused} checkingLocationFor={checkingLocationFor} loadingFor={loadingDeliveryFor} searchQuery={searchQuery} sectors={sectors} allZones={allZones} workerPosition={workerPosition} sortByDistance={sortByDistance} timeMap={visitTimeMap} distanceMap={customerDistanceMap} />
+                  <CustomerList customers={deliveryNotReceived} emptyMessage="لا توجد زيارات بدون تسليم" onCustomerClick={handleDeliveryCustomerClick} showActionButtons onClosed={handleCustomerClosed} onUnavailable={handleCustomerUnavailable} onDebtRefused={handleDeliveryDebtRefused} onPrint={handleQuickPrintTempReceipt} showPrintButton checkingLocationFor={checkingLocationFor} loadingFor={loadingDeliveryFor} searchQuery={searchQuery} sectors={sectors} allZones={allZones} workerPosition={workerPosition} sortByDistance={sortByDistance} timeMap={visitTimeMap} distanceMap={customerDistanceMap} />
                 </TabsContent>
                 <TabsContent value="received" className="m-0 flex-1 min-h-0" style={{ overflow: 'auto', maxHeight: '55vh' }}>
                   <CustomerList customers={deliveryReceived} emptyMessage="لا توجد توصيلات بعد" onCustomerClick={handleShowDeliveredOrderDetails} showPrintButton onPrint={handlePrintDeliveredOrder} checkingLocationFor={checkingLocationFor} loadingFor={loadingDeliveryFor} searchQuery={searchQuery} sectors={sectors} allZones={allZones} workerPosition={workerPosition} sortByDistance={sortByDistance} deliveryTimeMap={customerDeliveryTimeMap} timeMap={customerDeliveryTimeMap} distanceMap={customerDistanceMap} />
