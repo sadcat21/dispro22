@@ -286,7 +286,7 @@ const MyDeliveries: React.FC = () => {
       link.download = `deliveries_${format(new Date(), 'yyyy-MM-dd_HH-mm')}.csv`;
       link.click();
       URL.revokeObjectURL(link.href);
-      toast.success('تم التصدير بنجاح');
+      toast.success(t('deliveries.export_success'));
     } catch (error: any) {
       toast.error('خطأ في التصدير');
       console.error(error);
