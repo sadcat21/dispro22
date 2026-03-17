@@ -990,7 +990,7 @@ const LoadStock: React.FC = () => {
         setSessionItems([]);
       }
       await refresh();
-      toast.success('تم حذف الجلسة واسترجاع الرصيد');
+      toast.success(t('load_stock.session_deleted'));
     } catch (err: any) { toast.error(err.message); }
   };
 
