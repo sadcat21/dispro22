@@ -26,6 +26,9 @@ const ROLE_LABELS: Record<AppRole, string> = {
   branch_admin: 'مدير فرع',
   supervisor: 'مشرف',
   worker: 'عامل',
+  project_manager: 'مدير المشروع',
+  accountant: 'المحاسب',
+  admin_assistant: 'عون إداري',
 };
 
 const TestWorkersTab: React.FC = () => {
