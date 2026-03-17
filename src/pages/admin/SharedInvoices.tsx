@@ -109,7 +109,7 @@ const SharedInvoices: React.FC = () => {
       .from('shared-invoices')
       .createSignedUrl(`${folder}/${name}`, 300);
     if (error || !data?.signedUrl) {
-      toast.error('فشل معاينة الملف');
+      toast.error(t('shared_invoices.preview_failed'));
       return;
     }
     try {
