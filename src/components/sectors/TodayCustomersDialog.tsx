@@ -833,6 +833,37 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
   const deliveryNotReceived = useMemo(() => deliveryCustomers.filter(c => deliveryVisitedCustomerIds.has(c.id) && !deliveredCustomerIds.has(c.id)), [deliveryCustomers, deliveryVisitedCustomerIds, deliveredCustomerIds]);
   const deliveryReceived = useMemo(() => deliveryCustomers.filter(c => deliveredCustomerIds.has(c.id) && !directSoldCustomerIds.has(c.id)), [deliveryCustomers, deliveredCustomerIds, directSoldCustomerIds]);
 
+  // Postponed/overdue delivery orders (delivery_date before today, still undelivered)
+  const postponedDeliveryOrders = useMemo(() => 
+    assignedOrders.filter(o => o.delivery_date && o.delivery_date < todayDateStr && ['pending', 'assigned', 'in_progress'].includes(o.status)),
+    [assignedOrders, todayDateStr]
+  );
+  const postponedCustomerIds = useMemo(() => new Set(postponedDeliveryOrders.map(o => o.customer_id).filter(Boolean)), [postponedDeliveryOrders]);
+  const deliveryPostponed = useMemo(() => {
+    const custMap = new Map<string, any>();
+    postponedDeliveryOrders.forEach(o => {
+      if (o.customer_id && o.customer && !custMap.has(o.customer_id)) {
+        custMap.set(o.customer_id, o.customer);
+      }
+    });
+    customers.forEach(c => {
+      if (postponedCustomerIds.has(c.id) && !custMap.has(c.id)) custMap.set(c.id, c);
+    });
+    return Array.from(custMap.values());
+  }, [postponedDeliveryOrders, customers, postponedCustomerIds]);
+
+  // IDs of customers whose orders were rescheduled to today (for "مؤجلة" badge)
+  const rescheduledToTodayIds = useMemo(() => {
+    const ids = new Set<string>();
+    assignedOrders.forEach(o => {
+      if (o.customer_id && o.delivery_date && o.delivery_date.startsWith(todayDateStr)) {
+        const createdDate = o.created_at.split('T')[0];
+        if (createdDate < todayDateStr) ids.add(o.customer_id);
+      }
+    });
+    return ids;
+  }, [assignedOrders, todayDateStr]);
+
   const collectedDebtIds = useMemo(() => new Set(todayCollections.filter(c => c.action !== 'no_payment').map(c => c.debt_id)), [todayCollections]);
   const noPaymentDebtIds = useMemo(() => new Set(todayCollections.filter(c => c.action === 'no_payment').map(c => c.debt_id)), [todayCollections]);
   const debtCustomers = useMemo(() => {
