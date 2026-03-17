@@ -259,12 +259,12 @@ const WorkerDebtsPage: React.FC = () => {
               )}
             </div>
             <div>
-              <Label>النوع</Label>
+              <Label>{t('worker_debts.type')}</Label>
               <Select value={addType} onValueChange={(v: 'advance' | 'deficit') => setAddType(v)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="advance">سلفة (مسبق أجرة)</SelectItem>
-                  <SelectItem value="deficit">عجز محاسبة</SelectItem>
+                  <SelectItem value="advance">{t('worker_debts.advance_salary')}</SelectItem>
+                  <SelectItem value="deficit">{t('worker_debts.accounting_deficit')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
