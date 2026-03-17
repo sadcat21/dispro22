@@ -212,7 +212,7 @@ const Workers: React.FC = () => {
       fetchData();
     } catch (error: any) {
       console.error('Error deleting worker:', error);
-      toast.error('فشل في حذف العامل: ' + error.message);
+      toast.error(t('workers.delete_error') + ': ' + error.message);
     }
   };
 
