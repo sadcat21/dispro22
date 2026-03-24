@@ -280,8 +280,15 @@ const WorkerOrdersSummaryDialog: React.FC<Props> = ({ open, onOpenChange, worker
   const createdCustomers = new Set((data?.created || []).flatMap(p => p.customers.map(c => c.customerId))).size;
   const assignedCustomers = new Set((data?.assigned || []).flatMap(p => p.customers.map(c => c.customerId))).size;
 
+  // Open print settings dialog instead of printing directly
+  const handlePrintClick = () => {
+    if (!workerId || currentData.length === 0) return;
+    setShowPrintSettings(true);
+  };
+
   const handlePrint = async () => {
     if (!workerId) return;
+    setShowPrintSettings(false);
     setIsPrintLoading(true);
     try {
       const dayStart = `${selectedDate}T00:00:00+01:00`;
