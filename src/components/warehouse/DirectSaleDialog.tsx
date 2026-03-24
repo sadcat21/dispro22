@@ -868,7 +868,8 @@ const DirectSaleDialog: React.FC<DirectSaleDialogProps> = ({ open, onOpenChange,
                   />
                 )}
 
-                {/* Price Sub-Type */}
+                {/* Price Sub-Type - only for without_invoice */}
+                {paymentType === 'without_invoice' && (
                 <div className="space-y-2">
                   <Label className="text-sm font-medium">{t('orders.price_type')}</Label>
                   <div className="grid grid-cols-3 gap-2">
@@ -899,6 +900,7 @@ const DirectSaleDialog: React.FC<DirectSaleDialogProps> = ({ open, onOpenChange,
                     </p>
                   )}
                 </div>
+                )}
               </section>
 
               {/* Products - Grid like CreateOrderDialog */}
