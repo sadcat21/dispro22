@@ -288,7 +288,6 @@ const WorkerOrdersSummaryDialog: React.FC<Props> = ({ open, onOpenChange, worker
 
   const handlePrint = async () => {
     if (!workerId) return;
-    setShowPrintSettings(false);
     setIsPrintLoading(true);
     try {
       const dayStart = `${selectedDate}T00:00:00+01:00`;
@@ -332,13 +331,16 @@ const WorkerOrdersSummaryDialog: React.FC<Props> = ({ open, onOpenChange, worker
       setIsPrintReady(true);
       isPrintingRef.current = true;
 
+      // Close print settings dialog AFTER data is ready, then print after a delay
+      setShowPrintSettings(false);
+
       setTimeout(() => {
         window.print();
         setTimeout(() => {
           setIsPrintReady(false);
           isPrintingRef.current = false;
         }, 500);
-      }, 400);
+      }, 800);
     } catch (err) {
       console.error('Print error:', err);
       toast.error('حدث خطأ أثناء تحضير الطباعة');
