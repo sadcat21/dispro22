@@ -450,7 +450,8 @@ const WorkerHome: React.FC = () => {
         open={showDirectSaleDialog}
         onOpenChange={setShowDirectSaleDialog}
         initialCustomerId={selectedCustomerForAction?.id}
-        stockItems={(stockItems || []).map(s => ({
+        stockSource={isWarehouseManager ? 'warehouse' : 'worker'}
+        stockItems={(isWarehouseManager ? (warehouseStockItems || []) : (stockItems || [])).map(s => ({
           id: s.id,
           product_id: s.product_id,
           quantity: s.quantity,
