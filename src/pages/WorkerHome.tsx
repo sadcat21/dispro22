@@ -339,8 +339,12 @@ const WorkerHome: React.FC = () => {
           if (hasDeliveryAccess && !isDeliveriesPageHidden && !isDeliveriesHidden) {
             quickActions.push({ key: 'deliveries', icon: <Truck className="w-6 h-6" />, label: t('deliveries.title'), onClick: () => navigate('/my-deliveries') });
           }
-          if (hasDeliveryAccess && !isDirectSaleHidden) {
-            quickActions.push({ key: 'direct-sale', icon: <ShoppingBag className="w-6 h-6" />, label: t('stock.direct_sale'), onClick: () => setShowActionDialog(true) });
+          if ((hasDeliveryAccess || isWarehouseManager) && !isDirectSaleHidden) {
+            quickActions.push({ key: 'direct-sale', icon: <ShoppingBag className="w-6 h-6" />, label: isWarehouseManager ? 'بيع مخزن - Vente Dépôt' : t('stock.direct_sale'), onClick: () => setShowActionDialog(true) });
+          }
+          // Warehouse stock for warehouse manager
+          if (isWarehouseManager && !isWarehouseStockHidden) {
+            quickActions.push({ key: 'warehouse-stock', icon: <Package className="w-6 h-6" />, label: 'مخزون الفرع', onClick: () => navigate('/warehouse') });
           }
           if (hasDeliveryAccess && !isMyStockPageHidden && !isMyStockHidden) {
             quickActions.push({ key: 'my-stock', icon: <Package className="w-6 h-6" />, label: t('stock.my_stock'), onClick: () => navigate('/my-stock') });
