@@ -28,7 +28,7 @@ import AttendanceButton from '@/components/attendance/AttendanceButton';
 import ManualPromoEntryDialog from '@/components/offers/ManualPromoEntryDialog';
 
 const WorkerHome: React.FC = () => {
-  const { user, workerId, role } = useAuth();
+  const { user, workerId, role, activeRole } = useAuth();
   const { t } = useLanguage();
   const navigate = useNavigate();
   const { data: permissions = [], isLoading: permissionsLoading } = useWorkerPermissions();
