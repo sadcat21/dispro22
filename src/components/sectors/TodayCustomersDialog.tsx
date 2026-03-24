@@ -2035,6 +2035,26 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Orders Summary Dialog */}
+      {effectiveWorkerId && (
+        <WorkerOrdersSummaryDialog
+          open={showOrdersSummary}
+          onOpenChange={setShowOrdersSummary}
+          workerId={effectiveWorkerId}
+          workerName={effectiveWorkerName || ''}
+        />
+      )}
+
+      {/* Sales Summary Dialog */}
+      {effectiveWorkerId && (
+        <WorkerSalesSummaryDialog
+          open={showSalesSummary}
+          onOpenChange={setShowSalesSummary}
+          workerId={effectiveWorkerId}
+          workerName={effectiveWorkerName || ''}
+        />
+      )}
     </>
   );
 };
