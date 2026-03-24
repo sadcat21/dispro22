@@ -500,8 +500,9 @@ const DirectSaleDialog: React.FC<DirectSaleDialogProps> = ({ open, onOpenChange,
           partial_amount: paymentData.isFullPayment ? null : paymentData.paidAmount,
           total_amount: orderTotals.totalAmount,
           notes: (() => {
+            const defaultNote = isWarehouseManager ? 'بيع مخزن - Vente Dépôt' : (stockSource === 'warehouse' ? 'بيع مباشر من المخزن' : 'بيع مباشر من الشاحنة');
             const offerNotes = orderItems.filter(i => i.offerNote).map(i => i.offerNote).join(' | ');
-            return [notes || 'بيع مباشر من الشاحنة', offerNotes].filter(Boolean).join(' | ');
+            return [notes || defaultNote, offerNotes].filter(Boolean).join(' | ');
           })(),
         })
         .select()
@@ -577,7 +578,7 @@ const DirectSaleDialog: React.FC<DirectSaleDialogProps> = ({ open, onOpenChange,
           created_by: workerId!,
           worker_id: workerId!,
           order_id: order.id,
-          notes: stockSource === 'warehouse' ? 'بيع مباشر من المخزن' : 'بيع مباشر من الشاحنة',
+          notes: isWarehouseManager ? 'بيع مخزن - Vente Dépôt' : (stockSource === 'warehouse' ? 'بيع مباشر من المخزن' : 'بيع مباشر من الشاحنة'),
         });
       }
 
