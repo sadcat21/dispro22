@@ -69,7 +69,8 @@ interface OrderItemWithPrice {
 }
 
 const DirectSaleDialog: React.FC<DirectSaleDialogProps> = ({ open, onOpenChange, stockItems, initialCustomerId, stockSource = 'worker' }) => {
-  const { workerId, activeBranch, user } = useAuth();
+  const { workerId, activeBranch, user, activeRole } = useAuth();
+  const isWarehouseManager = activeRole?.custom_role_code === 'warehouse_manager';
   const { data: workerPrintInfo } = useWorkerPrintInfo(workerId);
   const { t, dir } = useLanguage();
   const queryClient = useQueryClient();
