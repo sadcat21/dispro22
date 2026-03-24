@@ -384,7 +384,7 @@ const WorkerOrdersSummaryDialog: React.FC<Props> = ({ open, onOpenChange, worker
                 variant="ghost"
                 size="icon"
                 className="h-8 w-8 shrink-0"
-                onClick={handlePrint}
+                onClick={handlePrintClick}
                 disabled={isPrintLoading || currentData.length === 0}
               >
                 {isPrintLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Printer className="w-4 h-4" />}
