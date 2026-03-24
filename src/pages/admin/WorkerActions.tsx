@@ -121,6 +121,19 @@ const WorkerActions: React.FC = () => {
     enabled: isSupervisorMode && !!workerId,
   });
 
+  // For warehouse managers: fetch assigned workers
+  const { data: managerAssignments = [] } = useQuery({
+    queryKey: ['manager-workers', workerId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('manager_workers')
+        .select('worker_id')
+        .eq('manager_id', workerId!);
+      return (data || []).map((d: any) => d.worker_id);
+    },
+    enabled: isWarehouseMode && !!workerId,
+  });
+
   useRealtimeSubscription(
     `worker-actions-realtime-${selectedWorker?.id || 'none'}`,
     [
