@@ -516,25 +516,35 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
   const activeCoveragesForSelectedDay = useMemo(() => {
     const activeCoverages = getActiveCoveragesForDate(selectedDateStr);
 
+    if (activeCoverages.length > 0) {
+      console.log('[Coverage Debug] Active coverages for', selectedDateStr, ':', activeCoverages.map(c => ({
+        sector: c.sector_id, type: c.schedule_type, absent: c.absent_worker_id, sub: c.substitute_worker_id, mode: c.coverage_mode,
+      })));
+    }
+
     return activeCoverages.filter((coverage) => {
       const scopedSchedules = sectorSchedules.filter(
         (sc) => sc.sector_id === coverage.sector_id && sc.schedule_type === coverage.schedule_type
       );
 
       if (scopedSchedules.length > 0) {
-        return scopedSchedules.some(
-          (sc) => sc.day === selectedDay && sc.worker_id === coverage.absent_worker_id
-        );
+        // Accept if the absent worker has a schedule on this day (ideal),
+        // OR if the sector simply has schedules on this day for this type
+        // (handles cases where schedules were modified after coverage creation)
+        const daySchedules = scopedSchedules.filter(sc => sc.day === selectedDay);
+        if (daySchedules.length > 0) return true;
+        console.log('[Coverage Debug] Filtered out coverage - no schedules on', selectedDay, 'for sector', coverage.sector_id, 'type', coverage.schedule_type);
+        return false;
       }
 
       const sector = sectors.find((s) => s.id === coverage.sector_id);
       if (!sector) return false;
 
       if (coverage.schedule_type === 'sales') {
-        return sector.visit_day_sales === selectedDay && sector.sales_worker_id === coverage.absent_worker_id;
+        return sector.visit_day_sales === selectedDay;
       }
 
-      return sector.visit_day_delivery === selectedDay && sector.delivery_worker_id === coverage.absent_worker_id;
+      return sector.visit_day_delivery === selectedDay;
     });
   }, [getActiveCoveragesForDate, selectedDateStr, sectorSchedules, selectedDay, sectors]);
 
