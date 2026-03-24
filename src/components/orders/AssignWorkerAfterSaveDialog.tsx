@@ -51,7 +51,7 @@ const AssignWorkerAfterSaveDialog: React.FC<AssignWorkerAfterSaveDialogProps> = 
       let query = supabase
         .from('worker_roles')
         .select(`worker_id, custom_roles!inner(code)`)
-        .eq('custom_roles.code', 'delivery_rep');
+        .in('custom_roles.code', ['delivery_rep', 'warehouse_manager']);
 
       if (customerBranchId) {
         query = query.eq('branch_id', customerBranchId);
