@@ -153,7 +153,7 @@ const WorkerActions: React.FC = () => {
   );
 
   const { data: workers = [] } = useQuery({
-    queryKey: ['workers-for-actions', activeBranch?.id, isSupervisorMode, supervisorAssignments],
+    queryKey: ['workers-for-actions', activeBranch?.id, isSupervisorMode, isWarehouseMode, supervisorAssignments],
     queryFn: async () => {
       let query = supabase.from('workers').select('*').eq('is_active', true).order('full_name');
       if (activeBranch?.id && !isSupervisorMode) query = query.eq('branch_id', activeBranch.id);
