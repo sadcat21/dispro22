@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { MapPin, Truck, ShoppingCart, Landmark, User, Phone, Eye, EyeOff, CheckCircle, PackageX, PackageCheck, Navigation, Loader2, MapPinOff, Clock, Check, X, DoorClosed, UserX, ShoppingBag, Printer, XCircle, Search, BanknoteIcon, Pencil, CalendarClock } from 'lucide-react';
+import { MapPin, Truck, ShoppingCart, Landmark, User, Phone, Eye, EyeOff, CheckCircle, PackageX, PackageCheck, Navigation, Loader2, MapPinOff, Clock, Check, X, DoorClosed, UserX, ShoppingBag, Printer, XCircle, Search, BanknoteIcon, Pencil, CalendarClock, ClipboardList } from 'lucide-react';
 import { useWorkerGeoPosition } from '@/hooks/useWorkerGeoPosition';
 import { reverseGeocode } from '@/utils/geoUtils';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -35,6 +35,8 @@ import DirectSaleDialog from '@/components/warehouse/DirectSaleDialog';
 import ReceiptDialog from '@/components/printing/ReceiptDialog';
 import ModifyOrderDialog from '@/components/orders/ModifyOrderDialog';
 import { useOrderItems } from '@/hooks/useOrders';
+import WorkerOrdersSummaryDialog from '@/components/accounting/WorkerOrdersSummaryDialog';
+import WorkerSalesSummaryDialog from '@/components/accounting/WorkerSalesSummaryDialog';
 import { isAdminRole } from '@/lib/utils';
 
 const DAY_NAMES: Record<string, string> = {
@@ -247,6 +249,8 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
   const [directSaleCustomerId, setDirectSaleCustomerId] = useState<string | null>(null);
   const [printReceiptData, setPrintReceiptData] = useState<any>(null);
   const [showPrintReceipt, setShowPrintReceipt] = useState(false);
+  const [showOrdersSummary, setShowOrdersSummary] = useState(false);
+  const [showSalesSummary, setShowSalesSummary] = useState(false);
 
   // Data queries
   const { data: sectors = [] } = useQuery({
@@ -1731,6 +1735,14 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
                   <CustomerList customers={deliveryNotReceived} emptyMessage="لا توجد زيارات بدون تسليم" onCustomerClick={handleDeliveryCustomerClick} showActionButtons onClosed={handleCustomerClosed} onUnavailable={handleCustomerUnavailable} onDebtRefused={handleDeliveryDebtRefused} onPrint={handleQuickPrintTempReceipt} showPrintButton checkingLocationFor={checkingLocationFor} loadingFor={loadingDeliveryFor} searchQuery={searchQuery} sectors={sectors} allZones={allZones} workerPosition={workerPosition} sortByDistance={sortByDistance} timeMap={visitTimeMap} distanceMap={customerDistanceMap} />
                 </TabsContent>
                 <TabsContent value="received" className="m-0 flex-1 min-h-0" style={{ overflow: 'auto', maxHeight: '55vh' }}>
+                  {isAdmin && effectiveWorkerId && (
+                    <div className="p-2 border-b">
+                      <Button variant="outline" size="sm" className="w-full gap-2 text-emerald-700 border-emerald-300 hover:bg-emerald-50" onClick={() => setShowSalesSummary(true)}>
+                        <ShoppingBag className="w-4 h-4" />
+                        تجميع المبيعات
+                      </Button>
+                    </div>
+                  )}
                   <CustomerList customers={deliveryReceived} emptyMessage="لا توجد توصيلات بعد" onCustomerClick={handleShowDeliveredOrderDetails} showPrintButton onPrint={handlePrintDeliveredOrder} checkingLocationFor={checkingLocationFor} loadingFor={loadingDeliveryFor} searchQuery={searchQuery} sectors={sectors} allZones={allZones} workerPosition={workerPosition} sortByDistance={sortByDistance} deliveryTimeMap={customerDeliveryTimeMap} timeMap={customerDeliveryTimeMap} distanceMap={customerDistanceMap} />
                 </TabsContent>
                 <TabsContent value="postponed" className="m-0 flex-1 min-h-0" style={{ overflow: 'auto', maxHeight: '55vh' }}>
@@ -1761,6 +1773,14 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
                 </TabsList>
 
                 <TabsContent value="not-visited" className="m-0 flex-1 min-h-0" style={{ overflow: 'auto', maxHeight: '55vh' }}>
+                  {isAdmin && effectiveWorkerId && (
+                    <div className="p-2 border-b">
+                      <Button variant="outline" size="sm" className="w-full gap-2 text-blue-700 border-blue-300 hover:bg-blue-50" onClick={() => setShowOrdersSummary(true)}>
+                        <ClipboardList className="w-4 h-4" />
+                        تجميع الطلبيات
+                      </Button>
+                    </div>
+                  )}
                   <CustomerList customers={salesNotVisited} emptyMessage="تمت زيارة جميع العملاء ✓" onCustomerClick={handleSalesCustomerClick} onVisitWithoutOrder={handleVisitWithoutOrder} onClosed={handleCustomerClosed} onUnavailable={handleCustomerUnavailable} showVisitButton showActionButtons checkingLocationFor={checkingLocationFor} searchQuery={searchQuery} sectors={sectors} allZones={allZones} workerPosition={workerPosition} sortByDistance={sortByDistance} />
                 </TabsContent>
                 <TabsContent value="visited-no-order" className="m-0 flex-1 min-h-0">
@@ -1824,6 +1844,14 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
                   <CustomerList customers={directSalePending} emptyMessage="لا توجد محلات متاحة للبيع المباشر" onCustomerClick={handleDirectSaleClick} onClosed={handleDirectSaleClosed} onUnavailable={handleDirectSaleUnavailable} onDebtRefused={handleDirectSaleDebtRefused} onNoSale={handleDirectSaleNoSale} showActionButtons showNoSaleButton checkingLocationFor={checkingLocationFor} searchQuery={searchQuery} sectors={sectors} allZones={allZones} workerPosition={workerPosition} sortByDistance={sortByDistance} salesRepStatusMap={salesRepStatusMap} />
                 </TabsContent>
                 <TabsContent value="sold" className="m-0 flex-1 min-h-0" style={{ overflow: 'auto', maxHeight: '55vh' }}>
+                  {isAdmin && effectiveWorkerId && (
+                    <div className="p-2 border-b">
+                      <Button variant="outline" size="sm" className="w-full gap-2 text-emerald-700 border-emerald-300 hover:bg-emerald-50" onClick={() => setShowSalesSummary(true)}>
+                        <ShoppingBag className="w-4 h-4" />
+                        تجميع المبيعات
+                      </Button>
+                    </div>
+                  )}
                   <CustomerList customers={directSaleSold} emptyMessage="لا توجد مبيعات بعد" onCustomerClick={handleShowDirectSaleDetails} showPrintButton onPrint={handlePrintDirectSale} checkingLocationFor={checkingLocationFor} searchQuery={searchQuery} sectors={sectors} allZones={allZones} workerPosition={workerPosition} sortByDistance={sortByDistance} timeMap={directSaleTimeMap} distanceMap={customerDistanceMap} />
                 </TabsContent>
                 <TabsContent value="no-sale" className="m-0 flex-1 min-h-0" style={{ overflow: 'auto', maxHeight: '55vh' }}>
@@ -2007,6 +2035,26 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Orders Summary Dialog */}
+      {effectiveWorkerId && (
+        <WorkerOrdersSummaryDialog
+          open={showOrdersSummary}
+          onOpenChange={setShowOrdersSummary}
+          workerId={effectiveWorkerId}
+          workerName={effectiveWorkerName || ''}
+        />
+      )}
+
+      {/* Sales Summary Dialog */}
+      {effectiveWorkerId && (
+        <WorkerSalesSummaryDialog
+          open={showSalesSummary}
+          onOpenChange={setShowSalesSummary}
+          workerId={effectiveWorkerId}
+          workerName={effectiveWorkerName || ''}
+        />
+      )}
     </>
   );
 };
