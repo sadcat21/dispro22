@@ -605,21 +605,16 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
 
     // Apply substitution transfers for this selected day
     if (effectiveWorkerId) {
-      // Check if any coverage with 'replace' mode exists for this worker as substitute
-      const hasReplaceMode = activeCoveragesForSelectedDay.some(
-        c => c.substitute_worker_id === effectiveWorkerId && c.schedule_type === 'sales' && c.coverage_mode === 'replace'
-      );
-
-      if (hasReplaceMode) {
-        // In replace mode: remove worker's own sectors, only keep covered ones
-        const ownSectorIds = new Set(ids);
-        ownSectorIds.forEach(id => ids.delete(id));
-      }
-
       activeCoveragesForSelectedDay.forEach(c => {
         if (c.schedule_type !== 'sales') return;
+        // Remove sector from absent worker
         if (c.absent_worker_id === effectiveWorkerId) ids.delete(c.sector_id);
-        if (c.substitute_worker_id === effectiveWorkerId) ids.add(c.sector_id);
+        // Add covered sector to substitute worker
+        if (c.substitute_worker_id === effectiveWorkerId) {
+          ids.add(c.sector_id);
+          // In replace mode: only remove the substitute's OWN original sector
+          // that was assigned by the absent worker's schedule, not unrelated sectors
+        }
       });
     }
 
@@ -651,19 +646,14 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
 
     // Apply substitution transfers for this selected day
     if (effectiveWorkerId) {
-      const hasReplaceMode = activeCoveragesForSelectedDay.some(
-        c => c.substitute_worker_id === effectiveWorkerId && c.schedule_type === 'delivery' && c.coverage_mode === 'replace'
-      );
-
-      if (hasReplaceMode) {
-        const ownSectorIds = new Set(ids);
-        ownSectorIds.forEach(id => ids.delete(id));
-      }
-
       activeCoveragesForSelectedDay.forEach(c => {
         if (c.schedule_type !== 'delivery') return;
+        // Remove sector from absent worker
         if (c.absent_worker_id === effectiveWorkerId) ids.delete(c.sector_id);
-        if (c.substitute_worker_id === effectiveWorkerId) ids.add(c.sector_id);
+        // Add covered sector to substitute worker
+        if (c.substitute_worker_id === effectiveWorkerId) {
+          ids.add(c.sector_id);
+        }
       });
     }
 
