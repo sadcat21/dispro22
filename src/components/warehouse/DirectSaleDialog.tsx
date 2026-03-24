@@ -617,6 +617,7 @@ const DirectSaleDialog: React.FC<DirectSaleDialogProps> = ({ open, onOpenChange,
       queryClient.invalidateQueries({ queryKey: ['my-worker-stock'] });
       if (stockSource === 'warehouse') {
         queryClient.invalidateQueries({ queryKey: ['warehouse-stock'] });
+        queryClient.invalidateQueries({ queryKey: ['warehouse-stock-for-sale'] });
       }
 
       // Track direct sale visit GPS

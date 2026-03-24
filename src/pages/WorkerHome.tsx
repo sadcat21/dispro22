@@ -28,7 +28,7 @@ import AttendanceButton from '@/components/attendance/AttendanceButton';
 import ManualPromoEntryDialog from '@/components/offers/ManualPromoEntryDialog';
 
 const WorkerHome: React.FC = () => {
-  const { user, workerId, role, activeRole } = useAuth();
+  const { user, workerId, role, activeRole, activeBranch } = useAuth();
   const { t } = useLanguage();
   const navigate = useNavigate();
   const { data: permissions = [], isLoading: permissionsLoading } = useWorkerPermissions();
@@ -123,6 +123,21 @@ const WorkerHome: React.FC = () => {
       return data;
     },
     enabled: !!workerId,
+  });
+
+  // Warehouse stock for warehouse manager direct sales
+  const { data: warehouseStockItems } = useQuery({
+    queryKey: ['warehouse-stock-for-sale', activeBranch?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('warehouse_stock')
+        .select('*, product:products(*)')
+        .eq('branch_id', activeBranch!.id)
+        .gt('quantity', 0);
+      if (error) throw error;
+      return data;
+    },
+    enabled: isWarehouseManager && !!activeBranch?.id,
   });
 
   const { data: allCustomers = [], isLoading: customersLoading } = useQuery({
@@ -435,7 +450,8 @@ const WorkerHome: React.FC = () => {
         open={showDirectSaleDialog}
         onOpenChange={setShowDirectSaleDialog}
         initialCustomerId={selectedCustomerForAction?.id}
-        stockItems={(stockItems || []).map(s => ({
+        stockSource={isWarehouseManager ? 'warehouse' : 'worker'}
+        stockItems={(isWarehouseManager ? (warehouseStockItems || []) : (stockItems || [])).map(s => ({
           id: s.id,
           product_id: s.product_id,
           quantity: s.quantity,
