@@ -78,7 +78,7 @@ const workerActions = [
 ];
 
 const WorkerActions: React.FC = () => {
-  const { activeBranch, role, workerId } = useAuth();
+  const { activeBranch, role, workerId, activeRole } = useAuth();
   const { t, language } = useLanguage();
   const { data: myOverrides } = useMyUIOverrides();
   const navigate = useNavigate();
@@ -102,8 +102,11 @@ const WorkerActions: React.FC = () => {
   const [ordersSummaryOpen, setOrdersSummaryOpen] = useState(false);
   const [sectorCoverageOpen, setSectorCoverageOpen] = useState(false);
 
-  const isSelfMode = role === 'worker';
+  const isWarehouseManager = activeRole?.custom_role_code === 'warehouse_manager';
+  // Warehouse manager sees admin-style worker list (like supervisor)
+  const isSelfMode = role === 'worker' && !isWarehouseManager;
   const isSupervisorMode = role === 'supervisor';
+  const isWarehouseMode = isWarehouseManager && role === 'worker';
 
   // For supervisors: fetch assigned workers
   const { data: supervisorAssignments = [] } = useQuery({
@@ -150,7 +153,7 @@ const WorkerActions: React.FC = () => {
   );
 
   const { data: workers = [] } = useQuery({
-    queryKey: ['workers-for-actions', activeBranch?.id, isSupervisorMode, supervisorAssignments],
+    queryKey: ['workers-for-actions', activeBranch?.id, isSupervisorMode, isWarehouseMode, supervisorAssignments],
     queryFn: async () => {
       let query = supabase.from('workers').select('*').eq('is_active', true).order('full_name');
       if (activeBranch?.id && !isSupervisorMode) query = query.eq('branch_id', activeBranch.id);
