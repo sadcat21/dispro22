@@ -893,7 +893,12 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
     assignedOrders.filter(o => o.delivery_date && o.delivery_date < todayDateStr && ['pending', 'assigned', 'in_progress'].includes(o.status)),
     [assignedOrders, todayDateStr]
   );
-  const postponedCustomerIds = useMemo(() => new Set(postponedDeliveryOrders.map(o => o.customer_id).filter(Boolean)), [postponedDeliveryOrders]);
+  const postponedCustomerIds = useMemo(() => {
+    const ids = new Set(postponedDeliveryOrders.map(o => o.customer_id).filter(Boolean));
+    // Also include customers rescheduled TO today (postpone_count > 0)
+    onlyPostponedCustomerIds.forEach(id => ids.add(id));
+    return ids;
+  }, [postponedDeliveryOrders, onlyPostponedCustomerIds]);
   const deliveryPostponed = useMemo(() => {
     const custMap = new Map<string, any>();
     postponedDeliveryOrders.forEach(o => {
@@ -901,6 +906,7 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
         custMap.set(o.customer_id, o.customer);
       }
     });
+    // Add customers from onlyPostponedCustomerIds
     customers.forEach(c => {
       if (postponedCustomerIds.has(c.id) && !custMap.has(c.id)) custMap.set(c.id, c);
     });
