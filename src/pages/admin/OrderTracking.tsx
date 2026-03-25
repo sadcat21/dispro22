@@ -323,8 +323,9 @@ const StatusProgressBar: React.FC<{ order: GroupedOrder }> = ({ order }) => {
   );
 };
 
-const OrderTracking: React.FC = () => {
+const OrderTracking: React.FC<{ workerMode?: boolean }> = ({ workerMode = false }) => {
   const { language } = useLanguage();
+  const { workerId } = useAuth();
   const isRTL = language === 'ar';
   const [dateFrom, setDateFrom] = useState(() => {
     const d = new Date();
@@ -348,13 +349,15 @@ const OrderTracking: React.FC = () => {
       if (error) throw error;
       return data;
     },
+    enabled: !workerMode,
   });
 
   const { data: events, isLoading } = useAllOrderEvents({
     dateFrom,
     dateTo,
     eventType: eventTypeFilter,
-    workerId: workerFilter,
+    workerId: workerMode ? undefined : workerFilter,
+    createdBy: workerMode ? workerId || undefined : undefined,
   });
 
   const groupedOrders = useMemo<GroupedOrder[]>(() => {
