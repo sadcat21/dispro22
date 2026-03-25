@@ -373,6 +373,13 @@ const AppRoutes = () => {
         </ProtectedRoute>
       } />
 
+      {/* Order Tracking */}
+      <Route path="/order-tracking" element={
+        <ProtectedRoute allowedRoles={['admin', 'branch_admin']}>
+          <OrderTracking />
+        </ProtectedRoute>
+      } />
+
 
       <Route path="/chat" element={
         <ProtectedRoute>

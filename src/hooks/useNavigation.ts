@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Home, Users, Package, BarChart3, Settings, FileSpreadsheet, UserCheck, Building2, Shield, ShoppingCart, Truck, Activity, Store, BookOpen, UserCog, Gift, Wallet, Warehouse, ClipboardList, Banknote, Calculator, MapPin, Navigation, FileText, Vault, FolderOpen, Scale, Trophy, CalendarDays, Split, ClipboardCheck } from 'lucide-react';
+import { Home, Users, Package, BarChart3, Settings, FileSpreadsheet, UserCheck, Building2, Shield, ShoppingCart, Truck, Activity, Store, BookOpen, UserCog, Gift, Wallet, Warehouse, ClipboardList, Banknote, Calculator, MapPin, Navigation, FileText, Vault, FolderOpen, Scale, Trophy, CalendarDays, Split, ClipboardCheck, Radar } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useWorkerPermissions } from '@/hooks/usePermissions';
 import { useMyUIOverrides } from '@/hooks/useUIOverrides';
