@@ -752,11 +752,10 @@ const OrderDetailsContent: React.FC<{ order: GroupedOrder }> = ({ order }) => {
             <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
           </div>
         ) : orderItems && orderItems.length > 0 ? (
-          <div className="space-y-2">
+          <div className="divide-y divide-border/50">
             {orderItems.map((item: any) => (
-              <div key={item.id} className="flex items-center gap-2 p-2 rounded-lg bg-muted/50">
-                {/* Product Image */}
-                <div className="w-10 h-10 rounded-md bg-muted flex items-center justify-center shrink-0 overflow-hidden">
+              <div key={item.id} className="flex items-center gap-2.5 p-2.5">
+                <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center shrink-0 overflow-hidden">
                   {item.product?.image_url ? (
                     <img src={item.product.image_url} alt={item.product?.name} className="w-full h-full object-cover" />
                   ) : (
@@ -767,9 +766,9 @@ const OrderDetailsContent: React.FC<{ order: GroupedOrder }> = ({ order }) => {
                 <div className="flex-1 min-w-0">
                   <div className="text-xs font-medium truncate">{item.product?.name || 'منتج'}</div>
                   <div className="flex items-center gap-1.5 flex-wrap text-[10px] text-muted-foreground">
-                    <span>الكمية: {item.quantity}</span>
+                    <span className="font-medium text-foreground">×{item.quantity}</span>
                     {item.gift_quantity > 0 && (
-                      <span className="text-green-600">+ {item.gift_quantity} هدية</span>
+                      <span className="text-green-600 font-medium">+ {item.gift_quantity} 🎁</span>
                     )}
                     {item.pricing_unit && item.pricing_unit !== 'box' && (
                       <Badge variant="outline" className="text-[8px] py-0 px-1">{item.pricing_unit === 'piece' ? 'قطعة' : item.pricing_unit === 'kg' ? 'كغ' : item.pricing_unit}</Badge>
@@ -785,7 +784,6 @@ const OrderDetailsContent: React.FC<{ order: GroupedOrder }> = ({ order }) => {
                       </Badge>
                     )}
                   </div>
-                  {/* Product catalog prices */}
                   {item.product && (
                     <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
                       {item.product.price_retail != null && (
@@ -813,7 +811,7 @@ const OrderDetailsContent: React.FC<{ order: GroupedOrder }> = ({ order }) => {
                 </div>
                 
                 <div className="text-end shrink-0">
-                  <div className="text-xs font-medium">{Number(item.total_price || 0).toLocaleString()}</div>
+                  <div className="text-xs font-bold">{Number(item.total_price || 0).toLocaleString()}</div>
                   <div className="text-[9px] text-muted-foreground">
                     {Number(item.unit_price || 0).toLocaleString()} / و
                   </div>
@@ -822,14 +820,19 @@ const OrderDetailsContent: React.FC<{ order: GroupedOrder }> = ({ order }) => {
             ))}
           </div>
         ) : (
-          <div className="text-center text-xs text-muted-foreground py-2">لا توجد منتجات</div>
+          <div className="text-center text-xs text-muted-foreground py-4">لا توجد منتجات</div>
         )}
       </div>
       
       {/* Full Timeline */}
-      <div className="border-t pt-3">
-        <h3 className="text-xs font-medium text-muted-foreground mb-3">سجل الأحداث</h3>
-        <OrderTimeline order={order} />
+      <div className="rounded-xl border bg-card overflow-hidden">
+        <div className="bg-muted/40 px-3 py-2 border-b flex items-center gap-1.5">
+          <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+          <h3 className="text-xs font-semibold text-foreground">سجل الأحداث</h3>
+        </div>
+        <div className="p-3">
+          <OrderTimeline order={order} />
+        </div>
       </div>
 
       {/* Modify Order Dialog */}
