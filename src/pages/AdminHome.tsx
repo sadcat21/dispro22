@@ -243,6 +243,20 @@ const AdminHome: React.FC = () => {
           </div>
         </div>
       )}
+      {/* مراجعة مخزون الفرع */}
+      {isAdminRole(role) && (
+        <div
+          className="relative overflow-hidden rounded-xl border-2 border-teal-300 bg-gradient-to-br from-teal-50 to-emerald-100 p-4 cursor-pointer active:scale-[0.97] transition-all hover:shadow-lg flex items-center gap-3"
+          onClick={() => navigate('/warehouse-review')}
+        >
+          <ClipboardCheck className="w-8 h-8 text-teal-600" />
+          <div>
+            <p className="font-bold text-sm text-teal-900">مراجعة مخزون الفرع</p>
+            <p className="text-xs text-teal-700">جرد ومقارنة المخزون الفعلي بالنظام</p>
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-2 gap-3">
         {!isGeoHidden && (
           <div
