@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Link, useLocation } from 'react-router-dom';
-import { LogOut, MoreHorizontal, Bluetooth, BluetoothOff, Printer, Receipt, MessageCircle } from 'lucide-react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { LogOut, MoreHorizontal, Bluetooth, BluetoothOff, Printer, Receipt, MessageCircle, ArrowRight, ArrowLeft } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage, Language } from '@/contexts/LanguageContext';
 import { cn, isAdminRole } from '@/lib/utils';
@@ -39,6 +39,8 @@ const MobileLayout: React.FC<MobileLayoutProps> = ({ children }) => {
   const { role, user, logout, activeBranch, switchBranch, showBranchSelection, selectBranch, activeRole } = useAuth();
   const { t, dir, language, setLanguage } = useLanguage();
   const location = useLocation();
+  const navigate = useNavigate();
+  const isHomePage = location.pathname === '/';
   const { isConnected, deviceName, scanAndConnect, disconnect, status: printerStatus } = useBluetoothPrinter();
   const [invoiceRequestOpen, setInvoiceRequestOpen] = useState(false);
   const showInvoiceButton = isAdminRole(role);
@@ -138,6 +140,21 @@ const MobileLayout: React.FC<MobileLayoutProps> = ({ children }) => {
           <div className="w-8 h-8 shrink-0 rounded-lg bg-primary/10 p-1">
             <img src={icon} alt="Laser Food" className="w-full h-full object-contain" />
           </div>
+
+          {/* Global back button */}
+          {!isHomePage && (
+            <button
+              onClick={() => navigate(-1)}
+              className="flex items-center justify-center w-8 h-8 shrink-0 rounded-lg bg-primary/10 hover:bg-primary/20 transition-colors"
+              aria-label="رجوع"
+            >
+              {dir === 'rtl' ? (
+                <ArrowRight className="w-4 h-4 text-primary" />
+              ) : (
+                <ArrowLeft className="w-4 h-4 text-primary" />
+              )}
+            </button>
+          )}
 
           {/* Action icons */}
           {(role === 'worker' || role === 'supervisor') && <AttendanceButton />}
