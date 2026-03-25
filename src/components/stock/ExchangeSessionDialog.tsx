@@ -57,7 +57,7 @@ const ExchangeSessionDialog: React.FC<ExchangeSessionDialogProps> = ({
   const { workerId: currentWorkerId } = useAuth();
   const [items, setItems] = useState<ExchangeItem[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [products, setProducts] = useState<{ id: string; name: string; pieces_per_box: number }[]>([]);
+  const [products, setProducts] = useState<{ id: string; name: string; pieces_per_box: number; image_url?: string | null }[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [showProductPicker, setShowProductPicker] = useState(false);
 
@@ -68,7 +68,7 @@ const ExchangeSessionDialog: React.FC<ExchangeSessionDialogProps> = ({
     const fetch = async () => {
       const { data } = await supabase
         .from('products')
-        .select('id, name, pieces_per_box')
+        .select('id, name, pieces_per_box, image_url')
         .eq('is_active', true)
         .order('name');
       setProducts(data || []);
@@ -82,7 +82,7 @@ const ExchangeSessionDialog: React.FC<ExchangeSessionDialogProps> = ({
     return products.filter(p => p.name.toLowerCase().includes(term));
   }, [products, searchTerm]);
 
-  const addProduct = (product: { id: string; name: string; pieces_per_box: number }) => {
+  const addProduct = (product: { id: string; name: string; pieces_per_box: number; image_url?: string | null }) => {
     if (items.find(i => i.product_id === product.id)) {
       toast.error('المنتج مضاف مسبقاً');
       return;
@@ -288,20 +288,34 @@ const ExchangeSessionDialog: React.FC<ExchangeSessionDialogProps> = ({
                 إلغاء
               </Button>
             </div>
-            <ScrollArea className="max-h-[200px]">
-              <div className="space-y-1">
-                {filteredProducts.slice(0, 20).map(p => (
-                  <Button
-                    key={p.id}
-                    variant="ghost"
-                    className="w-full justify-start h-8 text-sm"
-                    onClick={() => addProduct(p)}
-                    disabled={!!items.find(i => i.product_id === p.id)}
-                  >
-                    <Package className="w-3.5 h-3.5 me-2 text-primary" />
-                    {p.name}
-                  </Button>
-                ))}
+            <ScrollArea className="max-h-[250px]">
+              <div className="grid grid-cols-3 gap-2">
+                {filteredProducts.slice(0, 30).map(p => {
+                  const isAdded = !!items.find(i => i.product_id === p.id);
+                  return (
+                    <button
+                      key={p.id}
+                      className={`flex flex-col rounded-xl overflow-hidden text-center transition-all relative bg-card shadow border-2
+                        ${isAdded ? 'border-muted opacity-50 cursor-not-allowed' : 'border-border hover:border-primary/60 hover:shadow-lg active:scale-95'}
+                      `}
+                      onClick={() => !isAdded && addProduct(p)}
+                      disabled={isAdded}
+                    >
+                      <div className="px-1.5 py-1.5 border-b bg-muted/50">
+                        <span className="font-bold leading-tight block text-center truncate text-xs text-foreground">
+                          {p.name}
+                        </span>
+                      </div>
+                      {p.image_url ? (
+                        <img src={p.image_url} alt={p.name} className="w-full aspect-square object-cover" loading="lazy" />
+                      ) : (
+                        <div className="w-full aspect-square bg-muted/30 flex items-center justify-center">
+                          <Package className="w-8 h-8 text-primary/40" />
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             </ScrollArea>
           </div>

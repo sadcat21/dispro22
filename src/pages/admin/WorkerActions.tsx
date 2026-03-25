@@ -45,6 +45,7 @@ import EditWorkerProfileDialog from '@/components/workers/EditWorkerProfileDialo
 import WorkerAchievementsDialog from '@/components/workers/WorkerAchievementsDialog';
 import SectorScheduleDialog from '@/components/sectors/SectorScheduleDialog';
 import SectorCoverageDialog from '@/components/sectors/SectorCoverageDialog';
+import ExchangeSessionDialog from '@/components/stock/ExchangeSessionDialog';
 import { isAdminRole } from '@/lib/utils';
 
 const workerActions = [
@@ -75,6 +76,7 @@ const workerActions = [
   { key: 'sector_schedule', icon: MapPin, path: '', labelKey: 'worker_actions.sector_schedule', color: 'bg-sky-50 border-sky-200 text-sky-700', isDialog: true },
   { key: 'sector_coverage', icon: RefreshCw, path: '', labelKey: 'worker_actions.sector_coverage', color: 'bg-orange-50 border-orange-200 text-orange-700', isDialog: true },
   { key: 'orders_summary', icon: ClipboardList, path: '', labelKey: 'worker_actions.orders_summary', color: 'bg-blue-50 border-blue-200 text-blue-700', isDialog: true },
+  { key: 'exchange_damaged', icon: RefreshCw, path: '', labelKey: 'worker_actions.exchange_damaged', color: 'bg-orange-50 border-orange-200 text-orange-700', isDialog: true },
 ];
 
 const WorkerActions: React.FC = () => {
@@ -101,6 +103,7 @@ const WorkerActions: React.FC = () => {
   const [sectorScheduleType, setSectorScheduleType] = useState<'delivery' | 'sales'>('delivery');
   const [ordersSummaryOpen, setOrdersSummaryOpen] = useState(false);
   const [sectorCoverageOpen, setSectorCoverageOpen] = useState(false);
+  const [exchangeDamagedOpen, setExchangeDamagedOpen] = useState(false);
 
   const isWarehouseManager = activeRole?.custom_role_code === 'warehouse_manager';
   // Warehouse manager sees admin-style worker list (like supervisor)
@@ -491,6 +494,8 @@ const WorkerActions: React.FC = () => {
         setSectorCoverageOpen(true);
       } else if (action.key === 'orders_summary') {
         setOrdersSummaryOpen(true);
+      } else if (action.key === 'exchange_damaged') {
+        setExchangeDamagedOpen(true);
       }
       return;
     }
@@ -753,6 +758,15 @@ const WorkerActions: React.FC = () => {
         open={sectorCoverageOpen}
         onOpenChange={setSectorCoverageOpen}
       />
+      {selectedWorker && activeBranch?.id && (
+        <ExchangeSessionDialog
+          open={exchangeDamagedOpen}
+          onOpenChange={setExchangeDamagedOpen}
+          workerId={selectedWorker.id}
+          workerName={selectedWorker.full_name}
+          branchId={activeBranch.id}
+        />
+      )}
     </div>
   );
 };
