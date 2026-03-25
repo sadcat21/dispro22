@@ -337,8 +337,7 @@ const WarehouseStock: React.FC = () => {
             </CardContent>
           </Card>
         ) : (
-          <ScrollArea className="max-h-[calc(100dvh-22rem)]">
-            <div className="space-y-2 pb-2">
+          <div className="space-y-2 pb-2">
               {filteredSummaries.map(s => {
                 // Format gifts in boxes.pieces notation
                 const piecesPerBox = products.find(p => p.id === s.productId)?.pieces_per_box || 20;
@@ -416,7 +415,6 @@ const WarehouseStock: React.FC = () => {
                 );
               })}
             </div>
-          </ScrollArea>
         )}
       </div>
 
