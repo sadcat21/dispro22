@@ -377,6 +377,10 @@ const WorkerHome: React.FC = () => {
           if (isWarehouseManager && !isWarehouseStockHidden && !isWarehouseStockButtonHidden) {
             quickActions.push({ key: 'warehouse-stock', icon: <Package className="w-6 h-6" />, label: 'مخزون الفرع', onClick: () => navigate('/warehouse') });
           }
+          // Factory receipt for warehouse manager
+          if (isWarehouseManager) {
+            quickActions.push({ key: 'factory-receipt', icon: <ArrowDownToLine className="w-6 h-6" />, label: 'استلام من المصنع', onClick: () => setShowFactoryReceipt(true) });
+          }
           if (hasDeliveryAccess && !isMyStockPageHidden && !isMyStockHidden) {
             quickActions.push({ key: 'my-stock', icon: <Package className="w-6 h-6" />, label: t('stock.my_stock'), onClick: () => navigate('/my-stock') });
           }
