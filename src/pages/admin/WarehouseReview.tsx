@@ -69,18 +69,18 @@ const WarehouseReview: React.FC = () => {
     enabled: !!branchId,
   });
 
-  // Initialize items
+  // Initialize items — show ALL active products (like worker truck review)
   useEffect(() => {
-    if (stockLoading || initialized) return;
+    if (stockLoading || initialized || products.length === 0) return;
     const reviewItems: ReviewItem[] = [];
-    for (const ws of warehouseStock) {
-      const product = products.find(p => p.id === ws.product_id);
-      if (!product || ws.quantity <= 0) continue;
+    for (const product of products) {
+      const ws = warehouseStock.find(s => s.product_id === product.id);
+      const expected = ws?.quantity ?? 0;
       reviewItems.push({
-        productId: ws.product_id,
+        productId: product.id,
         productName: product.name,
         imageUrl: product.image_url,
-        expected: ws.quantity,
+        expected,
         actual: '',
         status: 'unverified',
       });
