@@ -51,9 +51,8 @@ const WarehouseReview: React.FC = () => {
   const [search, setSearch] = useState('');
   const [includeDamaged, setIncludeDamaged] = useState(false);
   const [includePallets, setIncludePallets] = useState(false);
-  const [items, setItems] = useState<ReviewItem[]>([]);
+  const [actuals, setActuals] = useState<Record<string, string>>({});
   const [isSaving, setIsSaving] = useState(false);
-  const [initialized, setInitialized] = useState(false);
 
   // Pallet quantity
   const { data: palletQuantity = 0 } = useQuery({
@@ -69,25 +68,44 @@ const WarehouseReview: React.FC = () => {
     enabled: !!branchId,
   });
 
-  // Initialize items — show ALL active products (like worker truck review)
-  useEffect(() => {
-    if (stockLoading || initialized || products.length === 0) return;
-    const reviewItems: ReviewItem[] = [];
-    for (const product of products) {
-      const ws = warehouseStock.find(s => s.product_id === product.id);
-      const expected = ws?.quantity ?? 0;
-      reviewItems.push({
+  // Build a stock lookup map from raw warehouse_stock (not filtered/enriched)
+  // Fetch raw warehouse stock directly to avoid enrichment filtering
+  const { data: rawWarehouseStock = [] } = useQuery({
+    queryKey: ['raw-warehouse-stock-review', branchId],
+    queryFn: async () => {
+      if (!branchId) return [];
+      const { data } = await supabase
+        .from('warehouse_stock')
+        .select('product_id, quantity')
+        .eq('branch_id', branchId);
+      return data || [];
+    },
+    enabled: !!branchId,
+  });
+
+  const stockMap = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const s of rawWarehouseStock) {
+      map.set(s.product_id, s.quantity);
+    }
+    return map;
+  }, [rawWarehouseStock]);
+
+  // Compute items reactively from products + stock (expected is always fresh)
+  const items: ReviewItem[] = useMemo(() => {
+    return products.map(product => {
+      const expected = stockMap.get(product.id) ?? 0;
+      const actual = actuals[product.id] ?? '';
+      return {
         productId: product.id,
         productName: product.name,
         imageUrl: product.image_url,
         expected,
-        actual: '',
-        status: 'unverified',
-      });
-    }
-    setItems(reviewItems);
-    setInitialized(true);
-  }, [stockLoading, warehouseStock, products, initialized]);
+        actual,
+        status: computeStatus(expected, actual),
+      };
+    });
+  }, [products, stockMap, actuals]);
 
   // Damaged items
   const damagedItems = useMemo(() => {
@@ -116,18 +134,16 @@ const WarehouseReview: React.FC = () => {
   }, [includeDamaged, damagedItems.length]);
 
   const updateActual = (productId: string, value: string) => {
-    setItems(prev => prev.map(item => {
-      if (item.productId !== productId) return item;
-      return { ...item, actual: value, status: computeStatus(item.expected, value) };
-    }));
+    setActuals(prev => ({ ...prev, [productId]: value }));
   };
 
   const markAllMatched = () => {
-    setItems(prev => prev.map(item => ({
-      ...item,
-      actual: String(item.expected),
-      status: 'matched' as const,
-    })));
+    const newActuals: Record<string, string> = {};
+    for (const product of products) {
+      const expected = stockMap.get(product.id) ?? 0;
+      newActuals[product.id] = String(expected);
+    }
+    setActuals(newActuals);
   };
 
   const filteredItems = useMemo(() => {
@@ -230,7 +246,8 @@ const WarehouseReview: React.FC = () => {
       toast.success(`تم حفظ المراجعة: ${stats.matched} مطابق، ${stats.surplus} فائض، ${stats.deficit} عجز`);
       
       // Reset for new review
-      setInitialized(false);
+      setActuals({});
+      queryClient.invalidateQueries({ queryKey: ['raw-warehouse-stock-review'] });
       setActiveTab('history');
     } catch (err: any) {
       toast.error(err.message || 'خطأ في حفظ المراجعة');
