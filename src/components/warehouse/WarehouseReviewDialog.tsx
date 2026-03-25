@@ -27,7 +27,7 @@ interface ReviewItem {
   imageUrl?: string | null;
   itemType: 'product' | 'damaged' | 'pallet';
   expected: number;
-  actual: number;
+  actual: string; // string to allow empty input
   status: 'matched' | 'surplus' | 'deficit' | 'unverified';
 }
 
