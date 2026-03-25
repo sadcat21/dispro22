@@ -648,7 +648,6 @@ const OrderDetailsContent: React.FC<{ order: GroupedOrder }> = ({ order }) => {
                   </div>
                 </div>
               </div>
-              </div>
             ))}
           </div>
         ) : (
