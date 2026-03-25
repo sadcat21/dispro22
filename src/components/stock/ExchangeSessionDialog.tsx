@@ -57,7 +57,7 @@ const ExchangeSessionDialog: React.FC<ExchangeSessionDialogProps> = ({
   const { workerId: currentWorkerId } = useAuth();
   const [items, setItems] = useState<ExchangeItem[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [products, setProducts] = useState<{ id: string; name: string; pieces_per_box: number }[]>([]);
+  const [products, setProducts] = useState<{ id: string; name: string; pieces_per_box: number; image_url?: string | null }[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [showProductPicker, setShowProductPicker] = useState(false);
 
