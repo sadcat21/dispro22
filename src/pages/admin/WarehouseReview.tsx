@@ -361,6 +361,7 @@ const WarehouseReview: React.FC = () => {
             <span>المنتج</span>
             <div className="flex items-center gap-4">
               <span className="w-16 text-center">المتوقع</span>
+              <span className="w-14 text-center">سريع</span>
               <span className="w-20 text-center">الفعلي</span>
               <span className="w-8"></span>
             </div>
@@ -394,15 +395,17 @@ const WarehouseReview: React.FC = () => {
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                       <div className="w-16 text-center">
-                        <button
-                          type="button"
-                          onClick={() => updateActual(item.productId, String(item.expected))}
-                          className="text-sm font-bold text-muted-foreground hover:text-primary hover:underline transition-colors"
-                          title="تطابق"
-                        >
-                          {fmtQty(item.expected)}
-                        </button>
+                        <span className="text-sm font-bold text-muted-foreground">{fmtQty(item.expected)}</span>
                       </div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={item.status === 'matched' ? 'default' : 'outline'}
+                        onClick={() => updateActual(item.productId, String(item.expected))}
+                        className="w-14 h-8 text-[11px] px-1"
+                      >
+                        مطابق
+                      </Button>
                       <Input
                         type="number"
                         step="0.01"
