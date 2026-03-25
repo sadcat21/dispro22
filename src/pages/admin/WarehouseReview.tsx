@@ -134,18 +134,16 @@ const WarehouseReview: React.FC = () => {
   }, [includeDamaged, damagedItems.length]);
 
   const updateActual = (productId: string, value: string) => {
-    setItems(prev => prev.map(item => {
-      if (item.productId !== productId) return item;
-      return { ...item, actual: value, status: computeStatus(item.expected, value) };
-    }));
+    setActuals(prev => ({ ...prev, [productId]: value }));
   };
 
   const markAllMatched = () => {
-    setItems(prev => prev.map(item => ({
-      ...item,
-      actual: String(item.expected),
-      status: 'matched' as const,
-    })));
+    const newActuals: Record<string, string> = {};
+    for (const product of products) {
+      const expected = stockMap.get(product.id) ?? 0;
+      newActuals[product.id] = String(expected);
+    }
+    setActuals(newActuals);
   };
 
   const filteredItems = useMemo(() => {
