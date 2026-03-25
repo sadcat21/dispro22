@@ -755,7 +755,7 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
       const customer = customers.find(c => c.id === o.customer_id);
       const matchesSector = customer?.sector_id && deliverySectorIds.has(customer.sector_id);
       // Only include non-sector orders if they are explicitly assigned to this worker with today's date
-      const isExplicitlyAssigned = o.delivery_date && o.delivery_date.startsWith(todayDateStr) && o.assigned_worker_id === effectiveWorkerId;
+      const isExplicitlyAssigned = !customer?.sector_id && o.delivery_date && o.delivery_date.startsWith(todayDateStr) && o.assigned_worker_id === effectiveWorkerId;
       if (matchesSector || isExplicitlyAssigned) ids.add(o.customer_id);
     });
     // Exclude direct-sale customers from delivery tracking
