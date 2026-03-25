@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
 import { Search, Filter, ArrowRightLeft, UserCheck, CreditCard, Package, Printer, Plus, DollarSign, Clock, Users, ChevronLeft, Truck, ShoppingCart, CheckCircle2, XCircle, Loader2, MapPin, Ban, Lock, UserX, HandCoins, Receipt, Pencil } from 'lucide-react';
 import ModifyOrderDialog from '@/components/orders/ModifyOrderDialog';
+import CustomerLabel from '@/components/customers/CustomerLabel';
 
 const EVENT_TYPE_CONFIG: Record<string, { label: string; icon: React.ElementType; color: string }> = {
   created: { label: 'إنشاء طلبية', icon: Plus, color: 'bg-green-100 text-green-700 border-green-200' },
