@@ -54,6 +54,7 @@ import PromoSplits from "./pages/admin/PromoSplits";
 import NotFound from "./pages/NotFound";
 import Chat from "./pages/Chat";
 import Attendance from "./pages/admin/Attendance";
+import OrderTracking from "./pages/admin/OrderTracking";
 import FloatingChat from "./components/chat/FloatingChat";
 import { Loader2 } from "lucide-react";
 
