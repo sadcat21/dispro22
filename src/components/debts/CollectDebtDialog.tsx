@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import ReceiptDialog from '@/components/printing/ReceiptDialog';
 import { ReceiptType } from '@/types/receipt';
@@ -40,6 +41,7 @@ const CollectDebtDialog: React.FC<CollectDebtDialogProps> = ({
   defaultAmount, collectionType, collectionDays,
 }) => {
   const { t, dir } = useLanguage();
+  const queryClient = useQueryClient();
   const { workerId, user, activeBranch } = useAuth();
   const { data: workerPrintInfo } = useWorkerPrintInfo(workerId);
   const { companyInfo } = useCompanyInfo();
@@ -126,14 +128,23 @@ const CollectDebtDialog: React.FC<CollectDebtDialogProps> = ({
       toast.success(t('debts.payment_success'));
       trackVisit({ operationType: 'debt_collection', operationId: debtId });
 
+      // Force invalidate and wait for refetch BEFORE showing receipt
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['customer-debts'] }),
+        queryClient.invalidateQueries({ queryKey: ['customer-debt-summary'] }),
+        queryClient.invalidateQueries({ queryKey: ['customer-debts-summary-all'] }),
+        queryClient.invalidateQueries({ queryKey: ['debt-payments'] }),
+        queryClient.invalidateQueries({ queryKey: ['pending-collections'] }),
+        queryClient.invalidateQueries({ queryKey: ['due-debts'] }),
+        queryClient.invalidateQueries({ queryKey: ['today-debt-collections-dialog'] }),
+      ]);
+
       // SMS notification for debt collection
       void (async () => {
         try {
           const smsConfig = await loadSmsSettings(activeBranch?.id);
           const opConfig = smsConfig.debt_collection;
           if (!opConfig.enabled || opConfig.mode === 'disabled') return;
-          // We don't have customer phone directly, skip if not available
-          // Could be enhanced later to pass phone from parent
           const message = buildSmsFromTemplate(opConfig.template, {
             customer: customerName,
             total: totalDebtAmount.toLocaleString(),
@@ -156,6 +167,9 @@ const CollectDebtDialog: React.FC<CollectDebtDialogProps> = ({
           console.error('[SMS] debt_collection error:', smsErr);
         }
       })();
+
+      // Close collect dialog first, then show receipt
+      onOpenChange(false);
 
       setReceiptDataState({
         receiptType: 'debt_payment' as ReceiptType,
@@ -187,7 +201,6 @@ const CollectDebtDialog: React.FC<CollectDebtDialogProps> = ({
       setNotes('');
       setNextDueDate('');
       setNextDueTime('');
-      onOpenChange(false);
     } catch (error: any) {
       toast.error(error.message);
     }
