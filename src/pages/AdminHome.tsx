@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useNavigation } from '@/hooks/useNavigation';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useFontSize } from '@/contexts/FontSizeContext';
-import { Calculator, Banknote, ArrowLeft, Navigation, Users, Receipt, ShoppingCart, Scale, Trophy, CalendarDays, Gift, ArrowDownToLine, Truck } from 'lucide-react';
+import { Calculator, Banknote, ArrowLeft, Navigation, Users, Receipt, ShoppingCart, Scale, Trophy, CalendarDays, Gift, ArrowDownToLine, Truck, ClipboardCheck } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -243,6 +243,20 @@ const AdminHome: React.FC = () => {
           </div>
         </div>
       )}
+      {/* مراجعة مخزون الفرع */}
+      {isAdminRole(role) && (
+        <div
+          className="relative overflow-hidden rounded-xl border-2 border-teal-300 bg-gradient-to-br from-teal-50 to-emerald-100 p-4 cursor-pointer active:scale-[0.97] transition-all hover:shadow-lg flex items-center gap-3"
+          onClick={() => navigate('/warehouse-review')}
+        >
+          <ClipboardCheck className="w-8 h-8 text-teal-600" />
+          <div>
+            <p className="font-bold text-sm text-teal-900">مراجعة مخزون الفرع</p>
+            <p className="text-xs text-teal-700">جرد ومقارنة المخزون الفعلي بالنظام</p>
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-2 gap-3">
         {!isGeoHidden && (
           <div
