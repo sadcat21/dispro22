@@ -146,8 +146,8 @@ const OrderTimeline: React.FC<{ order: GroupedOrder }> = ({ order }) => {
               
               {event.event_type === 'amount_changed' && (
                 <div className="mt-0.5 text-[11px]">
-                  <span className="text-muted-foreground">
-                    {Number(event.new_value).toLocaleString()} ← {Number(event.old_value).toLocaleString()} د.ج
+                  <span className="text-muted-foreground" dir="ltr" style={{ unicodeBidi: 'embed' }}>
+                    {Number(event.old_value).toLocaleString()} → {Number(event.new_value).toLocaleString()} د.ج
                   </span>
                   {/* Show current payment context from enhanced trigger */}
                   {event.details?.payment_type && (
