@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { ScrollArea } from '@/components/ui/scroll-area';
+// ScrollArea removed - using native scroll for better mobile clipping behavior
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
@@ -729,8 +729,7 @@ const DirectSaleDialog: React.FC<DirectSaleDialogProps> = ({ open, onOpenChange,
             </DialogTitle>
           </DialogHeader>
 
-          <ScrollArea className="max-h-[calc(90vh-8rem)]">
-            <div className="px-4">
+          <div className="flex-1 overflow-y-auto overscroll-contain px-4" style={{ WebkitOverflowScrolling: 'touch', maxHeight: 'calc(90vh - 8rem)' }}>
             <div className="py-4 space-y-5">
               {/* Customer Section */}
               <section className="space-y-3">
@@ -1110,8 +1109,7 @@ const DirectSaleDialog: React.FC<DirectSaleDialogProps> = ({ open, onOpenChange,
                 />
               </section>
             </div>
-            </div>
-          </ScrollArea>
+          </div>
 
           {/* Footer */}
           <div className="p-4 border-t bg-background">
