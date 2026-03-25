@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAllOrderEvents } from '@/hooks/useOrderEvents';
-import { useOrderItems, useOrderDetails } from '@/hooks/useOrders';
+import { useOrderItems } from '@/hooks/useOrders';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
