@@ -1974,8 +1974,35 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
                   )}
                   <CustomerList customers={directSaleSold} emptyMessage="لا توجد مبيعات بعد" onCustomerClick={handleShowDirectSaleDetails} showPrintButton onPrint={handlePrintDirectSale} checkingLocationFor={checkingLocationFor} searchQuery={searchQuery} sectors={sectors} allZones={allZones} workerPosition={workerPosition} sortByDistance={sortByDistance} timeMap={directSaleTimeMap} distanceMap={customerDistanceMap} />
                 </TabsContent>
-                <TabsContent value="no-sale" className="m-0 flex-1 min-h-0" style={{ overflow: 'auto', maxHeight: '55vh' }}>
-                  <CustomerList customers={directSaleNoSale} emptyMessage="لا توجد زيارات بدون بيع" onCustomerClick={handleDirectSaleClick} checkingLocationFor={checkingLocationFor} searchQuery={searchQuery} sectors={sectors} allZones={allZones} workerPosition={workerPosition} sortByDistance={sortByDistance} timeMap={visitTimeMap} distanceMap={customerDistanceMap} />
+                <TabsContent value="no-sale" className="m-0 flex-1 min-h-0">
+                  <Tabs defaultValue="visit-only" className="flex flex-col h-full min-h-0">
+                    <TabsList className="w-full rounded-none border-b shrink-0 h-auto p-0.5 gap-0.5 bg-amber-50">
+                      <TabsTrigger value="visit-only" className="flex-1 gap-1 text-[10px] px-1 py-1 data-[state=active]:bg-amber-200 data-[state=active]:text-amber-800">
+                        <XCircle className="w-3 h-3" />
+                        بدون بيع
+                        {directSaleNoSaleVisitOnly.length > 0 && <Badge className="text-[9px] px-1 h-4 bg-amber-500">{directSaleNoSaleVisitOnly.length}</Badge>}
+                      </TabsTrigger>
+                      <TabsTrigger value="unavailable" className="flex-1 gap-1 text-[10px] px-1 py-1 data-[state=active]:bg-yellow-200 data-[state=active]:text-yellow-800">
+                        <UserX className="w-3 h-3" />
+                        غير متاح
+                        {directSaleNoSaleUnavailable.length > 0 && <Badge className="text-[9px] px-1 h-4 bg-yellow-500">{directSaleNoSaleUnavailable.length}</Badge>}
+                      </TabsTrigger>
+                      <TabsTrigger value="closed" className="flex-1 gap-1 text-[10px] px-1 py-1 data-[state=active]:bg-red-100 data-[state=active]:text-red-700">
+                        <DoorClosed className="w-3 h-3" />
+                        مغلق
+                        {directSaleNoSaleClosed.length > 0 && <Badge className="text-[9px] px-1 h-4 bg-red-500">{directSaleNoSaleClosed.length}</Badge>}
+                      </TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="visit-only" className="m-0 flex-1 min-h-0" style={{ overflow: 'auto', maxHeight: '50vh' }}>
+                      <CustomerList customers={directSaleNoSaleVisitOnly} emptyMessage="لا توجد زيارات بدون بيع" onCustomerClick={handleDirectSaleClick} checkingLocationFor={checkingLocationFor} searchQuery={searchQuery} sectors={sectors} allZones={allZones} workerPosition={workerPosition} sortByDistance={sortByDistance} timeMap={visitTimeMap} distanceMap={customerDistanceMap} />
+                    </TabsContent>
+                    <TabsContent value="unavailable" className="m-0 flex-1 min-h-0" style={{ overflow: 'auto', maxHeight: '50vh' }}>
+                      <CustomerList customers={directSaleNoSaleUnavailable} emptyMessage="لا يوجد عملاء غير متاحين" onCustomerClick={handleDirectSaleClick} checkingLocationFor={checkingLocationFor} searchQuery={searchQuery} sectors={sectors} allZones={allZones} workerPosition={workerPosition} sortByDistance={sortByDistance} timeMap={visitTimeMap} distanceMap={customerDistanceMap} />
+                    </TabsContent>
+                    <TabsContent value="closed" className="m-0 flex-1 min-h-0" style={{ overflow: 'auto', maxHeight: '50vh' }}>
+                      <CustomerList customers={directSaleNoSaleClosed} emptyMessage="لا يوجد عملاء مغلقين" onCustomerClick={handleDirectSaleClick} checkingLocationFor={checkingLocationFor} searchQuery={searchQuery} sectors={sectors} allZones={allZones} workerPosition={workerPosition} sortByDistance={sortByDistance} timeMap={visitTimeMap} distanceMap={customerDistanceMap} />
+                    </TabsContent>
+                  </Tabs>
                 </TabsContent>
               </Tabs>
             </TabsContent>
