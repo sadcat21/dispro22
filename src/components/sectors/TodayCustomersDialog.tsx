@@ -865,7 +865,26 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
   }, [todayVisits, customers]);
 
   const deliveryVisitedCustomerIds = useMemo(() => new Set(todayVisits.filter(v => v.operation_type === 'delivery_visit').map(v => v.customer_id).filter(Boolean)), [todayVisits]);
-  const deliveryNotDone = useMemo(() => deliveryCustomers.filter(c => !deliveredCustomerIds.has(c.id) && !deliveryVisitedCustomerIds.has(c.id)), [deliveryCustomers, deliveredCustomerIds, deliveryVisitedCustomerIds]);
+
+  // Customers whose ALL assigned orders have postpone_count > 0 (rescheduled to today)
+  // These should appear in the "مؤجلة" tab, not in "بدون توصيل"
+  const onlyPostponedCustomerIds = useMemo(() => {
+    const custOrders = new Map<string, { total: number; postponed: number }>();
+    assignedOrders.forEach(o => {
+      if (!o.customer_id || !['pending', 'assigned', 'in_progress'].includes(o.status)) return;
+      const entry = custOrders.get(o.customer_id) || { total: 0, postponed: 0 };
+      entry.total++;
+      if ((o as any).postpone_count > 0) entry.postponed++;
+      custOrders.set(o.customer_id, entry);
+    });
+    const ids = new Set<string>();
+    custOrders.forEach((v, k) => {
+      if (v.total > 0 && v.total === v.postponed) ids.add(k);
+    });
+    return ids;
+  }, [assignedOrders]);
+
+  const deliveryNotDone = useMemo(() => deliveryCustomers.filter(c => !deliveredCustomerIds.has(c.id) && !deliveryVisitedCustomerIds.has(c.id) && !onlyPostponedCustomerIds.has(c.id)), [deliveryCustomers, deliveredCustomerIds, deliveryVisitedCustomerIds, onlyPostponedCustomerIds]);
   const deliveryNotReceived = useMemo(() => deliveryCustomers.filter(c => deliveryVisitedCustomerIds.has(c.id) && !deliveredCustomerIds.has(c.id)), [deliveryCustomers, deliveryVisitedCustomerIds, deliveredCustomerIds]);
   const deliveryReceived = useMemo(() => deliveryCustomers.filter(c => deliveredCustomerIds.has(c.id) && !directSoldCustomerIds.has(c.id)), [deliveryCustomers, deliveredCustomerIds, directSoldCustomerIds]);
 
