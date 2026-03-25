@@ -38,7 +38,7 @@ export const useOrderEvents = (orderId: string | null) => {
   });
 };
 
-export const useAllOrderEvents = (filters?: { dateFrom?: string; dateTo?: string; eventType?: string }) => {
+export const useAllOrderEvents = (filters?: { dateFrom?: string; dateTo?: string; eventType?: string; workerId?: string }) => {
   return useQuery({
     queryKey: ['all-order-events', filters],
     queryFn: async () => {
@@ -47,7 +47,7 @@ export const useAllOrderEvents = (filters?: { dateFrom?: string; dateTo?: string
         .select(`
           *,
           performer:workers!order_events_performed_by_fkey(id, full_name),
-          order:orders!order_events_order_id_fkey(id, status, total_amount, customer_id, customer:customers(name))
+          order:orders!order_events_order_id_fkey(id, status, total_amount, customer_id, assigned_worker_id, created_by, customer:customers(name))
         `)
         .order('created_at', { ascending: false })
         .limit(200);
@@ -60,6 +60,9 @@ export const useAllOrderEvents = (filters?: { dateFrom?: string; dateTo?: string
       }
       if (filters?.eventType && filters.eventType !== 'all') {
         query = query.eq('event_type', filters.eventType);
+      }
+      if (filters?.workerId && filters.workerId !== 'all') {
+        query = query.eq('performed_by', filters.workerId);
       }
 
       const { data, error } = await query;

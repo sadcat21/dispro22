@@ -1,6 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { useAllOrderEvents } from '@/hooks/useOrderEvents';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -8,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { format } from 'date-fns';
 import { ar } from 'date-fns/locale';
-import { Search, Filter, ArrowRightLeft, UserCheck, CreditCard, Package, Printer, Plus, DollarSign, Clock } from 'lucide-react';
+import { Search, Filter, ArrowRightLeft, UserCheck, CreditCard, Package, Printer, Plus, DollarSign, Clock, Users } from 'lucide-react';
 import { Loader2 } from 'lucide-react';
 
 const EVENT_TYPE_CONFIG: Record<string, { label: string; icon: React.ElementType; color: string }> = {
@@ -39,12 +42,28 @@ const OrderTracking: React.FC = () => {
   const [dateFrom, setDateFrom] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [dateTo, setDateTo] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [eventTypeFilter, setEventTypeFilter] = useState('all');
+  const [workerFilter, setWorkerFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Fetch workers list for filter
+  const { data: workers } = useQuery({
+    queryKey: ['workers-list-for-tracking'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('workers')
+        .select('id, full_name, role')
+        .eq('is_active', true)
+        .order('full_name');
+      if (error) throw error;
+      return data;
+    },
+  });
 
   const { data: events, isLoading } = useAllOrderEvents({
     dateFrom,
     dateTo,
     eventType: eventTypeFilter,
+    workerId: workerFilter,
   });
 
   const filteredEvents = useMemo(() => {
@@ -127,12 +146,12 @@ const OrderTracking: React.FC = () => {
               />
             </div>
             <Select value={eventTypeFilter} onValueChange={setEventTypeFilter}>
-              <SelectTrigger className="w-36 h-8 text-sm">
+              <SelectTrigger className="w-32 h-8 text-sm">
                 <Filter className="h-3 w-3 ml-1" />
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">الكل</SelectItem>
+                <SelectItem value="all">كل الأحداث</SelectItem>
                 <SelectItem value="created">إنشاء</SelectItem>
                 <SelectItem value="status_change">تغيير حالة</SelectItem>
                 <SelectItem value="worker_changed">تغيير عامل</SelectItem>
@@ -142,6 +161,18 @@ const OrderTracking: React.FC = () => {
               </SelectContent>
             </Select>
           </div>
+          <Select value={workerFilter} onValueChange={setWorkerFilter}>
+            <SelectTrigger className="h-8 text-sm">
+              <Users className="h-3 w-3 ml-1" />
+              <SelectValue placeholder="كل العمال" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">كل العمال</SelectItem>
+              {workers?.map(w => (
+                <SelectItem key={w.id} value={w.id}>{w.full_name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </CardContent>
       </Card>
 
