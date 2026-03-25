@@ -285,6 +285,7 @@ const AdminHome: React.FC = () => {
       <CreateOrderDialog open={showCreateOrder} onOpenChange={setShowCreateOrder} />
       <ManualPromoEntryDialog open={manualPromoOpen} onOpenChange={setManualPromoOpen} />
       <FactoryReceiptQuickDialog open={factoryReceiptOpen} onOpenChange={setFactoryReceiptOpen} />
+      <FactoryDeliveryQuickDialog open={factoryDeliveryOpen} onOpenChange={setFactoryDeliveryOpen} />
       
       {giftsOpen && (
         <WorkerGiftsSummaryDialog
