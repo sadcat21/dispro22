@@ -396,7 +396,7 @@ const WorkerHome: React.FC = () => {
             quickActions.push({ key: 'worker-actions', icon: <HardHat className="w-6 h-6" />, label: t('worker.worker_actions'), onClick: () => navigate('/worker-actions') });
           }
           // Worker Actions for regular workers (self-view)
-          if (!isSupervisor && activeRole?.custom_role_code !== 'warehouse_manager' && !isWorkerActionsHidden) {
+          if (!isSupervisor && activeRole?.custom_role_code !== 'warehouse_manager' && !isWorkerActionsHidden && !isWorkerActionsButtonHidden) {
             quickActions.push({ key: 'worker-actions', icon: <HardHat className="w-6 h-6" />, label: t('worker.my_actions'), onClick: () => navigate('/worker-actions') });
           }
 
