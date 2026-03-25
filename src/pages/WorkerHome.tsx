@@ -532,6 +532,10 @@ const WorkerHome: React.FC = () => {
         open={showFactoryReceipt}
         onOpenChange={setShowFactoryReceipt}
       />
+      <FactoryDeliveryQuickDialog
+        open={showFactoryDelivery}
+        onOpenChange={setShowFactoryDelivery}
+      />
     </div>
   );
 };
