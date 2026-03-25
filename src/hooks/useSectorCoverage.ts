@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { isAdminRole } from '@/lib/utils';
 
 export interface SectorCoverage {
   id: string;
@@ -21,9 +22,46 @@ export interface SectorCoverage {
 }
 
 export const useSectorCoverage = () => {
-  const { activeBranch } = useAuth();
+  const { activeBranch, workerId, role } = useAuth();
   const [coverages, setCoverages] = useState<SectorCoverage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  const transferOrdersFromAbsentToSubstitute = useCallback(async (
+    absentWorkerId: string,
+    substituteWorkerId: string,
+    sectorId: string
+  ) => {
+    const { data: sectorCustomers, error: customersError } = await supabase
+      .from('customers')
+      .select('id')
+      .eq('sector_id', sectorId);
+
+    if (customersError) throw customersError;
+
+    const customerIds = (sectorCustomers || []).map((c) => c.id);
+    if (customerIds.length === 0) return 0;
+
+    const { data: pendingOrders, error: pendingOrdersError } = await supabase
+      .from('orders')
+      .select('id')
+      .eq('assigned_worker_id', absentWorkerId)
+      .in('customer_id', customerIds)
+      .in('status', ['pending', 'assigned', 'in_progress']);
+
+    if (pendingOrdersError) throw pendingOrdersError;
+    if (!pendingOrders || pendingOrders.length === 0) return 0;
+
+    const orderIds = pendingOrders.map((o) => o.id);
+
+    const { error: updateError } = await supabase
+      .from('orders')
+      .update({ assigned_worker_id: substituteWorkerId })
+      .in('id', orderIds);
+
+    if (updateError) throw updateError;
+
+    return orderIds.length;
+  }, []);
 
   const fetchCoverages = useCallback(async () => {
     setIsLoading(true);
@@ -41,13 +79,33 @@ export const useSectorCoverage = () => {
 
       const { data, error } = await query;
       if (error) throw error;
-      setCoverages((data || []) as SectorCoverage[]);
+
+      const activeCoverages = (data || []) as SectorCoverage[];
+      setCoverages(activeCoverages);
+
+      const coveragesToReconcile = activeCoverages.filter((coverage) =>
+        isAdminRole(role) || coverage.absent_worker_id === workerId
+      );
+
+      await Promise.all(
+        coveragesToReconcile.map(async (coverage) => {
+          try {
+            await transferOrdersFromAbsentToSubstitute(
+              coverage.absent_worker_id,
+              coverage.substitute_worker_id,
+              coverage.sector_id
+            );
+          } catch (reconcileError) {
+            console.error('Error reconciling coverage orders:', reconcileError);
+          }
+        })
+      );
     } catch (error) {
       console.error('Error fetching sector coverage:', error);
     } finally {
       setIsLoading(false);
     }
-  }, [activeBranch?.id]);
+  }, [activeBranch?.id, role, transferOrdersFromAbsentToSubstitute, workerId]);
 
   useEffect(() => {
     fetchCoverages();
@@ -92,24 +150,14 @@ export const useSectorCoverage = () => {
     } as any);
     if (error) throw error;
 
-    // نقل جميع الطلبيات المعلقة/المعينة/قيد التنفيذ من العامل الغائب إلى العامل البديل
-    try {
-      const { data: pendingOrders } = await supabase
-        .from('orders')
-        .select('id')
-        .eq('assigned_worker_id', data.absent_worker_id)
-        .in('status', ['pending', 'assigned', 'in_progress']);
+    const movedOrdersCount = await transferOrdersFromAbsentToSubstitute(
+      data.absent_worker_id,
+      data.substitute_worker_id,
+      data.sector_id
+    );
 
-      if (pendingOrders && pendingOrders.length > 0) {
-        const orderIds = pendingOrders.map(o => o.id);
-        await supabase
-          .from('orders')
-          .update({ assigned_worker_id: data.substitute_worker_id })
-          .in('id', orderIds);
-        console.log(`تم نقل ${orderIds.length} طلبية من العامل الغائب إلى العامل البديل`);
-      }
-    } catch (transferError) {
-      console.error('خطأ في نقل الطلبيات:', transferError);
+    if (movedOrdersCount > 0) {
+      console.log(`تم نقل ${movedOrdersCount} طلبية من العامل الغائب إلى العامل البديل`);
     }
 
     await fetchCoverages();
