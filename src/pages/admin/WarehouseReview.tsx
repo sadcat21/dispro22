@@ -246,7 +246,8 @@ const WarehouseReview: React.FC = () => {
       toast.success(`تم حفظ المراجعة: ${stats.matched} مطابق، ${stats.surplus} فائض، ${stats.deficit} عجز`);
       
       // Reset for new review
-      setInitialized(false);
+      setActuals({});
+      queryClient.invalidateQueries({ queryKey: ['raw-warehouse-stock-review'] });
       setActiveTab('history');
     } catch (err: any) {
       toast.error(err.message || 'خطأ في حفظ المراجعة');
