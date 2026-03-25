@@ -91,8 +91,8 @@ const ProtectedRoute: React.FC<{
     }
   }
 
-  // Legacy adminOnly check
-  if (adminOnly && role !== 'admin') {
+  // Legacy adminOnly check - uses isAdminRole to include admin, branch_admin, project_manager
+  if (adminOnly && !isAdminRole(role)) {
     return <Navigate to="/" replace />;
   }
 
