@@ -149,27 +149,57 @@ const OrderTimeline: React.FC<{ order: GroupedOrder }> = ({ order }) => {
                   <span className="text-muted-foreground">
                     {Number(event.old_value).toLocaleString()} → {Number(event.new_value).toLocaleString()} د.ج
                   </span>
-                  {event.details?.old_subtype && event.details?.new_subtype && event.details.old_subtype !== event.details.new_subtype && (
+                  {/* Show current payment context from enhanced trigger */}
+                  {event.details?.payment_type && (
                     <div className="flex items-center gap-1 mt-0.5">
-                      <Badge variant="outline" className="text-[8px] py-0 px-1">
-                        {event.details.old_subtype === 'super_gros' ? 'SG' : event.details.old_subtype === 'gros' ? 'G' : event.details.old_subtype === 'retail' ? 'D' : 'F1'}
+                      <Badge variant="outline" className={`text-[8px] py-0 px-1 ${
+                        event.details.payment_type === 'with_invoice' ? 'bg-blue-50 text-blue-600 border-blue-200' : 'bg-orange-50 text-orange-600 border-orange-200'
+                      }`}>
+                        {event.details.payment_type === 'with_invoice' ? 'F1' : 'F2'}
+                      </Badge>
+                      {event.details.invoice_payment_method && event.details.payment_type !== 'with_invoice' && (
+                        <Badge variant="outline" className="text-[8px] py-0 px-1 bg-purple-50 text-purple-600 border-purple-200">
+                          {event.details.invoice_payment_method === 'super_gros' ? 'SG' : event.details.invoice_payment_method === 'gros' ? 'G' : event.details.invoice_payment_method === 'retail' ? 'D' : event.details.invoice_payment_method}
+                        </Badge>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Payment type change event (F1 ← F2) */}
+              {event.event_type === 'payment_updated' && (
+                <div className="mt-0.5 text-[11px]">
+                  {event.details?.payment_type_change && (
+                    <div className="flex items-center gap-1">
+                      <Badge variant="outline" className={`text-[8px] py-0 px-1 ${
+                        event.old_value === 'with_invoice' ? 'bg-blue-50 text-blue-600 border-blue-200' : 'bg-orange-50 text-orange-600 border-orange-200'
+                      }`}>
+                        {event.old_value === 'with_invoice' ? 'F1' : 'F2'}
                       </Badge>
                       <span className="text-[10px]">←</span>
-                      <Badge variant="outline" className="text-[8px] py-0 px-1 bg-primary/10 text-primary border-primary/20">
-                        {event.details.new_subtype === 'super_gros' ? 'SG' : event.details.new_subtype === 'gros' ? 'G' : event.details.new_subtype === 'retail' ? 'D' : 'F1'}
+                      <Badge variant="outline" className={`text-[8px] py-0 px-1 font-bold ${
+                        event.new_value === 'with_invoice' ? 'bg-blue-100 text-blue-700 border-blue-300' : 'bg-orange-100 text-orange-700 border-orange-300'
+                      }`}>
+                        {event.new_value === 'with_invoice' ? 'F1' : 'F2'}
                       </Badge>
                     </div>
                   )}
-                  {event.details?.payment_type_change && (
-                    <div className="flex items-center gap-1 mt-0.5">
+                  {event.details?.invoice_method_change && (
+                    <div className="flex items-center gap-1">
                       <Badge variant="outline" className="text-[8px] py-0 px-1">
-                        {event.details.old_payment_type === 'with_invoice' ? 'F1' : 'F2'}
+                        {event.details.old_invoice_method === 'super_gros' ? 'SG' : event.details.old_invoice_method === 'gros' ? 'G' : event.details.old_invoice_method === 'retail' ? 'D' : event.details.old_invoice_method || '—'}
                       </Badge>
                       <span className="text-[10px]">←</span>
-                      <Badge variant="outline" className="text-[8px] py-0 px-1 bg-primary/10 text-primary border-primary/20">
-                        {event.details.new_payment_type === 'with_invoice' ? 'F1' : 'F2'}
+                      <Badge variant="outline" className="text-[8px] py-0 px-1 bg-primary/10 text-primary border-primary/20 font-bold">
+                        {event.details.new_invoice_method === 'super_gros' ? 'SG' : event.details.new_invoice_method === 'gros' ? 'G' : event.details.new_invoice_method === 'retail' ? 'D' : event.details.new_invoice_method || '—'}
                       </Badge>
                     </div>
+                  )}
+                  {!event.details?.payment_type_change && !event.details?.invoice_method_change && (
+                    <span className="text-muted-foreground">
+                      {event.old_value || '—'} → {event.new_value || '—'}
+                    </span>
                   )}
                 </div>
               )}
