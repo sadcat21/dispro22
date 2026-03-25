@@ -41,6 +41,7 @@ const CollectDebtDialog: React.FC<CollectDebtDialogProps> = ({
   defaultAmount, collectionType, collectionDays,
 }) => {
   const { t, dir } = useLanguage();
+  const queryClient = useQueryClient();
   const { workerId, user, activeBranch } = useAuth();
   const { data: workerPrintInfo } = useWorkerPrintInfo(workerId);
   const { companyInfo } = useCompanyInfo();
