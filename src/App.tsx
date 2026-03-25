@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { isAdminRole } from "@/lib/utils";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { FontSizeProvider } from "@/contexts/FontSizeContext";
 import { SelectedWorkerProvider } from "@/contexts/SelectedWorkerContext";
@@ -91,8 +92,8 @@ const ProtectedRoute: React.FC<{
     }
   }
 
-  // Legacy adminOnly check
-  if (adminOnly && role !== 'admin') {
+  // Legacy adminOnly check - uses isAdminRole to include admin, branch_admin, project_manager
+  if (adminOnly && !isAdminRole(role)) {
     return <Navigate to="/" replace />;
   }
 
@@ -179,13 +180,13 @@ const AppRoutes = () => {
       } />
 
       <Route path="/branches" element={
-        <ProtectedRoute adminOnly>
+        <ProtectedRoute allowedRoles={['admin', 'project_manager']}>
           <Branches />
         </ProtectedRoute>
       } />
 
       <Route path="/permissions" element={
-        <ProtectedRoute adminOnly>
+        <ProtectedRoute allowedRoles={['admin', 'project_manager']}>
           <Permissions />
         </ProtectedRoute>
       } />
