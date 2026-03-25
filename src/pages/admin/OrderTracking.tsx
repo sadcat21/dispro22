@@ -495,13 +495,15 @@ const OrderTracking: React.FC = () => {
 const OrderDetailsContent: React.FC<{ order: GroupedOrder }> = ({ order }) => {
   const { data: orderItems, isLoading: itemsLoading } = useOrderItems(order.orderId);
   
-  const PAYMENT_LABELS: Record<string, string> = {
-    with_invoice: 'بفاتورة',
-    without_invoice: 'بدون فاتورة',
-    receipt: 'وصل',
-    check: 'شيك',
-    cash: 'نقداً',
-    transfer: 'تحويل',
+  const PAYMENT_TYPE_LABELS: Record<string, { label: string; color: string }> = {
+    with_invoice: { label: 'فاتورة 1 (Facture 1)', color: 'bg-blue-100 text-blue-700 border-blue-200' },
+    without_invoice: { label: 'فاتورة 2 (Sans Facture)', color: 'bg-orange-100 text-orange-700 border-orange-200' },
+  };
+  const INVOICE_METHOD_LABELS: Record<string, string> = {
+    receipt: 'Versement',
+    check: 'Chèque',
+    cash: 'Espèces (نقداً)',
+    transfer: 'Virement',
   };
 
   return (
