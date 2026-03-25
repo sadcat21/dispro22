@@ -888,6 +888,17 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
   const deliveryNotReceived = useMemo(() => deliveryCustomers.filter(c => deliveryVisitedCustomerIds.has(c.id) && !deliveredCustomerIds.has(c.id)), [deliveryCustomers, deliveryVisitedCustomerIds, deliveredCustomerIds]);
   const deliveryReceived = useMemo(() => deliveryCustomers.filter(c => deliveredCustomerIds.has(c.id) && !directSoldCustomerIds.has(c.id)), [deliveryCustomers, deliveredCustomerIds, directSoldCustomerIds]);
 
+  // Sub-categorize deliveryNotReceived based on delivery_visit notes
+  const deliveryClosedCustomerIds = useMemo(() => new Set(
+    todayVisits.filter(v => v.operation_type === 'delivery_visit' && v.notes && /مغلق/.test(v.notes)).map(v => v.customer_id).filter(Boolean)
+  ), [todayVisits]);
+  const deliveryUnavailableCustomerIds = useMemo(() => new Set(
+    todayVisits.filter(v => v.operation_type === 'delivery_visit' && v.notes && /غير متاح/.test(v.notes)).map(v => v.customer_id).filter(Boolean)
+  ), [todayVisits]);
+  const deliveryNotReceivedVisitOnly = useMemo(() => deliveryNotReceived.filter(c => !deliveryClosedCustomerIds.has(c.id) && !deliveryUnavailableCustomerIds.has(c.id)), [deliveryNotReceived, deliveryClosedCustomerIds, deliveryUnavailableCustomerIds]);
+  const deliveryNotReceivedClosed = useMemo(() => deliveryNotReceived.filter(c => deliveryClosedCustomerIds.has(c.id)), [deliveryNotReceived, deliveryClosedCustomerIds]);
+  const deliveryNotReceivedUnavailable = useMemo(() => deliveryNotReceived.filter(c => deliveryUnavailableCustomerIds.has(c.id)), [deliveryNotReceived, deliveryUnavailableCustomerIds]);
+
   // Postponed/overdue delivery orders (delivery_date before today, still undelivered)
   const postponedDeliveryOrders = useMemo(() => 
     assignedOrders.filter(o => o.delivery_date && o.delivery_date < todayDateStr && ['pending', 'assigned', 'in_progress'].includes(o.status)),
@@ -1082,6 +1093,17 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
     return [...fromList, ...extra];
   }, [directSaleCustomers, directSoldCustomerIds, customers]);
   const directSaleNoSale = useMemo(() => directSaleCustomers.filter(c => directNoSaleCustomerIds.has(c.id) && !directSoldCustomerIds.has(c.id)), [directSaleCustomers, directNoSaleCustomerIds, directSoldCustomerIds]);
+
+  // Sub-categorize directSaleNoSale based on visit notes
+  const directSaleClosedCustomerIds = useMemo(() => new Set(
+    todayDirectSaleVisits.filter(v => v.notes && /مغلق/.test(v.notes)).map(v => v.customer_id).filter(Boolean)
+  ), [todayDirectSaleVisits]);
+  const directSaleUnavailableCustomerIds = useMemo(() => new Set(
+    todayDirectSaleVisits.filter(v => v.notes && /غير متاح/.test(v.notes)).map(v => v.customer_id).filter(Boolean)
+  ), [todayDirectSaleVisits]);
+  const directSaleNoSaleVisitOnly = useMemo(() => directSaleNoSale.filter(c => !directSaleClosedCustomerIds.has(c.id) && !directSaleUnavailableCustomerIds.has(c.id)), [directSaleNoSale, directSaleClosedCustomerIds, directSaleUnavailableCustomerIds]);
+  const directSaleNoSaleClosed = useMemo(() => directSaleNoSale.filter(c => directSaleClosedCustomerIds.has(c.id)), [directSaleNoSale, directSaleClosedCustomerIds]);
+  const directSaleNoSaleUnavailable = useMemo(() => directSaleNoSale.filter(c => directSaleUnavailableCustomerIds.has(c.id)), [directSaleNoSale, directSaleUnavailableCustomerIds]);
 
   // Location check
   const checkLocationBeforeAction = async (customer: any): Promise<boolean> => {
@@ -1435,6 +1457,24 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
       await trackVisit({ customerId: customer.id, operationType: 'delivery_visit', notes: `زيارة توصيل بدون تسليم - ${customer.store_name || customer.name}` });
       toast.success(`تم تسجيل زيارة بدون تسليم لـ ${customer.store_name || customer.name}`);
     } catch { toast.error('فشل في تسجيل الزيارة'); }
+  };
+
+  const handleDeliveryClosedVisit = async (customer: any) => {
+    const allowed = await checkLocationBeforeAction(customer);
+    if (!allowed) return;
+    try {
+      await trackVisit({ customerId: customer.id, operationType: 'delivery_visit', notes: `مغلق (توصيل) - ${customer.store_name || customer.name}` });
+      toast.success(`تم تسجيل "${customer.store_name || customer.name}" كمغلق`);
+    } catch { toast.error('فشل في تسجيل الحالة'); }
+  };
+
+  const handleDeliveryUnavailableVisit = async (customer: any) => {
+    const allowed = await checkLocationBeforeAction(customer);
+    if (!allowed) return;
+    try {
+      await trackVisit({ customerId: customer.id, operationType: 'delivery_visit', notes: `غير متاح (توصيل) - ${customer.store_name || customer.name}` });
+      toast.success(`تم تسجيل "${customer.store_name || customer.name}" كغير متاح`);
+    } catch { toast.error('فشل في تسجيل الحالة'); }
   };
 
   const handleVisitWithoutOrder = async (customer: any) => {
