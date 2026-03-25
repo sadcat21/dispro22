@@ -431,6 +431,7 @@ const WorkerHome: React.FC = () => {
             'rewards': { bg: 'bg-gradient-to-br from-yellow-400 to-amber-500', iconBg: 'bg-white/20', iconColor: 'text-white', text: 'text-white', border: '' },
             'worker-actions': { bg: 'bg-gradient-to-br from-indigo-500 to-indigo-700', iconBg: 'bg-white/20', iconColor: 'text-white', text: 'text-white', border: '' },
             'warehouse-stock': { bg: 'bg-gradient-to-br from-teal-500 to-emerald-700', iconBg: 'bg-white/20', iconColor: 'text-white', text: 'text-white', border: '' },
+            'factory-receipt': { bg: 'bg-gradient-to-br from-lime-500 to-green-700', iconBg: 'bg-white/20', iconColor: 'text-white', text: 'text-white', border: '' },
           };
 
           const gridCols = quickActions.length === 1 ? 'grid-cols-1' : quickActions.length === 2 ? 'grid-cols-2' : 'grid-cols-3';
@@ -523,6 +524,10 @@ const WorkerHome: React.FC = () => {
       <ManualPromoEntryDialog
         open={showManualPromoEntry}
         onOpenChange={setShowManualPromoEntry}
+      />
+      <FactoryReceiptQuickDialog
+        open={showFactoryReceipt}
+        onOpenChange={setShowFactoryReceipt}
       />
     </div>
   );
