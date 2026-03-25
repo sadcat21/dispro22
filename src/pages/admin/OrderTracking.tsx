@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAllOrderEvents } from '@/hooks/useOrderEvents';
+import { useOrderItems } from '@/hooks/useOrders';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
@@ -10,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { format } from 'date-fns';
-import { Search, Filter, ArrowRightLeft, UserCheck, CreditCard, Package, Printer, Plus, DollarSign, Clock, Users, ChevronLeft, Truck, ShoppingCart, CheckCircle2, XCircle, Loader2, MapPin, Ban, Lock, UserX, HandCoins } from 'lucide-react';
+import { Search, Filter, ArrowRightLeft, UserCheck, CreditCard, Package, Printer, Plus, DollarSign, Clock, Users, ChevronLeft, Truck, ShoppingCart, CheckCircle2, XCircle, Loader2, MapPin, Ban, Lock, UserX, HandCoins, Receipt } from 'lucide-react';
 
 const EVENT_TYPE_CONFIG: Record<string, { label: string; icon: React.ElementType; color: string }> = {
   created: { label: 'إنشاء طلبية', icon: Plus, color: 'bg-green-100 text-green-700 border-green-200' },
@@ -63,6 +64,8 @@ interface GroupedOrder {
   createdByName: string | null;
   assignedWorkerName: string | null;
   orderNotes: string | null;
+  paymentType: string | null;
+  invoicePaymentMethod: string | null;
 }
 
 const getDeliveryOutcome = (order: GroupedOrder) => {
@@ -310,6 +313,8 @@ const OrderTracking: React.FC = () => {
           createdByName: e.order?.created_by_worker?.full_name || null,
           assignedWorkerName: e.order?.assigned_worker?.full_name || null,
           orderNotes: e.order?.notes || null,
+          paymentType: e.order?.payment_type || null,
+          invoicePaymentMethod: e.order?.invoice_payment_method || null,
         });
       }
       map.get(e.order_id)!.events.push(e);
@@ -478,40 +483,123 @@ const OrderTracking: React.FC = () => {
           </DialogHeader>
           
           {selectedOrder && (
-            <div className="flex-1 overflow-auto">
-              <StatusProgressBar order={selectedOrder} />
-              
-              {selectedOrder.totalAmount && (
-                <div className="text-center text-sm font-medium mb-3">
-                  المبلغ: {Number(selectedOrder.totalAmount).toLocaleString()} د.ج
-                </div>
-              )}
-
-              {/* Worker Info */}
-              <div className="flex gap-2 mb-3">
-                {selectedOrder.createdByName && (
-                  <Badge variant="outline" className="text-[10px]">
-                    <Plus className="h-2.5 w-2.5 ml-1" />
-                    {selectedOrder.createdByName}
-                  </Badge>
-                )}
-                {selectedOrder.assignedWorkerName && (
-                  <Badge variant="outline" className="text-[10px]">
-                    <Truck className="h-2.5 w-2.5 ml-1" />
-                    {selectedOrder.assignedWorkerName}
-                  </Badge>
-                )}
-              </div>
-              
-              {/* Full Timeline */}
-              <div className="border-t pt-3">
-                <h3 className="text-xs font-medium text-muted-foreground mb-3">سجل الأحداث</h3>
-                <OrderTimeline order={selectedOrder} />
-              </div>
-            </div>
+            <OrderDetailsContent order={selectedOrder} />
           )}
         </DialogContent>
       </Dialog>
+    </div>
+  );
+};
+
+// Separate component so useOrderItems hook is called at top level
+const OrderDetailsContent: React.FC<{ order: GroupedOrder }> = ({ order }) => {
+  const { data: orderItems, isLoading: itemsLoading } = useOrderItems(order.orderId);
+  
+  const PAYMENT_LABELS: Record<string, string> = {
+    with_invoice: 'بفاتورة',
+    without_invoice: 'بدون فاتورة',
+    receipt: 'وصل',
+    check: 'شيك',
+    cash: 'نقداً',
+    transfer: 'تحويل',
+  };
+
+  return (
+    <div className="flex-1 overflow-auto">
+      <StatusProgressBar order={order} />
+      
+      {/* Order Summary */}
+      <div className="flex flex-wrap items-center justify-center gap-2 mb-3">
+        {order.totalAmount && (
+          <Badge className="bg-primary/10 text-primary border-primary/20">
+            {Number(order.totalAmount).toLocaleString()} د.ج
+          </Badge>
+        )}
+        {order.paymentType && (
+          <Badge variant="outline" className="text-[10px]">
+            <Receipt className="h-2.5 w-2.5 ml-1" />
+            {PAYMENT_LABELS[order.paymentType] || order.paymentType}
+          </Badge>
+        )}
+        {order.invoicePaymentMethod && (
+          <Badge variant="outline" className="text-[10px]">
+            <CreditCard className="h-2.5 w-2.5 ml-1" />
+            {PAYMENT_LABELS[order.invoicePaymentMethod] || order.invoicePaymentMethod}
+          </Badge>
+        )}
+      </div>
+
+      {/* Worker Info */}
+      <div className="flex gap-2 mb-3 justify-center">
+        {order.createdByName && (
+          <Badge variant="outline" className="text-[10px]">
+            <Plus className="h-2.5 w-2.5 ml-1" />
+            {order.createdByName}
+          </Badge>
+        )}
+        {order.assignedWorkerName && (
+          <Badge variant="outline" className="text-[10px]">
+            <Truck className="h-2.5 w-2.5 ml-1" />
+            {order.assignedWorkerName}
+          </Badge>
+        )}
+      </div>
+
+      {/* Order Items */}
+      <div className="border-t pt-3 mb-3">
+        <h3 className="text-xs font-medium text-muted-foreground mb-2">
+          <Package className="h-3 w-3 inline ml-1" />
+          منتجات الطلبية
+        </h3>
+        {itemsLoading ? (
+          <div className="flex justify-center py-3">
+            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+          </div>
+        ) : orderItems && orderItems.length > 0 ? (
+          <div className="space-y-2">
+            {orderItems.map((item: any) => (
+              <div key={item.id} className="flex items-center gap-2 p-2 rounded-lg bg-muted/50">
+                {/* Product Image */}
+                <div className="w-10 h-10 rounded-md bg-muted flex items-center justify-center shrink-0 overflow-hidden">
+                  {item.product?.image_url ? (
+                    <img src={item.product.image_url} alt={item.product?.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <Package className="h-4 w-4 text-muted-foreground" />
+                  )}
+                </div>
+                
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs font-medium truncate">{item.product?.name || 'منتج'}</div>
+                  <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                    <span>الكمية: {item.quantity}</span>
+                    {item.gift_quantity > 0 && (
+                      <span className="text-green-600">+ {item.gift_quantity} هدية</span>
+                    )}
+                    {item.pricing_unit && item.pricing_unit !== 'box' && (
+                      <Badge variant="outline" className="text-[8px] py-0 px-1">{item.pricing_unit === 'piece' ? 'قطعة' : item.pricing_unit}</Badge>
+                    )}
+                  </div>
+                </div>
+                
+                <div className="text-left shrink-0">
+                  <div className="text-xs font-medium">{Number(item.total_price || 0).toLocaleString()}</div>
+                  <div className="text-[9px] text-muted-foreground">
+                    {Number(item.unit_price || 0).toLocaleString()} / و
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center text-xs text-muted-foreground py-2">لا توجد منتجات</div>
+        )}
+      </div>
+      
+      {/* Full Timeline */}
+      <div className="border-t pt-3">
+        <h3 className="text-xs font-medium text-muted-foreground mb-3">سجل الأحداث</h3>
+        <OrderTimeline order={order} />
+      </div>
     </div>
   );
 };
