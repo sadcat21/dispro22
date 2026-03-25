@@ -103,6 +103,7 @@ const WorkerActions: React.FC = () => {
   const [sectorScheduleType, setSectorScheduleType] = useState<'delivery' | 'sales'>('delivery');
   const [ordersSummaryOpen, setOrdersSummaryOpen] = useState(false);
   const [sectorCoverageOpen, setSectorCoverageOpen] = useState(false);
+  const [exchangeDamagedOpen, setExchangeDamagedOpen] = useState(false);
 
   const isWarehouseManager = activeRole?.custom_role_code === 'warehouse_manager';
   // Warehouse manager sees admin-style worker list (like supervisor)
@@ -493,6 +494,8 @@ const WorkerActions: React.FC = () => {
         setSectorCoverageOpen(true);
       } else if (action.key === 'orders_summary') {
         setOrdersSummaryOpen(true);
+      } else if (action.key === 'exchange_damaged') {
+        setExchangeDamagedOpen(true);
       }
       return;
     }
