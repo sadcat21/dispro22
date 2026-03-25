@@ -948,7 +948,8 @@ const DeliverySaleDialog: React.FC<DeliverySaleDialogProps> = ({ open, onOpenCha
             </DialogTitle>
           </DialogHeader>
 
-          <ScrollArea className="max-h-[calc(90vh-8rem)] px-4">
+          <ScrollArea className="max-h-[calc(90vh-8rem)]">
+            <div className="px-4">
             <div className="py-4 space-y-5">
               {/* Customer Info */}
               <div className="p-3 bg-muted/50 rounded-lg">
@@ -1274,6 +1275,7 @@ const DeliverySaleDialog: React.FC<DeliverySaleDialogProps> = ({ open, onOpenCha
                   rows={2}
                 />
               </section>
+            </div>
             </div>
           </ScrollArea>
 
