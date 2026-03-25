@@ -588,42 +588,43 @@ const OrderTracking: React.FC<{ workerMode?: boolean }> = ({ workerMode = false 
 
       {/* Timeline Dialog */}
       <Dialog open={!!selectedOrder} onOpenChange={() => setSelectedOrder(null)}>
-        <DialogContent className="max-w-md max-h-[85vh] overflow-hidden flex flex-col">
-          <DialogHeader>
-            <DialogTitle className="text-start">
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-[10px] text-muted-foreground">#{selectedOrder?.orderId.slice(0, 8)}</span>
-                <Badge variant="outline" className={`text-[10px] ${
-                  selectedOrder?.currentStatus === 'delivered' ? 'bg-green-100 text-green-700' :
-                  selectedOrder?.currentStatus === 'cancelled' ? 'bg-red-100 text-red-700' :
-                  'bg-blue-100 text-blue-700'
-                }`}>
-                  {STATUS_LABELS[selectedOrder?.currentStatus || ''] || selectedOrder?.currentStatus}
-                </Badge>
-              </div>
-              {selectedOrder?.customerData && (
-                <CustomerLabel customer={selectedOrder.customerData} />
+        <DialogContent className="max-w-md max-h-[85vh] overflow-hidden flex flex-col p-0 gap-0">
+          {/* Dialog Header */}
+          <div className="p-4 pb-3 border-b space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] text-muted-foreground font-mono">#{selectedOrder?.orderId.slice(0, 8)}</span>
+              <Badge variant="outline" className={`text-[10px] ${
+                selectedOrder?.currentStatus === 'delivered' ? 'bg-green-100 text-green-700 border-green-200' :
+                selectedOrder?.currentStatus === 'cancelled' ? 'bg-red-100 text-red-700 border-red-200' :
+                selectedOrder?.currentStatus === 'in_transit' ? 'bg-amber-100 text-amber-700 border-amber-200' :
+                'bg-blue-100 text-blue-700 border-blue-200'
+              }`}>
+                {STATUS_LABELS[selectedOrder?.currentStatus || ''] || selectedOrder?.currentStatus}
+              </Badge>
+            </div>
+            {selectedOrder?.customerData && (
+              <CustomerLabel customer={selectedOrder.customerData} />
+            )}
+            <div className="flex items-center gap-3 text-[10px] text-muted-foreground flex-wrap">
+              {selectedOrder?.createdAt && (
+                <span className="flex items-center gap-1">
+                  <Clock className="h-3 w-3" />
+                  {format(new Date(selectedOrder.createdAt), 'yyyy/MM/dd HH:mm')}
+                </span>
               )}
-              {/* Order dates */}
-              <div className="flex items-center gap-3 mt-2 text-[10px] text-muted-foreground font-normal flex-wrap">
-                {selectedOrder?.createdAt && (
-                  <span className="flex items-center gap-1">
-                    <Clock className="h-3 w-3" />
-                    الإنشاء: {format(new Date(selectedOrder.createdAt), 'yyyy/MM/dd HH:mm')}
-                  </span>
-                )}
-                {selectedOrder?.currentStatus === 'delivered' && selectedOrder?.updatedAt && (
-                  <span className="flex items-center gap-1">
-                    <CheckCircle2 className="h-3 w-3 text-green-600" />
-                    التسليم: {format(new Date(selectedOrder.updatedAt), 'yyyy/MM/dd HH:mm')}
-                  </span>
-                )}
-              </div>
-            </DialogTitle>
-          </DialogHeader>
+              {selectedOrder?.currentStatus === 'delivered' && selectedOrder?.updatedAt && (
+                <span className="flex items-center gap-1 text-green-600">
+                  <CheckCircle2 className="h-3 w-3" />
+                  {format(new Date(selectedOrder.updatedAt), 'yyyy/MM/dd HH:mm')}
+                </span>
+              )}
+            </div>
+          </div>
           
           {selectedOrder && (
-            <OrderDetailsContent order={selectedOrder} />
+            <div className="flex-1 overflow-auto p-4">
+              <OrderDetailsContent order={selectedOrder} />
+            </div>
           )}
         </DialogContent>
       </Dialog>
