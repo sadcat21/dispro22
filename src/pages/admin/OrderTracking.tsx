@@ -460,7 +460,16 @@ const OrderTracking: React.FC = () => {
                   <StatusProgressBar order={order} />
                   
                   <div className="flex items-center justify-between text-[10px] text-muted-foreground">
-                    <span>{order.events.length} حدث</span>
+                    <div className="flex items-center gap-1.5">
+                      <span>{order.events.length} حدث</span>
+                      {order.paymentType && (
+                        <Badge variant="outline" className={`text-[8px] py-0 px-1 ${
+                          order.paymentType === 'with_invoice' ? 'bg-blue-50 text-blue-600 border-blue-200' : 'bg-orange-50 text-orange-600 border-orange-200'
+                        }`}>
+                          {order.paymentType === 'with_invoice' ? 'F1' : 'F2'}
+                        </Badge>
+                      )}
+                    </div>
                     {order.totalAmount && <span>{Number(order.totalAmount).toLocaleString()} د.ج</span>}
                   </div>
                 </div>
@@ -495,13 +504,15 @@ const OrderTracking: React.FC = () => {
 const OrderDetailsContent: React.FC<{ order: GroupedOrder }> = ({ order }) => {
   const { data: orderItems, isLoading: itemsLoading } = useOrderItems(order.orderId);
   
-  const PAYMENT_LABELS: Record<string, string> = {
-    with_invoice: 'بفاتورة',
-    without_invoice: 'بدون فاتورة',
-    receipt: 'وصل',
-    check: 'شيك',
-    cash: 'نقداً',
-    transfer: 'تحويل',
+  const PAYMENT_TYPE_LABELS: Record<string, { label: string; color: string }> = {
+    with_invoice: { label: 'فاتورة 1 (Facture 1)', color: 'bg-blue-100 text-blue-700 border-blue-200' },
+    without_invoice: { label: 'فاتورة 2 (Sans Facture)', color: 'bg-orange-100 text-orange-700 border-orange-200' },
+  };
+  const INVOICE_METHOD_LABELS: Record<string, string> = {
+    receipt: 'Versement',
+    check: 'Chèque',
+    cash: 'Espèces (نقداً)',
+    transfer: 'Virement',
   };
 
   return (
@@ -516,15 +527,15 @@ const OrderDetailsContent: React.FC<{ order: GroupedOrder }> = ({ order }) => {
           </Badge>
         )}
         {order.paymentType && (
-          <Badge variant="outline" className="text-[10px]">
+          <Badge variant="outline" className={`text-[10px] ${PAYMENT_TYPE_LABELS[order.paymentType]?.color || ''}`}>
             <Receipt className="h-2.5 w-2.5 ml-1" />
-            {PAYMENT_LABELS[order.paymentType] || order.paymentType}
+            {PAYMENT_TYPE_LABELS[order.paymentType]?.label || order.paymentType}
           </Badge>
         )}
         {order.invoicePaymentMethod && (
           <Badge variant="outline" className="text-[10px]">
             <CreditCard className="h-2.5 w-2.5 ml-1" />
-            {PAYMENT_LABELS[order.invoicePaymentMethod] || order.invoicePaymentMethod}
+            {INVOICE_METHOD_LABELS[order.invoicePaymentMethod] || order.invoicePaymentMethod}
           </Badge>
         )}
       </div>
