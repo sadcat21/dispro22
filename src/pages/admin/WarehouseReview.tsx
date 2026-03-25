@@ -42,10 +42,9 @@ const computeStatus = (expected: number, actual: string): ReviewItem['status'] =
 
 const WarehouseReview: React.FC = () => {
   const navigate = useNavigate();
-  const { workerId, activeBranch } = useAuth();
+  const { workerId } = useAuth();
   const queryClient = useQueryClient();
-  const { warehouseStock, isLoading: stockLoading, products } = useWarehouseStock();
-  const branchId = activeBranch?.id;
+  const { warehouseStock, isLoading: stockLoading, products, branchId } = useWarehouseStock();
 
   const [activeTab, setActiveTab] = useState('review');
   const [search, setSearch] = useState('');
@@ -68,28 +67,13 @@ const WarehouseReview: React.FC = () => {
     enabled: !!branchId,
   });
 
-  // Build a stock lookup map from raw warehouse_stock (not filtered/enriched)
-  // Fetch raw warehouse stock directly to avoid enrichment filtering
-  const { data: rawWarehouseStock = [] } = useQuery({
-    queryKey: ['raw-warehouse-stock-review', branchId],
-    queryFn: async () => {
-      if (!branchId) return [];
-      const { data } = await supabase
-        .from('warehouse_stock')
-        .select('product_id, quantity')
-        .eq('branch_id', branchId);
-      return data || [];
-    },
-    enabled: !!branchId,
-  });
-
   const stockMap = useMemo(() => {
     const map = new Map<string, number>();
-    for (const s of rawWarehouseStock) {
-      map.set(s.product_id, s.quantity);
+    for (const s of warehouseStock) {
+      map.set(s.product_id, (map.get(s.product_id) ?? 0) + Number(s.quantity || 0));
     }
     return map;
-  }, [rawWarehouseStock]);
+  }, [warehouseStock]);
 
   // Compute items reactively from products + stock (expected is always fresh)
   const items: ReviewItem[] = useMemo(() => {
@@ -247,7 +231,6 @@ const WarehouseReview: React.FC = () => {
       
       // Reset for new review
       setActuals({});
-      queryClient.invalidateQueries({ queryKey: ['raw-warehouse-stock-review'] });
       setActiveTab('history');
     } catch (err: any) {
       toast.error(err.message || 'خطأ في حفظ المراجعة');
