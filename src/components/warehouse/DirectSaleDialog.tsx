@@ -729,8 +729,7 @@ const DirectSaleDialog: React.FC<DirectSaleDialogProps> = ({ open, onOpenChange,
             </DialogTitle>
           </DialogHeader>
 
-          <ScrollArea className="max-h-[calc(90vh-8rem)]">
-            <div className="px-4">
+          <div className="flex-1 overflow-y-auto overscroll-contain px-4" style={{ WebkitOverflowScrolling: 'touch', maxHeight: 'calc(90vh - 8rem)' }}>
             <div className="py-4 space-y-5">
               {/* Customer Section */}
               <section className="space-y-3">
