@@ -518,58 +518,70 @@ const OrderTracking: React.FC<{ workerMode?: boolean }> = ({ workerMode = false 
       ) : (
         <ScrollArea className="h-[calc(100vh-480px)]">
           <div className="space-y-2">
-            {filteredOrders.map(order => (
-              <Card
-                key={order.orderId}
-                className="cursor-pointer hover:shadow-md transition-shadow"
-                onClick={() => setSelectedOrder(order)}
-              >
-                <div className="p-3">
-                  <div className="flex items-center justify-between mb-1">
-                    <div className="flex-1 min-w-0">
-                      {order.customerData ? (
-                        <div className="flex items-start gap-2 flex-wrap">
+            {filteredOrders.map(order => {
+              const statusStyle = 
+                order.currentStatus === 'delivered' ? 'border-s-green-500' :
+                order.currentStatus === 'cancelled' ? 'border-s-red-500' :
+                order.currentStatus === 'assigned' ? 'border-s-purple-500' :
+                order.currentStatus === 'in_transit' ? 'border-s-amber-500' :
+                'border-s-blue-500';
+
+              return (
+                <Card
+                  key={order.orderId}
+                  className={`cursor-pointer hover:shadow-md transition-all border-s-[3px] ${statusStyle} active:scale-[0.99]`}
+                  onClick={() => setSelectedOrder(order)}
+                >
+                  <div className="p-3 space-y-2">
+                    {/* Header: Customer + Status + Amount */}
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        {order.customerData ? (
                           <CustomerLabel customer={order.customerData} />
-                          <span className="text-[10px] text-muted-foreground shrink-0 mt-0.5">#{order.orderId.slice(0, 6)}</span>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-2">
+                        ) : (
                           <span className="font-medium text-sm">{order.customerName}</span>
-                          <span className="text-[10px] text-muted-foreground">#{order.orderId.slice(0, 6)}</span>
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Badge variant="outline" className={`text-[10px] ${
-                        order.currentStatus === 'delivered' ? 'bg-green-100 text-green-700' :
-                        order.currentStatus === 'cancelled' ? 'bg-red-100 text-red-700' :
-                        order.currentStatus === 'assigned' ? 'bg-purple-100 text-purple-700' :
-                        'bg-blue-100 text-blue-700'
-                      }`}>
-                        {STATUS_LABELS[order.currentStatus] || order.currentStatus}
-                      </Badge>
-                      <ChevronLeft className="h-4 w-4 text-muted-foreground" />
-                    </div>
-                  </div>
-                  
-                  <StatusProgressBar order={order} />
-                  
-                  <div className="flex items-center justify-between text-[10px] text-muted-foreground">
-                    <div className="flex items-center gap-1.5">
-                      <span>{order.events.length} حدث</span>
-                      {order.paymentType && (
-                        <Badge variant="outline" className={`text-[8px] py-0 px-1 ${
-                          order.paymentType === 'with_invoice' ? 'bg-blue-50 text-blue-600 border-blue-200' : 'bg-orange-50 text-orange-600 border-orange-200'
+                        )}
+                      </div>
+                      <div className="flex flex-col items-end gap-1 shrink-0">
+                        <Badge variant="outline" className={`text-[10px] ${
+                          order.currentStatus === 'delivered' ? 'bg-green-100 text-green-700 border-green-200' :
+                          order.currentStatus === 'cancelled' ? 'bg-red-100 text-red-700 border-red-200' :
+                          order.currentStatus === 'assigned' ? 'bg-purple-100 text-purple-700 border-purple-200' :
+                          order.currentStatus === 'in_transit' ? 'bg-amber-100 text-amber-700 border-amber-200' :
+                          'bg-blue-100 text-blue-700 border-blue-200'
                         }`}>
-                          {order.paymentType === 'with_invoice' ? 'F1' : 'F2'}
+                          {STATUS_LABELS[order.currentStatus] || order.currentStatus}
                         </Badge>
-                      )}
+                        {order.totalAmount && (
+                          <span className="text-xs font-bold text-foreground">{Number(order.totalAmount).toLocaleString()} د.ج</span>
+                        )}
+                      </div>
                     </div>
-                    {order.totalAmount && <span>{Number(order.totalAmount).toLocaleString()} د.ج</span>}
+
+                    {/* Progress bar */}
+                    <StatusProgressBar order={order} />
+                    
+                    {/* Footer: meta info */}
+                    <div className="flex items-center justify-between text-[10px] text-muted-foreground pt-1 border-t border-border/40">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{order.events.length} حدث</span>
+                        {order.paymentType && (
+                          <Badge variant="outline" className={`text-[8px] py-0 px-1 ${
+                            order.paymentType === 'with_invoice' ? 'bg-blue-50 text-blue-600 border-blue-200' : 'bg-orange-50 text-orange-600 border-orange-200'
+                          }`}>
+                            {order.paymentType === 'with_invoice' ? 'F1' : 'F2'}
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] text-muted-foreground">#{order.orderId.slice(0, 6)}</span>
+                        <ChevronLeft className="h-3.5 w-3.5 text-muted-foreground/60" />
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </Card>
-            ))}
+                </Card>
+              );
+            })}
           </div>
         </ScrollArea>
       )}
