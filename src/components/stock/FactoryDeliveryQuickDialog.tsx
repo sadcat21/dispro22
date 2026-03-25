@@ -142,7 +142,7 @@ const FactoryDeliveryQuickDialog: React.FC<Props> = ({ open, onOpenChange }) => 
           created_by: workerId,
           confirmed_at: status === 'confirmed' ? new Date().toISOString() : null,
           pallet_count: palletCount,
-        })
+        } as any)
         .select()
         .single();
       if (orderError) throw orderError;
@@ -227,7 +227,7 @@ const FactoryDeliveryQuickDialog: React.FC<Props> = ({ open, onOpenChange }) => 
         product_id: i.product_id, quantity: i.product_quantity,
       }));
 
-      const pallets = Number(orderData.pallet_count) || 0;
+      const pallets = Number((orderData as any).pallet_count) || 0;
       await applyDeliveryStock(deliveryId, validItems, pallets, orderData.branch_id);
 
       toast.success('تمت الموافقة على التسليم');
@@ -261,8 +261,8 @@ const FactoryDeliveryQuickDialog: React.FC<Props> = ({ open, onOpenChange }) => 
     setPendingItems((oItems || []).map((i: any) => ({
       product_name: i.product?.name || '', quantity: i.product_quantity, image_url: i.product?.image_url,
     })));
-    const { data: orderData } = await supabase.from('factory_orders').select('pallet_count').eq('id', deliveryId).single();
-    setPendingPallets(Number(orderData?.pallet_count) || 0);
+    const { data: orderData } = await supabase.from('factory_orders').select('*').eq('id', deliveryId).single();
+    setPendingPallets(Number((orderData as any)?.pallet_count) || 0);
   };
 
   const resetForm = () => {
