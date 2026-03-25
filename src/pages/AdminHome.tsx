@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useNavigation } from '@/hooks/useNavigation';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useFontSize } from '@/contexts/FontSizeContext';
-import { Calculator, Banknote, ArrowLeft, Navigation, Users, Receipt, ShoppingCart, Scale, Trophy, CalendarDays, Gift, ArrowDownToLine, Truck, ClipboardCheck } from 'lucide-react';
+import { Calculator, Banknote, ArrowLeft, Navigation, Users, Receipt, ShoppingCart, Scale, Trophy, CalendarDays, Gift, ArrowDownToLine, Truck, ClipboardCheck, Building2 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -14,7 +14,7 @@ import WorkerGiftsSummaryDialog from '@/components/accounting/WorkerGiftsSummary
 import ManualPromoEntryDialog from '@/components/offers/ManualPromoEntryDialog';
 import FactoryReceiptQuickDialog from '@/components/stock/FactoryReceiptQuickDialog';
 import FactoryDeliveryQuickDialog from '@/components/stock/FactoryDeliveryQuickDialog';
-import { isAdminRole } from '@/lib/utils';
+import { isAdminRole, isSuperAdminRole } from '@/lib/utils';
 
 // Color mapping by path for semantic meaning
 const pathColors: Record<string, { bg: string; icon: string; border: string }> = {
@@ -48,6 +48,15 @@ const pathColors: Record<string, { bg: string; icon: string; border: string }> =
   '/promo-splits': { bg: 'bg-cyan-50', icon: 'text-cyan-600', border: 'border-cyan-200' },
 };
 
+// Branch admin uses a teal/cyan color scheme
+const branchAdminPathColors: Record<string, { bg: string; icon: string; border: string }> = {
+  ...pathColors,
+  '/orders': { bg: 'bg-teal-50', icon: 'text-teal-700', border: 'border-teal-200' },
+  '/customers': { bg: 'bg-cyan-50', icon: 'text-cyan-700', border: 'border-cyan-200' },
+  '/workers': { bg: 'bg-sky-50', icon: 'text-sky-700', border: 'border-sky-200' },
+  '/products': { bg: 'bg-emerald-50', icon: 'text-emerald-600', border: 'border-emerald-200' },
+};
+
 const defaultColor = { bg: 'bg-muted/30', icon: 'text-primary', border: 'border-border' };
 
 const gridColsClass: Record<number, string> = {
@@ -68,6 +77,8 @@ const AdminHome: React.FC = () => {
   const [manualPromoOpen, setManualPromoOpen] = useState(false);
   const [factoryReceiptOpen, setFactoryReceiptOpen] = useState(false);
   const [factoryDeliveryOpen, setFactoryDeliveryOpen] = useState(false);
+
+  const isBranchAdmin = role === 'branch_admin';
 
   const isAccountingHidden = useIsElementHidden('page', '/accounting');
   const isDebtsHidden = useIsElementHidden('page', '/customer-debts');
@@ -114,84 +125,132 @@ const AdminHome: React.FC = () => {
     },
   });
 
+  const colorMap = isBranchAdmin ? branchAdminPathColors : pathColors;
+
   return (
     <div className="p-4 space-y-4">
-      <h2 className="text-xl font-bold">{t('nav.home')}</h2>
+      {/* Branch Admin Header - distinct teal/cyan design */}
+      {isBranchAdmin ? (
+        <div className="relative overflow-hidden rounded-2xl border-2 border-teal-300 bg-gradient-to-br from-teal-600 via-teal-500 to-cyan-500 p-5 text-white shadow-lg">
+          <div className="absolute top-0 left-0 w-full h-full opacity-10">
+            <div className="absolute -top-10 -left-10 w-40 h-40 rounded-full bg-white/20" />
+            <div className="absolute -bottom-8 -right-8 w-32 h-32 rounded-full bg-white/15" />
+          </div>
+          <div className="relative flex items-center gap-3">
+            <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur flex items-center justify-center">
+              <Building2 className="w-7 h-7 text-white" />
+            </div>
+            <div>
+              <p className="text-teal-100 text-xs font-medium">مدير الفرع</p>
+              <h2 className="text-xl font-bold">{activeBranch?.name || 'الفرع'}</h2>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <h2 className="text-xl font-bold">{t('nav.home')}</h2>
+      )}
 
       {/* Quick Access Buttons */}
       <div className="grid grid-cols-2 gap-3">
         {!isAccountingHidden && (
           <div
-            className="relative overflow-hidden rounded-xl border-2 border-amber-300 bg-gradient-to-br from-amber-50 to-amber-100 p-4 cursor-pointer active:scale-[0.97] transition-all hover:shadow-lg"
+            className={`relative overflow-hidden rounded-xl border-2 p-4 cursor-pointer active:scale-[0.97] transition-all hover:shadow-lg ${
+              isBranchAdmin
+                ? 'border-teal-300 bg-gradient-to-br from-teal-50 to-cyan-100'
+                : 'border-amber-300 bg-gradient-to-br from-amber-50 to-amber-100'
+            }`}
             onClick={() => navigate('/accounting')}
           >
-            <Calculator className="w-8 h-8 text-amber-600 mb-2" />
-            <p className="font-bold text-sm text-amber-900">{t('accounting.title')}</p>
+            <Calculator className={`w-8 h-8 mb-2 ${isBranchAdmin ? 'text-teal-600' : 'text-amber-600'}`} />
+            <p className={`font-bold text-sm ${isBranchAdmin ? 'text-teal-900' : 'text-amber-900'}`}>{t('accounting.title')}</p>
             {openSessions !== undefined && openSessions > 0 && (
-              <p className="text-xs text-amber-700 mt-1">{openSessions} {t('accounting.status_open')}</p>
+              <p className={`text-xs mt-1 ${isBranchAdmin ? 'text-teal-700' : 'text-amber-700'}`}>{openSessions} {t('accounting.status_open')}</p>
             )}
-            <ArrowLeft className="absolute top-3 left-3 w-4 h-4 text-amber-400" />
+            <ArrowLeft className={`absolute top-3 left-3 w-4 h-4 ${isBranchAdmin ? 'text-teal-400' : 'text-amber-400'}`} />
           </div>
         )}
 
         {!isDebtsHidden && (
           <div
-            className="relative overflow-hidden rounded-xl border-2 border-rose-300 bg-gradient-to-br from-rose-50 to-rose-100 p-4 cursor-pointer active:scale-[0.97] transition-all hover:shadow-lg"
+            className={`relative overflow-hidden rounded-xl border-2 p-4 cursor-pointer active:scale-[0.97] transition-all hover:shadow-lg ${
+              isBranchAdmin
+                ? 'border-cyan-300 bg-gradient-to-br from-cyan-50 to-sky-100'
+                : 'border-rose-300 bg-gradient-to-br from-rose-50 to-rose-100'
+            }`}
             onClick={() => navigate('/customer-debts')}
           >
-            <Banknote className="w-8 h-8 text-rose-600 mb-2" />
-            <p className="font-bold text-sm text-rose-900">{t('debts.title')}</p>
+            <Banknote className={`w-8 h-8 mb-2 ${isBranchAdmin ? 'text-cyan-600' : 'text-rose-600'}`} />
+            <p className={`font-bold text-sm ${isBranchAdmin ? 'text-cyan-900' : 'text-rose-900'}`}>{t('debts.title')}</p>
             {activeDebts && activeDebts.count > 0 && (
-              <p className="text-xs text-rose-700 mt-1">{activeDebts.count} • {activeDebts.total.toLocaleString()} DA</p>
+              <p className={`text-xs mt-1 ${isBranchAdmin ? 'text-cyan-700' : 'text-rose-700'}`}>{activeDebts.count} • {activeDebts.total.toLocaleString()} DA</p>
             )}
-            <ArrowLeft className="absolute top-3 left-3 w-4 h-4 text-rose-400" />
+            <ArrowLeft className={`absolute top-3 left-3 w-4 h-4 ${isBranchAdmin ? 'text-cyan-400' : 'text-rose-400'}`} />
           </div>
         )}
       </div>
 
-      {/* Surplus/Deficit Treasury & Rewards */}
+      {/* Surplus/Deficit Treasury & Rewards - admin only grid */}
       {isAdminRole(role) && (
-        <div className="grid grid-cols-4 gap-3">
+        <div className={`grid ${isBranchAdmin ? 'grid-cols-3' : 'grid-cols-4'} gap-3`}>
           <div
-            className="relative overflow-hidden rounded-xl border-2 border-violet-300 bg-gradient-to-br from-violet-50 to-violet-100 p-3 cursor-pointer active:scale-[0.97] transition-all hover:shadow-lg"
+            className={`relative overflow-hidden rounded-xl border-2 p-3 cursor-pointer active:scale-[0.97] transition-all hover:shadow-lg ${
+              isBranchAdmin
+                ? 'border-teal-200 bg-gradient-to-br from-teal-50 to-teal-100'
+                : 'border-violet-300 bg-gradient-to-br from-violet-50 to-violet-100'
+            }`}
             onClick={() => navigate('/surplus-deficit')}
           >
-            <Scale className="w-6 h-6 text-violet-600 mb-1" />
-            <p className="font-bold text-[10px] text-violet-900">{t('admin.surplus_treasury')}</p>
+            <Scale className={`w-6 h-6 mb-1 ${isBranchAdmin ? 'text-teal-600' : 'text-violet-600'}`} />
+            <p className={`font-bold text-[10px] ${isBranchAdmin ? 'text-teal-900' : 'text-violet-900'}`}>{t('admin.surplus_treasury')}</p>
           </div>
           <div
-            className="relative overflow-hidden rounded-xl border-2 border-yellow-300 bg-gradient-to-br from-yellow-50 to-yellow-100 p-3 cursor-pointer active:scale-[0.97] transition-all hover:shadow-lg"
+            className={`relative overflow-hidden rounded-xl border-2 p-3 cursor-pointer active:scale-[0.97] transition-all hover:shadow-lg ${
+              isBranchAdmin
+                ? 'border-sky-200 bg-gradient-to-br from-sky-50 to-sky-100'
+                : 'border-yellow-300 bg-gradient-to-br from-yellow-50 to-yellow-100'
+            }`}
             onClick={() => navigate('/rewards')}
           >
-            <Trophy className="w-6 h-6 text-yellow-600 mb-1" />
-            <p className="font-bold text-[10px] text-yellow-900">{t('admin.rewards')}</p>
+            <Trophy className={`w-6 h-6 mb-1 ${isBranchAdmin ? 'text-sky-600' : 'text-yellow-600'}`} />
+            <p className={`font-bold text-[10px] ${isBranchAdmin ? 'text-sky-900' : 'text-yellow-900'}`}>{t('admin.rewards')}</p>
           </div>
           <div
-            className="relative overflow-hidden rounded-xl border-2 border-emerald-300 bg-gradient-to-br from-emerald-50 to-emerald-100 p-3 cursor-pointer active:scale-[0.97] transition-all hover:shadow-lg"
+            className={`relative overflow-hidden rounded-xl border-2 p-3 cursor-pointer active:scale-[0.97] transition-all hover:shadow-lg ${
+              isBranchAdmin
+                ? 'border-cyan-200 bg-gradient-to-br from-cyan-50 to-cyan-100'
+                : 'border-emerald-300 bg-gradient-to-br from-emerald-50 to-emerald-100'
+            }`}
             onClick={() => navigate('/attendance')}
           >
-            <CalendarDays className="w-6 h-6 text-emerald-600 mb-1" />
-            <p className="font-bold text-[10px] text-emerald-900">{t('admin.attendance')}</p>
+            <CalendarDays className={`w-6 h-6 mb-1 ${isBranchAdmin ? 'text-cyan-600' : 'text-emerald-600'}`} />
+            <p className={`font-bold text-[10px] ${isBranchAdmin ? 'text-cyan-900' : 'text-emerald-900'}`}>{t('admin.attendance')}</p>
           </div>
-          <div
-            className="relative overflow-hidden rounded-xl border-2 border-purple-300 bg-gradient-to-br from-purple-50 to-purple-100 p-3 cursor-pointer active:scale-[0.97] transition-all hover:shadow-lg"
-            onClick={() => { setGiftsWorkerIdx(0); setGiftsOpen(true); }}
-          >
-            <Gift className="w-6 h-6 text-purple-600 mb-1" />
-            <p className="font-bold text-[10px] text-purple-900">{t('admin.promo_tracking')}</p>
-          </div>
+          {/* Promo tracking - super admin only */}
+          {isSuperAdminRole(role) && (
+            <div
+              className="relative overflow-hidden rounded-xl border-2 border-purple-300 bg-gradient-to-br from-purple-50 to-purple-100 p-3 cursor-pointer active:scale-[0.97] transition-all hover:shadow-lg"
+              onClick={() => { setGiftsWorkerIdx(0); setGiftsOpen(true); }}
+            >
+              <Gift className="w-6 h-6 text-purple-600 mb-1" />
+              <p className="font-bold text-[10px] text-purple-900">{t('admin.promo_tracking')}</p>
+            </div>
+          )}
         </div>
       )}
 
       {/* Quick Create Order Button */}
       <div
-        className="relative overflow-hidden rounded-xl border-2 border-blue-300 bg-gradient-to-br from-blue-50 to-blue-100 p-4 cursor-pointer active:scale-[0.97] transition-all hover:shadow-lg flex items-center gap-3"
+        className={`relative overflow-hidden rounded-xl border-2 p-4 cursor-pointer active:scale-[0.97] transition-all hover:shadow-lg flex items-center gap-3 ${
+          isBranchAdmin
+            ? 'border-teal-300 bg-gradient-to-br from-teal-50 to-cyan-100'
+            : 'border-blue-300 bg-gradient-to-br from-blue-50 to-blue-100'
+        }`}
         onClick={() => setShowCreateOrder(true)}
       >
-        <ShoppingCart className="w-8 h-8 text-blue-600" />
+        <ShoppingCart className={`w-8 h-8 ${isBranchAdmin ? 'text-teal-600' : 'text-blue-600'}`} />
         <div>
-          <p className="font-bold text-sm text-blue-900">{t('orders.create_order')}</p>
-          <p className="text-xs text-blue-700">{t('orders.create_order_desc')}</p>
+          <p className={`font-bold text-sm ${isBranchAdmin ? 'text-teal-900' : 'text-blue-900'}`}>{t('orders.create_order')}</p>
+          <p className={`text-xs ${isBranchAdmin ? 'text-teal-700' : 'text-blue-700'}`}>{t('orders.create_order_desc')}</p>
         </div>
       </div>
 
@@ -215,6 +274,7 @@ const AdminHome: React.FC = () => {
         <div>
           <p className="font-bold text-sm text-lime-900">استلام من المصنع</p>
           <p className="text-xs text-lime-700">تسجيل وصل استلام منتجات</p>
+        </div>
       </div>
 
       {/* Factory Delivery Quick Button */}
@@ -227,7 +287,6 @@ const AdminHome: React.FC = () => {
           <p className="font-bold text-sm text-red-900">تسليم للمصنع</p>
           <p className="text-xs text-red-700">تسليم تالف وباليطات</p>
         </div>
-      </div>
       </div>
 
       {/* Invoice Request Quick Button */}
@@ -243,6 +302,7 @@ const AdminHome: React.FC = () => {
           </div>
         </div>
       )}
+
       {/* مراجعة مخزون الفرع */}
       {isAdminRole(role) && (
         <div
@@ -282,7 +342,7 @@ const AdminHome: React.FC = () => {
       {/* Regular Navigation Grid */}
       <div className={`grid ${gridColsClass[gridCols] || 'grid-cols-4'} gap-2`}>
         {allItems.map((item) => {
-          const colors = pathColors[item.path] || defaultColor;
+          const colors = colorMap[item.path] || defaultColor;
           return (
             <div
               key={item.path}
