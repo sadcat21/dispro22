@@ -35,6 +35,46 @@ interface MobileLayoutProps {
   children: React.ReactNode;
 }
 
+const moreItemColors: Record<string, { bg: string; icon: string; border: string }> = {
+  '/orders': { bg: 'bg-blue-50', icon: 'text-blue-600', border: 'border-blue-200' },
+  '/order-tracking': { bg: 'bg-indigo-50', icon: 'text-indigo-600', border: 'border-indigo-200' },
+  '/my-deliveries': { bg: 'bg-teal-50', icon: 'text-teal-600', border: 'border-teal-200' },
+  '/my-promos': { bg: 'bg-amber-50', icon: 'text-amber-600', border: 'border-amber-200' },
+  '/product-offers': { bg: 'bg-rose-50', icon: 'text-rose-600', border: 'border-rose-200' },
+  '/promo-splits': { bg: 'bg-cyan-50', icon: 'text-cyan-600', border: 'border-cyan-200' },
+  '/customer-accounts': { bg: 'bg-cyan-50', icon: 'text-cyan-600', border: 'border-cyan-200' },
+  '/warehouse': { bg: 'bg-emerald-50', icon: 'text-emerald-600', border: 'border-emerald-200' },
+  '/warehouse-review': { bg: 'bg-teal-50', icon: 'text-teal-600', border: 'border-teal-200' },
+  '/stock-receipts': { bg: 'bg-lime-50', icon: 'text-lime-600', border: 'border-lime-200' },
+  '/load-stock': { bg: 'bg-green-50', icon: 'text-green-600', border: 'border-green-200' },
+  '/my-stock': { bg: 'bg-green-50', icon: 'text-green-600', border: 'border-green-200' },
+  '/expenses': { bg: 'bg-yellow-50', icon: 'text-yellow-600', border: 'border-yellow-200' },
+  '/expenses-management': { bg: 'bg-red-50', icon: 'text-red-600', border: 'border-red-200' },
+  '/daily-receipts': { bg: 'bg-teal-50', icon: 'text-teal-600', border: 'border-teal-200' },
+  '/customer-debts': { bg: 'bg-rose-50', icon: 'text-rose-700', border: 'border-rose-200' },
+  '/accounting': { bg: 'bg-amber-50', icon: 'text-amber-700', border: 'border-amber-200' },
+  '/manager-treasury': { bg: 'bg-emerald-50', icon: 'text-emerald-600', border: 'border-emerald-200' },
+  '/shared-invoices': { bg: 'bg-orange-50', icon: 'text-orange-700', border: 'border-orange-200' },
+  '/surplus-deficit': { bg: 'bg-violet-50', icon: 'text-violet-600', border: 'border-violet-200' },
+  '/rewards': { bg: 'bg-yellow-50', icon: 'text-yellow-600', border: 'border-yellow-200' },
+  '/worker-debts': { bg: 'bg-pink-50', icon: 'text-pink-600', border: 'border-pink-200' },
+  '/worker-tracking': { bg: 'bg-sky-50', icon: 'text-sky-600', border: 'border-sky-200' },
+  '/attendance': { bg: 'bg-emerald-50', icon: 'text-emerald-600', border: 'border-emerald-200' },
+  '/geo-operations': { bg: 'bg-teal-50', icon: 'text-teal-600', border: 'border-teal-200' },
+  '/activity-logs': { bg: 'bg-violet-50', icon: 'text-violet-600', border: 'border-violet-200' },
+  '/nearby-stores': { bg: 'bg-sky-50', icon: 'text-sky-600', border: 'border-sky-200' },
+  '/branches': { bg: 'bg-purple-50', icon: 'text-purple-600', border: 'border-purple-200' },
+  '/customers': { bg: 'bg-blue-50', icon: 'text-blue-700', border: 'border-blue-200' },
+  '/workers': { bg: 'bg-fuchsia-50', icon: 'text-fuchsia-600', border: 'border-fuchsia-200' },
+  '/worker-actions': { bg: 'bg-indigo-50', icon: 'text-indigo-600', border: 'border-indigo-200' },
+  '/products': { bg: 'bg-pink-50', icon: 'text-pink-600', border: 'border-pink-200' },
+  '/permissions': { bg: 'bg-slate-50', icon: 'text-slate-600', border: 'border-slate-200' },
+  '/settings': { bg: 'bg-gray-50', icon: 'text-gray-600', border: 'border-gray-200' },
+  '/guide': { bg: 'bg-stone-50', icon: 'text-stone-600', border: 'border-stone-200' },
+  '/promo-table': { bg: 'bg-orange-50', icon: 'text-orange-600', border: 'border-orange-200' },
+  '/stats': { bg: 'bg-indigo-50', icon: 'text-indigo-600', border: 'border-indigo-200' },
+};
+
 const MobileLayout: React.FC<MobileLayoutProps> = ({ children }) => {
   const { role, user, logout, activeBranch, switchBranch, showBranchSelection, selectBranch, activeRole } = useAuth();
   const { t, dir, language, setLanguage } = useLanguage();
@@ -43,6 +83,7 @@ const MobileLayout: React.FC<MobileLayoutProps> = ({ children }) => {
   const isHomePage = location.pathname === '/';
   const { isConnected, deviceName, scanAndConnect, disconnect, status: printerStatus } = useBluetoothPrinter();
   const [invoiceRequestOpen, setInvoiceRequestOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
   const showInvoiceButton = isAdminRole(role);
   const { totalUnread } = useChat();
   const { startTracking } = useLocationBroadcast();
