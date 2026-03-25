@@ -80,7 +80,7 @@ export const useAssignedOrders = () => {
 
       if (isAdminRole(role)) {
         if (activeBranch) {
-          query = query.eq('branch_id', activeBranch.id);
+          query = query.or(`branch_id.eq.${activeBranch.id},branch_id.is.null`);
         }
       } else {
         query = query.eq('assigned_worker_id', workerId!);
