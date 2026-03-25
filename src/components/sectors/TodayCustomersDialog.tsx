@@ -2241,10 +2241,11 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
 };
 
 // Order Details Dialog - shows order/sale details similar to receipt content
-const OrderDetailsDialog: React.FC<{ order: any; onClose: () => void }> = ({ order, onClose }) => {
+const OrderDetailsDialog: React.FC<{ order: any; onClose: () => void; onCancelOrder?: (orderId: string) => void }> = ({ order, onClose, onCancelOrder }) => {
   const { user } = useAuth();
   const [showReceiptDialog, setShowReceiptDialog] = useState(false);
   const [showModifyDialog, setShowModifyDialog] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
   const { data: modifyOrderItems } = useOrderItems(showModifyDialog ? order.id : null);
   const isDirectSale = order._isDirectSale;
   const items = isDirectSale ? (order.items || []) : (order.items || []);
