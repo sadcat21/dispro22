@@ -686,7 +686,7 @@ const LoadStock: React.FC = () => {
     setShowAddProductDialog(true);
   };
 
-  // Confirm add single product to session
+  // Confirm add single product to session (only saves to session items, no stock changes until confirm)
   const handleAddProductToSession = async () => {
     if (!activeSessionId || !addProductId || addProductQty <= 0) return;
     setIsSaving(true);
@@ -703,27 +703,29 @@ const LoadStock: React.FC = () => {
         totalLoadQty = addCustomQty(totalLoadQty, giftInCustom, piecesPerBox);
       }
 
-      // Direct stock operations without full reload
+      // Validate warehouse availability (but don't deduct yet)
       const warehouseItem = warehouseStock.find(s => s.product_id === addProductId);
       if (!warehouseItem) {
         throw new Error(`${t('load_stock.insufficient_stock')} - ${product?.name || ''}`);
       }
       
-      // Compare in total pieces
       const warehousePieces = customToTotalPieces(warehouseItem.quantity, piecesPerBox);
+      // Also account for items already in this session for the same product
+      const alreadyInSession = sessionItems
+        .filter(si => si.product_id === addProductId)
+        .reduce((sum, si) => {
+          const siGift = si.gift_quantity || 0;
+          const siGiftUnit = si.gift_unit || 'piece';
+          const siGiftCustom = siGiftUnit === 'piece' ? totalPiecesToCustom(siGift, piecesPerBox) : siGift;
+          const siTotal = siGift > 0 ? addCustomQty(si.quantity, siGiftCustom, piecesPerBox) : si.quantity;
+          return sum + customToTotalPieces(siTotal, piecesPerBox);
+        }, 0);
       const loadPieces = customToTotalPieces(totalLoadQty, piecesPerBox);
-      if (warehousePieces < loadPieces) {
+      if (warehousePieces < loadPieces + alreadyInSession) {
         throw new Error(`${t('load_stock.insufficient_stock')} - ${product?.name || ''}`);
       }
 
-      // Deduct from warehouse using piece-based math
-      const newWarehouseQty = subtractCustomQty(warehouseItem.quantity, totalLoadQty, piecesPerBox);
-      await supabase
-        .from('warehouse_stock')
-        .update({ quantity: newWarehouseQty })
-        .eq('id', warehouseItem.id);
-
-      // Add to worker stock using piece-based math
+      // Get current worker stock for reference (previous_quantity)
       const { data: existingWS } = await supabase
         .from('worker_stock')
         .select('id, quantity')
@@ -731,35 +733,9 @@ const LoadStock: React.FC = () => {
         .eq('product_id', addProductId)
         .maybeSingle();
 
-      if (existingWS) {
-        const newWorkerQty = addCustomQty(existingWS.quantity, totalLoadQty, piecesPerBox);
-        await supabase
-          .from('worker_stock')
-          .update({ quantity: newWorkerQty })
-          .eq('id', existingWS.id);
-      } else {
-        await supabase.from('worker_stock').insert({
-          worker_id: selectedWorker,
-          product_id: addProductId,
-          branch_id: branchId,
-          quantity: totalLoadQty,
-        });
-      }
-
-      // Movement record
-      await supabase.from('stock_movements').insert({
-        product_id: addProductId,
-        branch_id: branchId,
-        quantity: totalLoadQty,
-        movement_type: 'load',
-        status: 'approved',
-        created_by: currentWorkerId,
-        worker_id: selectedWorker,
-        notes: `شحن من جلسة - ${product?.name || ''}`,
-      });
-
-      // Save to session (include previous worker stock balance)
       const previousWorkerQty = existingWS ? existingWS.quantity : 0;
+
+      // Only save to session items — stock changes deferred to confirmation
       await addSessionItem.mutateAsync({
         sessionId: activeSessionId,
         productId: addProductId,
@@ -776,11 +752,6 @@ const LoadStock: React.FC = () => {
       const { data } = await sessionItemsQuery(activeSessionId);
       setSessionItems(data || []);
 
-      // Targeted invalidation - realtime handles warehouse/worker stock
-      queryClient.invalidateQueries({ queryKey: ['worker-load-suggestions'] });
-      queryClient.invalidateQueries({ queryKey: ['my-worker-stock'] });
-      queryClient.invalidateQueries({ queryKey: ['worker-truck-stock'] });
-
       toast.success(t('load_stock.loaded_success'));
       setShowAddProductDialog(false);
     } catch (err: any) {
@@ -790,7 +761,7 @@ const LoadStock: React.FC = () => {
     }
   };
 
-  // Remove item from session (reverse stock)
+  // Remove item from session (no stock reversal needed since stock hasn't changed yet)
   const handleRemoveSessionItem = async (item: any) => {
     try {
       await deleteSessionItem.mutateAsync({
@@ -801,7 +772,6 @@ const LoadStock: React.FC = () => {
       });
       const { data } = await sessionItemsQuery(activeSessionId!);
       setSessionItems(data || []);
-      await refresh();
       toast.success(t('load_stock.item_deleted'));
     } catch (err: any) { toast.error(err.message); }
   };
@@ -816,50 +786,12 @@ const LoadStock: React.FC = () => {
     await fetchProductOffer(item.product_id);
   };
 
-  // Save edited session item
+  // Save edited session item (only updates session record, no stock changes)
   const handleSaveEditItem = async () => {
-    if (!editingItem || !activeSessionId || !branchId || !selectedWorker) return;
+    if (!editingItem || !activeSessionId) return;
     setIsEditSaving(true);
     try {
-      const product = products.find(p => p.id === editingItem.product_id);
-      const piecesPerBox = product?.pieces_per_box || 20;
-      const oldQty = editingItem.quantity;
-      const oldGiftQty = editingItem.gift_quantity || 0;
-      const oldGiftUnit = editingItem.gift_unit || 'piece';
-      const oldGiftInCustom = oldGiftUnit === 'box' ? oldGiftQty : totalPiecesToCustom(oldGiftQty, piecesPerBox);
-      const oldTotalLoad = oldGiftQty > 0 ? addCustomQty(oldQty, oldGiftInCustom, piecesPerBox) : oldQty;
-
-      const newGiftInCustom = editGiftUnit === 'box' ? editGiftQty : totalPiecesToCustom(editGiftQty, piecesPerBox);
-      const newTotalLoad = editGiftQty > 0 ? addCustomQty(editQty, newGiftInCustom, piecesPerBox) : editQty;
-
-      const diff = customToTotalPieces(newTotalLoad, piecesPerBox) - customToTotalPieces(oldTotalLoad, piecesPerBox);
-
-      if (diff > 0) {
-        // Need more from warehouse
-        const diffCustom = totalPiecesToCustom(Math.abs(diff), piecesPerBox);
-        const warehouseItem = warehouseStock.find(s => s.product_id === editingItem.product_id);
-        if (!warehouseItem || customToTotalPieces(warehouseItem.quantity, piecesPerBox) < Math.abs(diff)) {
-          toast.error(t('load_stock.insufficient_stock'));
-          setIsEditSaving(false);
-          return;
-        }
-        await supabase.from('warehouse_stock').update({ quantity: subtractCustomQty(warehouseItem.quantity, diffCustom, piecesPerBox) }).eq('id', warehouseItem.id);
-        const { data: ws } = await supabase.from('worker_stock').select('id, quantity').eq('worker_id', selectedWorker).eq('product_id', editingItem.product_id).single();
-        if (ws) await supabase.from('worker_stock').update({ quantity: addCustomQty(ws.quantity, diffCustom, piecesPerBox) }).eq('id', ws.id);
-      } else if (diff < 0) {
-        // Return to warehouse
-        const diffCustom = totalPiecesToCustom(Math.abs(diff), piecesPerBox);
-        const warehouseItem = warehouseStock.find(s => s.product_id === editingItem.product_id);
-        if (warehouseItem) {
-          await supabase.from('warehouse_stock').update({ quantity: addCustomQty(warehouseItem.quantity, diffCustom, piecesPerBox) }).eq('id', warehouseItem.id);
-        } else {
-          await supabase.from('warehouse_stock').insert({ branch_id: branchId, product_id: editingItem.product_id, quantity: diffCustom });
-        }
-        const { data: ws } = await supabase.from('worker_stock').select('id, quantity').eq('worker_id', selectedWorker).eq('product_id', editingItem.product_id).single();
-        if (ws) await supabase.from('worker_stock').update({ quantity: subtractCustomQty(ws.quantity, diffCustom, piecesPerBox) }).eq('id', ws.id);
-      }
-
-      // Update session item
+      // Update session item only
       await supabase.from('loading_session_items').update({
         quantity: editQty,
         gift_quantity: editGiftQty,
@@ -868,49 +800,38 @@ const LoadStock: React.FC = () => {
 
       const { data } = await sessionItemsQuery(activeSessionId);
       setSessionItems(data || []);
-      // Update local warehouse stock without full page reload
-      const { data: updatedWh } = await supabase.from('warehouse_stock').select('*').eq('branch_id', branchId);
-      if (updatedWh) {
-        // Trigger targeted refresh via queryClient only
-        queryClient.invalidateQueries({ queryKey: ['worker-load-suggestions'] });
-        queryClient.invalidateQueries({ queryKey: ['my-worker-stock'] });
-        queryClient.invalidateQueries({ queryKey: ['worker-truck-stock'] });
-      }
       toast.success(t('load_stock.qty_updated'));
       setEditingItem(null);
     } catch (err: any) { toast.error(err.message); }
     finally { setIsEditSaving(false); }
   };
 
-  // Handle partial load from orders - bulk add products to active session
+  // Handle partial load from orders - bulk add products to active session (no stock changes until confirm)
   const handlePartialLoadConfirm = async (aggregatedProducts: { productId: string; productName: string; quantity: number; piecesPerBox: number }[]) => {
     if (!activeSessionId || aggregatedProducts.length === 0) return;
     setIsSaving(true);
     try {
       for (const p of aggregatedProducts) {
         const piecesPerBox = p.piecesPerBox || 20;
-        const totalLoadQty = p.quantity;
 
-        // Check warehouse availability
+        // Validate warehouse availability (but don't deduct yet)
         const warehouseItem = warehouseStock.find(s => s.product_id === p.productId);
         if (!warehouseItem) {
           toast.error(`الكمية المتاحة من ${p.productName} غير كافية — تم تخطيه`);
           continue;
         }
         const warehousePieces = customToTotalPieces(warehouseItem.quantity, piecesPerBox);
-        const loadPieces = customToTotalPieces(totalLoadQty, piecesPerBox);
-        if (warehousePieces < loadPieces) {
+        // Account for items already in session for same product
+        const alreadyInSession = sessionItems
+          .filter(si => si.product_id === p.productId)
+          .reduce((sum, si) => sum + customToTotalPieces(si.quantity + (si.gift_quantity || 0), piecesPerBox), 0);
+        const loadPieces = customToTotalPieces(p.quantity, piecesPerBox);
+        if (warehousePieces < loadPieces + alreadyInSession) {
           toast.error(`الكمية المتاحة من ${p.productName} غير كافية — تم تخطيه`);
           continue;
         }
 
-        // Deduct from warehouse
-        const newWarehouseQty = subtractCustomQty(warehouseItem.quantity, totalLoadQty, piecesPerBox);
-        await supabase.from('warehouse_stock').update({ quantity: newWarehouseQty }).eq('id', warehouseItem.id);
-        // Update local ref for next iteration
-        warehouseItem.quantity = newWarehouseQty;
-
-        // Add to worker stock
+        // Get current worker stock for reference
         const { data: existingWS } = await supabase
           .from('worker_stock')
           .select('id, quantity')
@@ -920,31 +841,7 @@ const LoadStock: React.FC = () => {
 
         const previousWorkerQty = existingWS ? existingWS.quantity : 0;
 
-        if (existingWS) {
-          const newWorkerQty = addCustomQty(existingWS.quantity, totalLoadQty, piecesPerBox);
-          await supabase.from('worker_stock').update({ quantity: newWorkerQty }).eq('id', existingWS.id);
-        } else {
-          await supabase.from('worker_stock').insert({
-            worker_id: selectedWorker,
-            product_id: p.productId,
-            branch_id: branchId,
-            quantity: totalLoadQty,
-          });
-        }
-
-        // Stock movement record
-        await supabase.from('stock_movements').insert({
-          product_id: p.productId,
-          branch_id: branchId,
-          quantity: totalLoadQty,
-          movement_type: 'load',
-          status: 'approved',
-          created_by: currentWorkerId,
-          worker_id: selectedWorker,
-          notes: `شحن جزئي من الطلبيات - ${p.productName}`,
-        });
-
-        // Save to session
+        // Only save to session items — stock changes deferred to confirmation
         await addSessionItem.mutateAsync({
           sessionId: activeSessionId,
           productId: p.productId,
@@ -959,9 +856,6 @@ const LoadStock: React.FC = () => {
       // Refresh session items
       const { data } = await sessionItemsQuery(activeSessionId);
       setSessionItems(data || []);
-      queryClient.invalidateQueries({ queryKey: ['worker-load-suggestions'] });
-      queryClient.invalidateQueries({ queryKey: ['my-worker-stock'] });
-      queryClient.invalidateQueries({ queryKey: ['worker-truck-stock'] });
       toast.success(t('load_stock.products_loaded'));
     } catch (err: any) {
       toast.error(err.message);
@@ -974,14 +868,85 @@ const LoadStock: React.FC = () => {
     const sessionToComplete = activeSessionId || sessions.find(s => s.status === 'open')?.id;
     if (!sessionToComplete) { toast.error(t('load_stock.no_open_session')); return; }
     try {
+      // Get session items to apply stock changes
+      const { data: itemsToApply } = await sessionItemsQuery(sessionToComplete);
+      if (!itemsToApply || itemsToApply.length === 0) {
+        toast.error(t('stock.add_products'));
+        return;
+      }
+
+      // Apply stock changes for each item
+      for (const item of itemsToApply) {
+        const piecesPerBox = item.product?.pieces_per_box || 20;
+        const giftQty = item.gift_quantity || 0;
+        const giftUnit = item.gift_unit || 'piece';
+        const giftInCustom = giftUnit === 'piece' ? totalPiecesToCustom(giftQty, piecesPerBox) : giftQty;
+        const totalLoadQty = giftQty > 0 ? addCustomQty(item.quantity, giftInCustom, piecesPerBox) : item.quantity;
+
+        // Deduct from warehouse
+        const warehouseItem = warehouseStock.find(s => s.product_id === item.product_id);
+        if (!warehouseItem) {
+          throw new Error(`${t('load_stock.insufficient_stock')} - ${item.product?.name || ''}`);
+        }
+        const warehousePieces = customToTotalPieces(warehouseItem.quantity, piecesPerBox);
+        const loadPieces = customToTotalPieces(totalLoadQty, piecesPerBox);
+        if (warehousePieces < loadPieces) {
+          throw new Error(`${t('load_stock.insufficient_stock')} - ${item.product?.name || ''}`);
+        }
+        const newWarehouseQty = subtractCustomQty(warehouseItem.quantity, totalLoadQty, piecesPerBox);
+        await supabase.from('warehouse_stock').update({ quantity: newWarehouseQty }).eq('id', warehouseItem.id);
+        // Update local ref for next iteration
+        warehouseItem.quantity = newWarehouseQty;
+
+        // Add to worker stock
+        const { data: existingWS } = await supabase
+          .from('worker_stock')
+          .select('id, quantity')
+          .eq('worker_id', selectedWorker)
+          .eq('product_id', item.product_id)
+          .maybeSingle();
+
+        if (existingWS) {
+          const newWorkerQty = addCustomQty(existingWS.quantity, totalLoadQty, piecesPerBox);
+          await supabase.from('worker_stock').update({ quantity: newWorkerQty }).eq('id', existingWS.id);
+        } else {
+          await supabase.from('worker_stock').insert({
+            worker_id: selectedWorker,
+            product_id: item.product_id,
+            branch_id: branchId,
+            quantity: totalLoadQty,
+          });
+        }
+
+        // Stock movement record
+        await supabase.from('stock_movements').insert({
+          product_id: item.product_id,
+          branch_id: branchId,
+          quantity: totalLoadQty,
+          movement_type: 'load',
+          status: 'approved',
+          created_by: currentWorkerId,
+          worker_id: selectedWorker,
+          notes: `شحن من جلسة - ${item.product?.name || ''}`,
+        });
+      }
+
+      // Mark session as completed
       await completeSession.mutateAsync(sessionToComplete);
+
+      // Invalidate relevant queries
+      queryClient.invalidateQueries({ queryKey: ['worker-load-suggestions'] });
+      queryClient.invalidateQueries({ queryKey: ['my-worker-stock'] });
+      queryClient.invalidateQueries({ queryKey: ['worker-truck-stock'] });
+      await refresh();
+
       toast.success(t('load_stock.session_confirmed'));
       setActiveSessionId(null);
       setSessionItems([]);
     } catch (err: any) { toast.error(err.message); }
   };
 
-  // Delete entire session (reverse all stock)
+  // Delete entire session (no stock reversal needed since stock hasn't changed)
   const handleDeleteSession = async (sessionId: string) => {
     try {
       await deleteSession.mutateAsync(sessionId);
@@ -989,7 +954,6 @@ const LoadStock: React.FC = () => {
         setActiveSessionId(null);
         setSessionItems([]);
       }
-      await refresh();
       toast.success(t('load_stock.session_deleted'));
     } catch (err: any) { toast.error(err.message); }
   };
