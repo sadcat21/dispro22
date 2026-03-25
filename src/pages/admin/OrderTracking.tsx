@@ -514,6 +514,15 @@ const OrderDetailsContent: React.FC<{ order: GroupedOrder }> = ({ order }) => {
     cash: 'Espèces (نقداً)',
     transfer: 'Virement',
   };
+  const PRICE_SUBTYPE_LABELS: Record<string, { label: string; color: string }> = {
+    retail: { label: 'تجزئة (Détail)', color: 'bg-green-100 text-green-700 border-green-200' },
+    gros: { label: 'جملة (Gros)', color: 'bg-purple-100 text-purple-700 border-purple-200' },
+    super_gros: { label: 'سوبر جملة (Super Gros)', color: 'bg-indigo-100 text-indigo-700 border-indigo-200' },
+    invoice: { label: 'فاتورة (Invoice)', color: 'bg-blue-100 text-blue-700 border-blue-200' },
+  };
+
+  // Get price_subtype from first order item
+  const priceSubtype = orderItems?.[0]?.price_subtype as string | undefined;
 
   return (
     <div className="flex-1 overflow-auto">
@@ -530,6 +539,11 @@ const OrderDetailsContent: React.FC<{ order: GroupedOrder }> = ({ order }) => {
           <Badge variant="outline" className={`text-[10px] ${PAYMENT_TYPE_LABELS[order.paymentType]?.color || ''}`}>
             <Receipt className="h-2.5 w-2.5 ml-1" />
             {PAYMENT_TYPE_LABELS[order.paymentType]?.label || order.paymentType}
+          </Badge>
+        )}
+        {order.paymentType === 'without_invoice' && priceSubtype && (
+          <Badge variant="outline" className={`text-[10px] ${PRICE_SUBTYPE_LABELS[priceSubtype]?.color || ''}`}>
+            {PRICE_SUBTYPE_LABELS[priceSubtype]?.label || priceSubtype}
           </Badge>
         )}
         {order.invoicePaymentMethod && (
