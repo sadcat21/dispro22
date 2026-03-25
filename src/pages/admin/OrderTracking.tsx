@@ -518,15 +518,15 @@ const OrderDetailsContent: React.FC<{ order: GroupedOrder }> = ({ order }) => {
           </Badge>
         )}
         {order.paymentType && (
-          <Badge variant="outline" className="text-[10px]">
+          <Badge variant="outline" className={`text-[10px] ${PAYMENT_TYPE_LABELS[order.paymentType]?.color || ''}`}>
             <Receipt className="h-2.5 w-2.5 ml-1" />
-            {PAYMENT_LABELS[order.paymentType] || order.paymentType}
+            {PAYMENT_TYPE_LABELS[order.paymentType]?.label || order.paymentType}
           </Badge>
         )}
         {order.invoicePaymentMethod && (
           <Badge variant="outline" className="text-[10px]">
             <CreditCard className="h-2.5 w-2.5 ml-1" />
-            {PAYMENT_LABELS[order.invoicePaymentMethod] || order.invoicePaymentMethod}
+            {INVOICE_METHOD_LABELS[order.invoicePaymentMethod] || order.invoicePaymentMethod}
           </Badge>
         )}
       </div>
