@@ -868,14 +868,85 @@ const LoadStock: React.FC = () => {
     const sessionToComplete = activeSessionId || sessions.find(s => s.status === 'open')?.id;
     if (!sessionToComplete) { toast.error(t('load_stock.no_open_session')); return; }
     try {
+      // Get session items to apply stock changes
+      const { data: itemsToApply } = await sessionItemsQuery(sessionToComplete);
+      if (!itemsToApply || itemsToApply.length === 0) {
+        toast.error(t('stock.add_products'));
+        return;
+      }
+
+      // Apply stock changes for each item
+      for (const item of itemsToApply) {
+        const piecesPerBox = item.product?.pieces_per_box || 20;
+        const giftQty = item.gift_quantity || 0;
+        const giftUnit = item.gift_unit || 'piece';
+        const giftInCustom = giftUnit === 'piece' ? totalPiecesToCustom(giftQty, piecesPerBox) : giftQty;
+        const totalLoadQty = giftQty > 0 ? addCustomQty(item.quantity, giftInCustom, piecesPerBox) : item.quantity;
+
+        // Deduct from warehouse
+        const warehouseItem = warehouseStock.find(s => s.product_id === item.product_id);
+        if (!warehouseItem) {
+          throw new Error(`${t('load_stock.insufficient_stock')} - ${item.product?.name || ''}`);
+        }
+        const warehousePieces = customToTotalPieces(warehouseItem.quantity, piecesPerBox);
+        const loadPieces = customToTotalPieces(totalLoadQty, piecesPerBox);
+        if (warehousePieces < loadPieces) {
+          throw new Error(`${t('load_stock.insufficient_stock')} - ${item.product?.name || ''}`);
+        }
+        const newWarehouseQty = subtractCustomQty(warehouseItem.quantity, totalLoadQty, piecesPerBox);
+        await supabase.from('warehouse_stock').update({ quantity: newWarehouseQty }).eq('id', warehouseItem.id);
+        // Update local ref for next iteration
+        warehouseItem.quantity = newWarehouseQty;
+
+        // Add to worker stock
+        const { data: existingWS } = await supabase
+          .from('worker_stock')
+          .select('id, quantity')
+          .eq('worker_id', selectedWorker)
+          .eq('product_id', item.product_id)
+          .maybeSingle();
+
+        if (existingWS) {
+          const newWorkerQty = addCustomQty(existingWS.quantity, totalLoadQty, piecesPerBox);
+          await supabase.from('worker_stock').update({ quantity: newWorkerQty }).eq('id', existingWS.id);
+        } else {
+          await supabase.from('worker_stock').insert({
+            worker_id: selectedWorker,
+            product_id: item.product_id,
+            branch_id: branchId,
+            quantity: totalLoadQty,
+          });
+        }
+
+        // Stock movement record
+        await supabase.from('stock_movements').insert({
+          product_id: item.product_id,
+          branch_id: branchId,
+          quantity: totalLoadQty,
+          movement_type: 'load',
+          status: 'approved',
+          created_by: currentWorkerId,
+          worker_id: selectedWorker,
+          notes: `شحن من جلسة - ${item.product?.name || ''}`,
+        });
+      }
+
+      // Mark session as completed
       await completeSession.mutateAsync(sessionToComplete);
+
+      // Invalidate relevant queries
+      queryClient.invalidateQueries({ queryKey: ['worker-load-suggestions'] });
+      queryClient.invalidateQueries({ queryKey: ['my-worker-stock'] });
+      queryClient.invalidateQueries({ queryKey: ['worker-truck-stock'] });
+      await refresh();
+
       toast.success(t('load_stock.session_confirmed'));
       setActiveSessionId(null);
       setSessionItems([]);
     } catch (err: any) { toast.error(err.message); }
   };
 
-  // Delete entire session (reverse all stock)
+  // Delete entire session (no stock reversal needed since stock hasn't changed)
   const handleDeleteSession = async (sessionId: string) => {
     try {
       await deleteSession.mutateAsync(sessionId);
@@ -883,7 +954,6 @@ const LoadStock: React.FC = () => {
         setActiveSessionId(null);
         setSessionItems([]);
       }
-      await refresh();
       toast.success(t('load_stock.session_deleted'));
     } catch (err: any) { toast.error(err.message); }
   };

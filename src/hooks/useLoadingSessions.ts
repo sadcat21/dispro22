@@ -132,58 +132,7 @@ export const useLoadingSessions = (workerId: string | null) => {
 
   const deleteSession = useMutation({
     mutationFn: async (sessionId: string) => {
-      // First get session items to reverse stock
-      const { data: items } = await supabase
-        .from('loading_session_items')
-        .select('product_id, quantity, gift_quantity, gift_unit')
-        .eq('session_id', sessionId);
-
-      if (items && items.length > 0) {
-        // Reverse each item: return stock from worker to warehouse
-        for (const item of items) {
-          const totalQty = item.quantity + (item.gift_quantity || 0);
-          
-          // Reduce worker stock
-          const { data: workerStock } = await supabase
-            .from('worker_stock')
-            .select('id, quantity')
-            .eq('worker_id', workerId!)
-            .eq('product_id', item.product_id)
-            .single();
-          
-          if (workerStock) {
-            await supabase
-              .from('worker_stock')
-              .update({ quantity: Math.max(0, workerStock.quantity - totalQty) })
-              .eq('id', workerStock.id);
-          }
-
-          // Increase warehouse stock
-          const branchId = activeBranch?.id;
-          if (branchId) {
-            const { data: whStock } = await supabase
-              .from('warehouse_stock')
-              .select('id, quantity')
-              .eq('branch_id', branchId)
-              .eq('product_id', item.product_id)
-              .single();
-            
-            if (whStock) {
-              await supabase
-                .from('warehouse_stock')
-                .update({ quantity: whStock.quantity + totalQty })
-                .eq('id', whStock.id);
-            } else {
-              await supabase.from('warehouse_stock').insert({
-                branch_id: branchId,
-                product_id: item.product_id,
-                quantity: totalQty,
-              });
-            }
-          }
-        }
-      }
-
+      // No stock reversal needed — stock changes are only applied on confirmation
       // Delete session (items cascade)
       const { error } = await supabase
         .from('loading_sessions')
@@ -193,48 +142,12 @@ export const useLoadingSessions = (workerId: string | null) => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['loading-sessions'] });
-      queryClient.invalidateQueries({ queryKey: ['my-worker-stock'] });
-      queryClient.invalidateQueries({ queryKey: ['worker-truck-stock'] });
-      queryClient.invalidateQueries({ queryKey: ['worker-load-suggestions'] });
     },
   });
 
   const deleteSessionItem = useMutation({
     mutationFn: async (params: { itemId: string; productId: string; quantity: number; giftQuantity: number }) => {
-      const totalQty = params.quantity + params.giftQuantity;
-      
-      // Reverse stock for this item
-      const { data: workerStock } = await supabase
-        .from('worker_stock')
-        .select('id, quantity')
-        .eq('worker_id', workerId!)
-        .eq('product_id', params.productId)
-        .single();
-      
-      if (workerStock) {
-        await supabase
-          .from('worker_stock')
-          .update({ quantity: Math.max(0, workerStock.quantity - totalQty) })
-          .eq('id', workerStock.id);
-      }
-
-      const branchId = activeBranch?.id;
-      if (branchId) {
-        const { data: whStock } = await supabase
-          .from('warehouse_stock')
-          .select('id, quantity')
-          .eq('branch_id', branchId)
-          .eq('product_id', params.productId)
-          .single();
-        
-        if (whStock) {
-          await supabase
-            .from('warehouse_stock')
-            .update({ quantity: whStock.quantity + totalQty })
-            .eq('id', whStock.id);
-        }
-      }
-
+      // No stock reversal needed — stock changes are only applied on confirmation
       const { error } = await supabase
         .from('loading_session_items')
         .delete()
@@ -243,9 +156,6 @@ export const useLoadingSessions = (workerId: string | null) => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['loading-sessions'] });
-      queryClient.invalidateQueries({ queryKey: ['my-worker-stock'] });
-      queryClient.invalidateQueries({ queryKey: ['worker-truck-stock'] });
-      queryClient.invalidateQueries({ queryKey: ['worker-load-suggestions'] });
     },
   });
 
