@@ -69,7 +69,10 @@ const WorkerHome: React.FC = () => {
   const isAvailableOffersHidden = useIsElementHidden('button', 'home_available_offers');
   const isAvailableOffersPageHidden = useIsElementHidden('page', '/available-offers');
   const isWorkerActionsHidden = useIsElementHidden('page', '/worker-actions');
+  const isWorkerActionsButtonHidden = useIsElementHidden('button', 'home_worker_actions');
   const isWarehouseStockHidden = useIsElementHidden('page', '/warehouse');
+  const isWarehouseStockButtonHidden = useIsElementHidden('button', 'home_warehouse_stock');
+  const isTodayCustomersHidden = useIsElementHidden('button', 'home_today_customers');
   const isSupervisor = role === 'supervisor';
   const isWarehouseManager = activeRole?.custom_role_code === 'warehouse_manager';
 
@@ -358,7 +361,7 @@ const WorkerHome: React.FC = () => {
             quickActions.push({ key: 'direct-sale', icon: <ShoppingBag className="w-6 h-6" />, label: isWarehouseManager ? 'بيع مخزن - Vente Dépôt' : t('stock.direct_sale'), onClick: () => setShowActionDialog(true) });
           }
           // Warehouse stock for warehouse manager
-          if (isWarehouseManager && !isWarehouseStockHidden) {
+          if (isWarehouseManager && !isWarehouseStockHidden && !isWarehouseStockButtonHidden) {
             quickActions.push({ key: 'warehouse-stock', icon: <Package className="w-6 h-6" />, label: 'مخزون الفرع', onClick: () => navigate('/warehouse') });
           }
           if (hasDeliveryAccess && !isMyStockPageHidden && !isMyStockHidden) {
@@ -380,18 +383,20 @@ const WorkerHome: React.FC = () => {
           if (hasExpenseAccess && !isExpensesPageHidden && !isExpensesHidden) {
             quickActions.push({ key: 'expenses', icon: <Wallet className="w-6 h-6" />, label: t('expenses.my_expenses'), onClick: () => navigate('/expenses') });
           }
-          // Today's customers - always show
-          quickActions.push({ key: 'today-customers', icon: <MapPin className="w-6 h-6" />, label: todayCustomersLabel, onClick: () => setShowTodayCustomers(true) });
+          // Today's customers
+          if (!isTodayCustomersHidden) {
+            quickActions.push({ key: 'today-customers', icon: <MapPin className="w-6 h-6" />, label: todayCustomersLabel, onClick: () => setShowTodayCustomers(true) });
+          }
           // Rewards page
           if (!isRewardsHidden && !isRewardsPageHidden) {
             quickActions.push({ key: 'rewards', icon: <Trophy className="w-6 h-6" />, label: t('worker.rewards'), onClick: () => navigate('/my-rewards') });
           }
           // Worker Actions for supervisor or warehouse_manager
-          if ((isSupervisor || activeRole?.custom_role_code === 'warehouse_manager') && !isWorkerActionsHidden) {
+          if ((isSupervisor || activeRole?.custom_role_code === 'warehouse_manager') && !isWorkerActionsHidden && !isWorkerActionsButtonHidden) {
             quickActions.push({ key: 'worker-actions', icon: <HardHat className="w-6 h-6" />, label: t('worker.worker_actions'), onClick: () => navigate('/worker-actions') });
           }
           // Worker Actions for regular workers (self-view)
-          if (!isSupervisor && activeRole?.custom_role_code !== 'warehouse_manager' && !isWorkerActionsHidden) {
+          if (!isSupervisor && activeRole?.custom_role_code !== 'warehouse_manager' && !isWorkerActionsHidden && !isWorkerActionsButtonHidden) {
             quickActions.push({ key: 'worker-actions', icon: <HardHat className="w-6 h-6" />, label: t('worker.my_actions'), onClick: () => navigate('/worker-actions') });
           }
 
