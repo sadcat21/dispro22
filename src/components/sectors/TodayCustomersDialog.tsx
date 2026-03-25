@@ -397,22 +397,56 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
     refetchInterval: 10000,
   });
 
-  const sevenDaysAgo = useMemo(() => {
-    const d = new Date();
-    d.setDate(d.getDate() - 7);
-    d.setHours(0, 0, 0, 0);
-    return d.toISOString();
-  }, []);
-
-  const { data: recentNegativeVisits = [] } = useQuery({
-    queryKey: ['recent-negative-visits-dialog', effectiveWorkerId, sevenDaysAgo],
+  // Compute consecutive no-order visit streaks per customer
+  // Fetches all visits (type 'visit') and orders to calculate how many consecutive
+  // visits happened without an order being placed. Resets to 0 when an order is created.
+  const { data: noOrderStreakMap = new Map<string, number>() } = useQuery({
+    queryKey: ['no-order-streak-map', effectiveWorkerId, scopedBranchId],
     queryFn: async () => {
-      const { data } = await supabase
-        .from('visit_tracking')
-        .select('customer_id, notes, created_at')
-        .gte('created_at', sevenDaysAgo)
-        .or('notes.ilike.%مغلق%,notes.ilike.%غير متاح%,notes.ilike.%بدون طلبية%');
-      return data || [];
+      // Fetch recent visits (last 90 days to cover multiple weeks)
+      const ninetyDaysAgo = new Date();
+      ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+      ninetyDaysAgo.setHours(0, 0, 0, 0);
+      const since = ninetyDaysAgo.toISOString();
+
+      const [visitsRes, ordersRes] = await Promise.all([
+        supabase
+          .from('visit_tracking')
+          .select('customer_id, created_at')
+          .eq('operation_type', 'visit')
+          .gte('created_at', since)
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('orders')
+          .select('customer_id, created_at')
+          .gte('created_at', since)
+          .not('status', 'eq', 'cancelled')
+          .order('created_at', { ascending: false }),
+      ]);
+
+      const visits = visitsRes.data || [];
+      const orders = ordersRes.data || [];
+
+      // For each customer, find the latest order date, then count visits after that date
+      const latestOrderMap = new Map<string, string>();
+      orders.forEach(o => {
+        if (!o.customer_id) return;
+        if (!latestOrderMap.has(o.customer_id) || o.created_at > latestOrderMap.get(o.customer_id)!) {
+          latestOrderMap.set(o.customer_id, o.created_at);
+        }
+      });
+
+      const streakMap = new Map<string, number>();
+      visits.forEach(v => {
+        if (!v.customer_id) return;
+        const latestOrder = latestOrderMap.get(v.customer_id);
+        // Count this visit only if it's after the latest order (or no order exists)
+        if (!latestOrder || v.created_at > latestOrder) {
+          streakMap.set(v.customer_id, (streakMap.get(v.customer_id) || 0) + 1);
+        }
+      });
+
+      return streakMap;
     },
     enabled: !!effectiveWorkerId && open,
   });
@@ -1822,7 +1856,7 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
                       </Button>
                     </div>
                   )}
-                  <CustomerList customers={deliveryNotDone} emptyMessage="تم توصيل جميع العملاء ✓" onCustomerClick={handleDeliveryCustomerClick} onVisitWithoutOrder={handleDeliveryVisitWithoutDelivery} onClosed={handleDeliveryClosedVisit} onUnavailable={handleDeliveryUnavailableVisit} onDebtRefused={handleDeliveryDebtRefused} onPostpone={(c) => setPostponeCustomer(c)} onPrint={handleQuickPrintTempReceipt} showVisitButton visitButtonLabel="بدون تسليم" showActionButtons showPrintButton checkingLocationFor={checkingLocationFor} loadingFor={loadingDeliveryFor} searchQuery={searchQuery} sectors={sectors} allZones={allZones} workerPosition={workerPosition} sortByDistance={sortByDistance} postponedBadgeIds={rescheduledToTodayIds} postponeCountMap={postponeCountMap} />
+                  <CustomerList noOrderStreakMap={noOrderStreakMap} customers={deliveryNotDone} emptyMessage="تم توصيل جميع العملاء ✓" onCustomerClick={handleDeliveryCustomerClick} onVisitWithoutOrder={handleDeliveryVisitWithoutDelivery} onClosed={handleDeliveryClosedVisit} onUnavailable={handleDeliveryUnavailableVisit} onDebtRefused={handleDeliveryDebtRefused} onPostpone={(c) => setPostponeCustomer(c)} onPrint={handleQuickPrintTempReceipt} showVisitButton visitButtonLabel="بدون تسليم" showActionButtons showPrintButton checkingLocationFor={checkingLocationFor} loadingFor={loadingDeliveryFor} searchQuery={searchQuery} sectors={sectors} allZones={allZones} workerPosition={workerPosition} sortByDistance={sortByDistance} postponedBadgeIds={rescheduledToTodayIds} postponeCountMap={postponeCountMap} />
                 </TabsContent>
                 <TabsContent value="not-received" className="m-0 flex-1 min-h-0">
                   <Tabs defaultValue="visit-only" className="flex flex-col h-full min-h-0">
@@ -1844,13 +1878,13 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
                       </TabsTrigger>
                     </TabsList>
                     <TabsContent value="visit-only" className="m-0 flex-1 min-h-0" style={{ overflow: 'auto', maxHeight: '50vh' }}>
-                      <CustomerList customers={deliveryNotReceivedVisitOnly} emptyMessage="لا توجد زيارات بدون تسليم" onCustomerClick={handleDeliveryCustomerClick} showActionButtons onClosed={handleDeliveryClosedVisit} onUnavailable={handleDeliveryUnavailableVisit} onDebtRefused={handleDeliveryDebtRefused} onPrint={handleQuickPrintTempReceipt} showPrintButton checkingLocationFor={checkingLocationFor} loadingFor={loadingDeliveryFor} searchQuery={searchQuery} sectors={sectors} allZones={allZones} workerPosition={workerPosition} sortByDistance={sortByDistance} timeMap={visitTimeMap} distanceMap={customerDistanceMap} />
+                      <CustomerList noOrderStreakMap={noOrderStreakMap} customers={deliveryNotReceivedVisitOnly} emptyMessage="لا توجد زيارات بدون تسليم" onCustomerClick={handleDeliveryCustomerClick} showActionButtons onClosed={handleDeliveryClosedVisit} onUnavailable={handleDeliveryUnavailableVisit} onDebtRefused={handleDeliveryDebtRefused} onPrint={handleQuickPrintTempReceipt} showPrintButton checkingLocationFor={checkingLocationFor} loadingFor={loadingDeliveryFor} searchQuery={searchQuery} sectors={sectors} allZones={allZones} workerPosition={workerPosition} sortByDistance={sortByDistance} timeMap={visitTimeMap} distanceMap={customerDistanceMap} />
                     </TabsContent>
                     <TabsContent value="unavailable" className="m-0 flex-1 min-h-0" style={{ overflow: 'auto', maxHeight: '50vh' }}>
-                      <CustomerList customers={deliveryNotReceivedUnavailable} emptyMessage="لا يوجد عملاء غير متاحين" onCustomerClick={handleDeliveryCustomerClick} checkingLocationFor={checkingLocationFor} loadingFor={loadingDeliveryFor} searchQuery={searchQuery} sectors={sectors} allZones={allZones} workerPosition={workerPosition} sortByDistance={sortByDistance} timeMap={visitTimeMap} distanceMap={customerDistanceMap} />
+                      <CustomerList noOrderStreakMap={noOrderStreakMap} customers={deliveryNotReceivedUnavailable} emptyMessage="لا يوجد عملاء غير متاحين" onCustomerClick={handleDeliveryCustomerClick} checkingLocationFor={checkingLocationFor} loadingFor={loadingDeliveryFor} searchQuery={searchQuery} sectors={sectors} allZones={allZones} workerPosition={workerPosition} sortByDistance={sortByDistance} timeMap={visitTimeMap} distanceMap={customerDistanceMap} />
                     </TabsContent>
                     <TabsContent value="closed" className="m-0 flex-1 min-h-0" style={{ overflow: 'auto', maxHeight: '50vh' }}>
-                      <CustomerList customers={deliveryNotReceivedClosed} emptyMessage="لا يوجد عملاء مغلقين" onCustomerClick={handleDeliveryCustomerClick} checkingLocationFor={checkingLocationFor} loadingFor={loadingDeliveryFor} searchQuery={searchQuery} sectors={sectors} allZones={allZones} workerPosition={workerPosition} sortByDistance={sortByDistance} timeMap={visitTimeMap} distanceMap={customerDistanceMap} />
+                      <CustomerList noOrderStreakMap={noOrderStreakMap} customers={deliveryNotReceivedClosed} emptyMessage="لا يوجد عملاء مغلقين" onCustomerClick={handleDeliveryCustomerClick} checkingLocationFor={checkingLocationFor} loadingFor={loadingDeliveryFor} searchQuery={searchQuery} sectors={sectors} allZones={allZones} workerPosition={workerPosition} sortByDistance={sortByDistance} timeMap={visitTimeMap} distanceMap={customerDistanceMap} />
                     </TabsContent>
                   </Tabs>
                 </TabsContent>
@@ -1863,10 +1897,10 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
                       </Button>
                     </div>
                   )}
-                  <CustomerList customers={deliveryReceived} emptyMessage="لا توجد توصيلات بعد" onCustomerClick={handleShowDeliveredOrderDetails} showPrintButton onPrint={handlePrintDeliveredOrder} checkingLocationFor={checkingLocationFor} loadingFor={loadingDeliveryFor} searchQuery={searchQuery} sectors={sectors} allZones={allZones} workerPosition={workerPosition} sortByDistance={sortByDistance} deliveryTimeMap={customerDeliveryTimeMap} timeMap={customerDeliveryTimeMap} distanceMap={customerDistanceMap} />
+                  <CustomerList noOrderStreakMap={noOrderStreakMap} customers={deliveryReceived} emptyMessage="لا توجد توصيلات بعد" onCustomerClick={handleShowDeliveredOrderDetails} showPrintButton onPrint={handlePrintDeliveredOrder} checkingLocationFor={checkingLocationFor} loadingFor={loadingDeliveryFor} searchQuery={searchQuery} sectors={sectors} allZones={allZones} workerPosition={workerPosition} sortByDistance={sortByDistance} deliveryTimeMap={customerDeliveryTimeMap} timeMap={customerDeliveryTimeMap} distanceMap={customerDistanceMap} />
                 </TabsContent>
                 <TabsContent value="postponed" className="m-0 flex-1 min-h-0" style={{ overflow: 'auto', maxHeight: '55vh' }}>
-                  <CustomerList customers={deliveryPostponed} emptyMessage="لا توجد طلبيات مؤجلة" onCustomerClick={handleDeliveryCustomerClick} onVisitWithoutOrder={handleDeliveryVisitWithoutDelivery} onClosed={handleDeliveryClosedVisit} onUnavailable={handleDeliveryUnavailableVisit} onDebtRefused={handleDeliveryDebtRefused} onPostpone={(c) => setPostponeCustomer(c)} onPrint={handleQuickPrintTempReceipt} showVisitButton visitButtonLabel="بدون تسليم" showActionButtons showPrintButton checkingLocationFor={checkingLocationFor} loadingFor={loadingDeliveryFor} searchQuery={searchQuery} sectors={sectors} allZones={allZones} workerPosition={workerPosition} sortByDistance={sortByDistance} postponedBadgeIds={postponedCustomerIds} postponeCountMap={postponeCountMap} />
+                  <CustomerList noOrderStreakMap={noOrderStreakMap} customers={deliveryPostponed} emptyMessage="لا توجد طلبيات مؤجلة" onCustomerClick={handleDeliveryCustomerClick} onVisitWithoutOrder={handleDeliveryVisitWithoutDelivery} onClosed={handleDeliveryClosedVisit} onUnavailable={handleDeliveryUnavailableVisit} onDebtRefused={handleDeliveryDebtRefused} onPostpone={(c) => setPostponeCustomer(c)} onPrint={handleQuickPrintTempReceipt} showVisitButton visitButtonLabel="بدون تسليم" showActionButtons showPrintButton checkingLocationFor={checkingLocationFor} loadingFor={loadingDeliveryFor} searchQuery={searchQuery} sectors={sectors} allZones={allZones} workerPosition={workerPosition} sortByDistance={sortByDistance} postponedBadgeIds={postponedCustomerIds} postponeCountMap={postponeCountMap} />
                 </TabsContent>
               </Tabs>
             </TabsContent>
@@ -1901,7 +1935,7 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
                       </Button>
                     </div>
                   )}
-                  <CustomerList customers={salesNotVisited} emptyMessage="تمت زيارة جميع العملاء ✓" onCustomerClick={handleSalesCustomerClick} onVisitWithoutOrder={handleVisitWithoutOrder} onClosed={handleCustomerClosed} onUnavailable={handleCustomerUnavailable} showVisitButton showActionButtons checkingLocationFor={checkingLocationFor} searchQuery={searchQuery} sectors={sectors} allZones={allZones} workerPosition={workerPosition} sortByDistance={sortByDistance} />
+                  <CustomerList noOrderStreakMap={noOrderStreakMap} customers={salesNotVisited} emptyMessage="تمت زيارة جميع العملاء ✓" onCustomerClick={handleSalesCustomerClick} onVisitWithoutOrder={handleVisitWithoutOrder} onClosed={handleCustomerClosed} onUnavailable={handleCustomerUnavailable} showVisitButton showActionButtons checkingLocationFor={checkingLocationFor} searchQuery={searchQuery} sectors={sectors} allZones={allZones} workerPosition={workerPosition} sortByDistance={sortByDistance} />
                 </TabsContent>
                 <TabsContent value="visited-no-order" className="m-0 flex-1 min-h-0">
                   <Tabs defaultValue="visit-only" className="flex flex-col h-full min-h-0">
@@ -1923,18 +1957,18 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
                       </TabsTrigger>
                     </TabsList>
                     <TabsContent value="visit-only" className="m-0 flex-1 min-h-0" style={{ overflow: 'auto', maxHeight: '50vh' }}>
-                      <CustomerList customers={salesVisitedOnly} emptyMessage="لا توجد زيارات بدون طلبيات" onCustomerClick={handleSalesCustomerClick} checkingLocationFor={checkingLocationFor} searchQuery={searchQuery} sectors={sectors} allZones={allZones} workerPosition={workerPosition} sortByDistance={sortByDistance} timeMap={visitTimeMap} distanceMap={customerDistanceMap} />
+                      <CustomerList noOrderStreakMap={noOrderStreakMap} customers={salesVisitedOnly} emptyMessage="لا توجد زيارات بدون طلبيات" onCustomerClick={handleSalesCustomerClick} checkingLocationFor={checkingLocationFor} searchQuery={searchQuery} sectors={sectors} allZones={allZones} workerPosition={workerPosition} sortByDistance={sortByDistance} timeMap={visitTimeMap} distanceMap={customerDistanceMap} />
                     </TabsContent>
                     <TabsContent value="unavailable" className="m-0 flex-1 min-h-0" style={{ overflow: 'auto', maxHeight: '50vh' }}>
-                      <CustomerList customers={salesUnavailable} emptyMessage="لا يوجد عملاء غير متاحين" onCustomerClick={handleSalesCustomerClick} checkingLocationFor={checkingLocationFor} searchQuery={searchQuery} sectors={sectors} allZones={allZones} workerPosition={workerPosition} sortByDistance={sortByDistance} timeMap={visitTimeMap} distanceMap={customerDistanceMap} />
+                      <CustomerList noOrderStreakMap={noOrderStreakMap} customers={salesUnavailable} emptyMessage="لا يوجد عملاء غير متاحين" onCustomerClick={handleSalesCustomerClick} checkingLocationFor={checkingLocationFor} searchQuery={searchQuery} sectors={sectors} allZones={allZones} workerPosition={workerPosition} sortByDistance={sortByDistance} timeMap={visitTimeMap} distanceMap={customerDistanceMap} />
                     </TabsContent>
                     <TabsContent value="closed" className="m-0 flex-1 min-h-0" style={{ overflow: 'auto', maxHeight: '50vh' }}>
-                      <CustomerList customers={salesClosed} emptyMessage="لا يوجد عملاء مغلقين" onCustomerClick={handleSalesCustomerClick} checkingLocationFor={checkingLocationFor} searchQuery={searchQuery} sectors={sectors} allZones={allZones} workerPosition={workerPosition} sortByDistance={sortByDistance} timeMap={visitTimeMap} distanceMap={customerDistanceMap} />
+                      <CustomerList noOrderStreakMap={noOrderStreakMap} customers={salesClosed} emptyMessage="لا يوجد عملاء مغلقين" onCustomerClick={handleSalesCustomerClick} checkingLocationFor={checkingLocationFor} searchQuery={searchQuery} sectors={sectors} allZones={allZones} workerPosition={workerPosition} sortByDistance={sortByDistance} timeMap={visitTimeMap} distanceMap={customerDistanceMap} />
                     </TabsContent>
                   </Tabs>
                 </TabsContent>
                 <TabsContent value="with-orders" className="m-0 flex-1 min-h-0" style={{ overflow: 'auto', maxHeight: '55vh' }}>
-                  <CustomerList customers={salesWithOrders} emptyMessage="لا توجد طلبيات بعد" onCustomerClick={handleShowOrderDetails} checkingLocationFor={checkingLocationFor} searchQuery={searchQuery} sectors={sectors} allZones={allZones} workerPosition={workerPosition} sortByDistance={sortByDistance} timeMap={orderTimeMap} distanceMap={customerDistanceMap} />
+                  <CustomerList noOrderStreakMap={noOrderStreakMap} customers={salesWithOrders} emptyMessage="لا توجد طلبيات بعد" onCustomerClick={handleShowOrderDetails} checkingLocationFor={checkingLocationFor} searchQuery={searchQuery} sectors={sectors} allZones={allZones} workerPosition={workerPosition} sortByDistance={sortByDistance} timeMap={orderTimeMap} distanceMap={customerDistanceMap} />
                 </TabsContent>
               </Tabs>
             </TabsContent>
@@ -1961,7 +1995,7 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
                 </TabsList>
 
                 <TabsContent value="pending" className="m-0 flex-1 min-h-0" style={{ overflow: 'auto', maxHeight: '55vh' }}>
-                  <CustomerList customers={directSalePending} emptyMessage="لا توجد محلات متاحة للبيع المباشر" onCustomerClick={handleDirectSaleClick} onClosed={handleDirectSaleClosed} onUnavailable={handleDirectSaleUnavailable} onDebtRefused={handleDirectSaleDebtRefused} onNoSale={handleDirectSaleNoSale} showActionButtons showNoSaleButton checkingLocationFor={checkingLocationFor} searchQuery={searchQuery} sectors={sectors} allZones={allZones} workerPosition={workerPosition} sortByDistance={sortByDistance} salesRepStatusMap={salesRepStatusMap} />
+                  <CustomerList noOrderStreakMap={noOrderStreakMap} customers={directSalePending} emptyMessage="لا توجد محلات متاحة للبيع المباشر" onCustomerClick={handleDirectSaleClick} onClosed={handleDirectSaleClosed} onUnavailable={handleDirectSaleUnavailable} onDebtRefused={handleDirectSaleDebtRefused} onNoSale={handleDirectSaleNoSale} showActionButtons showNoSaleButton checkingLocationFor={checkingLocationFor} searchQuery={searchQuery} sectors={sectors} allZones={allZones} workerPosition={workerPosition} sortByDistance={sortByDistance} salesRepStatusMap={salesRepStatusMap} />
                 </TabsContent>
                 <TabsContent value="sold" className="m-0 flex-1 min-h-0" style={{ overflow: 'auto', maxHeight: '55vh' }}>
                   {isAdmin && effectiveWorkerId && (
@@ -1972,7 +2006,7 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
                       </Button>
                     </div>
                   )}
-                  <CustomerList customers={directSaleSold} emptyMessage="لا توجد مبيعات بعد" onCustomerClick={handleShowDirectSaleDetails} showPrintButton onPrint={handlePrintDirectSale} checkingLocationFor={checkingLocationFor} searchQuery={searchQuery} sectors={sectors} allZones={allZones} workerPosition={workerPosition} sortByDistance={sortByDistance} timeMap={directSaleTimeMap} distanceMap={customerDistanceMap} />
+                  <CustomerList noOrderStreakMap={noOrderStreakMap} customers={directSaleSold} emptyMessage="لا توجد مبيعات بعد" onCustomerClick={handleShowDirectSaleDetails} showPrintButton onPrint={handlePrintDirectSale} checkingLocationFor={checkingLocationFor} searchQuery={searchQuery} sectors={sectors} allZones={allZones} workerPosition={workerPosition} sortByDistance={sortByDistance} timeMap={directSaleTimeMap} distanceMap={customerDistanceMap} />
                 </TabsContent>
                 <TabsContent value="no-sale" className="m-0 flex-1 min-h-0">
                   <Tabs defaultValue="visit-only" className="flex flex-col h-full min-h-0">
@@ -1994,13 +2028,13 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
                       </TabsTrigger>
                     </TabsList>
                     <TabsContent value="visit-only" className="m-0 flex-1 min-h-0" style={{ overflow: 'auto', maxHeight: '50vh' }}>
-                      <CustomerList customers={directSaleNoSaleVisitOnly} emptyMessage="لا توجد زيارات بدون بيع" onCustomerClick={handleDirectSaleClick} checkingLocationFor={checkingLocationFor} searchQuery={searchQuery} sectors={sectors} allZones={allZones} workerPosition={workerPosition} sortByDistance={sortByDistance} timeMap={visitTimeMap} distanceMap={customerDistanceMap} />
+                      <CustomerList noOrderStreakMap={noOrderStreakMap} customers={directSaleNoSaleVisitOnly} emptyMessage="لا توجد زيارات بدون بيع" onCustomerClick={handleDirectSaleClick} checkingLocationFor={checkingLocationFor} searchQuery={searchQuery} sectors={sectors} allZones={allZones} workerPosition={workerPosition} sortByDistance={sortByDistance} timeMap={visitTimeMap} distanceMap={customerDistanceMap} />
                     </TabsContent>
                     <TabsContent value="unavailable" className="m-0 flex-1 min-h-0" style={{ overflow: 'auto', maxHeight: '50vh' }}>
-                      <CustomerList customers={directSaleNoSaleUnavailable} emptyMessage="لا يوجد عملاء غير متاحين" onCustomerClick={handleDirectSaleClick} checkingLocationFor={checkingLocationFor} searchQuery={searchQuery} sectors={sectors} allZones={allZones} workerPosition={workerPosition} sortByDistance={sortByDistance} timeMap={visitTimeMap} distanceMap={customerDistanceMap} />
+                      <CustomerList noOrderStreakMap={noOrderStreakMap} customers={directSaleNoSaleUnavailable} emptyMessage="لا يوجد عملاء غير متاحين" onCustomerClick={handleDirectSaleClick} checkingLocationFor={checkingLocationFor} searchQuery={searchQuery} sectors={sectors} allZones={allZones} workerPosition={workerPosition} sortByDistance={sortByDistance} timeMap={visitTimeMap} distanceMap={customerDistanceMap} />
                     </TabsContent>
                     <TabsContent value="closed" className="m-0 flex-1 min-h-0" style={{ overflow: 'auto', maxHeight: '50vh' }}>
-                      <CustomerList customers={directSaleNoSaleClosed} emptyMessage="لا يوجد عملاء مغلقين" onCustomerClick={handleDirectSaleClick} checkingLocationFor={checkingLocationFor} searchQuery={searchQuery} sectors={sectors} allZones={allZones} workerPosition={workerPosition} sortByDistance={sortByDistance} timeMap={visitTimeMap} distanceMap={customerDistanceMap} />
+                      <CustomerList noOrderStreakMap={noOrderStreakMap} customers={directSaleNoSaleClosed} emptyMessage="لا يوجد عملاء مغلقين" onCustomerClick={handleDirectSaleClick} checkingLocationFor={checkingLocationFor} searchQuery={searchQuery} sectors={sectors} allZones={allZones} workerPosition={workerPosition} sortByDistance={sortByDistance} timeMap={visitTimeMap} distanceMap={customerDistanceMap} />
                     </TabsContent>
                   </Tabs>
                 </TabsContent>
@@ -2422,7 +2456,8 @@ const CustomerList: React.FC<{
   sortByDistance?: boolean;
   postponedBadgeIds?: Set<string>;
   postponeCountMap?: Map<string, number>;
-}> = ({ customers, emptyMessage, onCustomerClick, onVisitWithoutOrder, onClosed, onUnavailable, onDebtRefused, onNoSale, onPrint, onPostpone, showVisitButton, visitButtonLabel, showActionButtons, showPrintButton, showNoSaleButton, checkingLocationFor, loadingFor, searchQuery, sectors, allZones, salesRepStatusMap, deliveryTimeMap, timeMap, distanceMap, workerPosition, sortByDistance, postponedBadgeIds, postponeCountMap }) => {
+  noOrderStreakMap?: Map<string, number>;
+}> = ({ customers, emptyMessage, onCustomerClick, onVisitWithoutOrder, onClosed, onUnavailable, onDebtRefused, onNoSale, onPrint, onPostpone, showVisitButton, visitButtonLabel, showActionButtons, showPrintButton, showNoSaleButton, checkingLocationFor, loadingFor, searchQuery, sectors, allZones, salesRepStatusMap, deliveryTimeMap, timeMap, distanceMap, workerPosition, sortByDistance, postponedBadgeIds, postponeCountMap, noOrderStreakMap }) => {
   const { language } = useLanguage();
 
   // Compute live distance from worker to each customer
@@ -2526,6 +2561,11 @@ const CustomerList: React.FC<{
                 <Badge className="text-[9px] px-1.5 py-0 h-4 bg-purple-600 text-white border-0 font-medium gap-0.5">
                   <CalendarClock className="w-3 h-3" />
                   {postponeCountMap?.get(c.id) || 1}
+                </Badge>
+               )}
+             {noOrderStreakMap && (noOrderStreakMap.get(c.id) || 0) >= 2 && (
+                <Badge className="text-[9px] px-1.5 py-0 h-4 bg-red-100 text-red-700 border-0 font-bold gap-0.5">
+                  🔄 {noOrderStreakMap.get(c.id)} بدون طلبية
                 </Badge>
               )}
              {salesRepStatusMap && salesRepStatusMap.has(c.id) && (() => {
