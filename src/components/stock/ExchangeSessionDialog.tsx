@@ -68,7 +68,7 @@ const ExchangeSessionDialog: React.FC<ExchangeSessionDialogProps> = ({
     const fetch = async () => {
       const { data } = await supabase
         .from('products')
-        .select('id, name, pieces_per_box')
+        .select('id, name, pieces_per_box, image_url')
         .eq('is_active', true)
         .order('name');
       setProducts(data || []);
@@ -82,7 +82,7 @@ const ExchangeSessionDialog: React.FC<ExchangeSessionDialogProps> = ({
     return products.filter(p => p.name.toLowerCase().includes(term));
   }, [products, searchTerm]);
 
-  const addProduct = (product: { id: string; name: string; pieces_per_box: number }) => {
+  const addProduct = (product: { id: string; name: string; pieces_per_box: number; image_url?: string | null }) => {
     if (items.find(i => i.product_id === product.id)) {
       toast.error('المنتج مضاف مسبقاً');
       return;
