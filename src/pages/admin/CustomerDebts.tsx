@@ -230,6 +230,7 @@ const CustomerDebts: React.FC = () => {
             onOpenChange={(open) => !open && setSelectedCustomer(null)}
             debts={selectedCustomer.debts}
             customerName={selectedCustomer.name}
+            customerId={selectedCustomer.id}
           />
         )}
       </div>

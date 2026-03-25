@@ -6,6 +6,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Loader2, Banknote, Calendar, Eye, Phone, MapPin } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useDebtPayments } from '@/hooks/useDebtPayments';
+import { useCustomerDebts } from '@/hooks/useCustomerDebts';
 import { CustomerDebtWithDetails } from '@/types/accounting';
 import { format } from 'date-fns';
 import CollectDebtDialog from './CollectDebtDialog';
@@ -18,10 +19,11 @@ interface DebtDetailsDialogProps {
   onOpenChange: (open: boolean) => void;
   debts: CustomerDebtWithDetails[];
   customerName: string;
+  customerId?: string;
 }
 
 const DebtDetailsDialog: React.FC<DebtDetailsDialogProps> = ({
-  open, onOpenChange, debts, customerName,
+  open, onOpenChange, debts: propDebts, customerName, customerId,
 }) => {
   const { t, dir } = useLanguage();
   const [selectedDebtId, setSelectedDebtId] = useState<string | null>(null);
@@ -31,6 +33,12 @@ const DebtDetailsDialog: React.FC<DebtDetailsDialogProps> = ({
   const [visitDebt, setVisitDebt] = useState<CustomerDebtWithDetails | null>(null);
   const { data: payments, isLoading: paymentsLoading } = useDebtPayments(selectedDebtId);
   const isCollectDebtHidden = useIsElementHidden('action', 'collect_debt');
+
+  // Fetch live debts when customerId is provided; fall back to props
+  const { data: liveDebts } = useCustomerDebts(
+    customerId ? { customerId, status: 'all' } : undefined
+  );
+  const debts = (customerId && liveDebts?.length) ? liveDebts.filter(d => d.status !== 'paid' || propDebts.some(pd => pd.id === d.id)) : propDebts;
 
   const totalRemaining = debts.reduce((sum, d) => sum + Number(d.remaining_amount), 0);
 
@@ -51,6 +59,16 @@ const DebtDetailsDialog: React.FC<DebtDetailsDialogProps> = ({
   const handleVisitNoPayment = (debt: CustomerDebtWithDetails) => {
     setVisitDebt(debt);
     setShowVisit(true);
+  };
+
+  // When collect dialog closes, refresh the collectDebt reference from live data
+  const handleCollectDialogChange = (open: boolean) => {
+    setShowCollect(open);
+    if (!open && collectDebt) {
+      // Update collectDebt ref from latest debts data
+      const updated = debts.find(d => d.id === collectDebt.id);
+      if (updated) setCollectDebt(updated);
+    }
   };
 
   return (
@@ -115,7 +133,6 @@ const DebtDetailsDialog: React.FC<DebtDetailsDialogProps> = ({
 
                   {selectedDebtId === debt.id && (
                     <div className="bg-muted/20 rounded-lg border border-border/50 overflow-hidden">
-                      {/* Header */}
                       <div className="bg-muted/50 px-3 py-1.5 border-b border-border/50">
                         <span className="text-[11px] font-medium text-muted-foreground">سجل المدفوعات</span>
                       </div>
@@ -251,7 +268,7 @@ const DebtDetailsDialog: React.FC<DebtDetailsDialogProps> = ({
       {collectDebt && (
         <CollectDebtDialog
           open={showCollect}
-          onOpenChange={setShowCollect}
+          onOpenChange={handleCollectDialogChange}
           debtId={collectDebt.id}
           totalDebtAmount={Number(collectDebt.total_amount)}
           paidAmountBefore={Number(collectDebt.paid_amount)}
