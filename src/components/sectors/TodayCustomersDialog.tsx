@@ -2090,6 +2090,21 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
         <OrderDetailsDialog
           order={orderDetailsDialog}
           onClose={() => setOrderDetailsDialog(null)}
+          onCancelOrder={async (orderId: string) => {
+            try {
+              const { error } = await supabase
+                .from('orders')
+                .update({ status: 'cancelled' })
+                .eq('id', orderId);
+              if (error) throw error;
+              toast.success('تم إلغاء الطلبية بنجاح');
+              queryClient.invalidateQueries({ queryKey: ['today-orders-dialog'] });
+              queryClient.invalidateQueries({ queryKey: ['today-cust-assigned-orders-full'] });
+              setOrderDetailsDialog(null);
+            } catch {
+              toast.error('فشل في إلغاء الطلبية');
+            }
+          }}
         />
       )}
 
