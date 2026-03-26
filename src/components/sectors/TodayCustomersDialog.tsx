@@ -274,7 +274,7 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
     enabled: !!effectiveWorkerId && open,
   });
 
-  const { data: customers = [] } = useQuery({
+  const { data: sectorCustomers = [] } = useQuery({
     queryKey: ['today-cust-customers', scopedBranchId],
     queryFn: async () => {
       let query = supabase.from('customers').select('id, name, phone, wilaya, sector_id, zone_id, store_name, latitude, longitude, customer_type').not('sector_id', 'is', null);
@@ -611,6 +611,41 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
     enabled: !!effectiveWorkerId && open,
   });
 
+  // Fetch distinct worker IDs that have assigned orders today (for admin worker picker)
+  const { data: workerIdsWithOrdersToday = [] } = useQuery({
+    queryKey: ['today-cust-workers-with-orders', todayDateStr, scopedBranchId],
+    queryFn: async () => {
+      let query = supabase
+        .from('orders')
+        .select('assigned_worker_id')
+        .in('status', ['pending', 'assigned', 'in_progress', 'confirmed', 'processing', 'in_transit', 'ready'])
+        .not('assigned_worker_id', 'is', null);
+      if (scopedBranchId) query = query.eq('branch_id', scopedBranchId);
+      const { data } = await query;
+      const ids = new Set<string>();
+      (data || []).forEach((o: any) => { if (o.assigned_worker_id) ids.add(o.assigned_worker_id); });
+      return Array.from(ids);
+    },
+    enabled: isAdmin && open && !targetWorkerId,
+  });
+
+  // Merge sector customers with customers from assigned orders (who may lack a sector)
+  const customers = useMemo(() => {
+    const customerMap = new Map<string, any>();
+    sectorCustomers.forEach(c => customerMap.set(c.id, c));
+    assignedOrders.forEach(o => {
+      if (o.customer && o.customer_id && !customerMap.has(o.customer_id)) {
+        const c = o.customer as any;
+        customerMap.set(o.customer_id, {
+          id: c.id, name: c.name, phone: c.phone, wilaya: c.wilaya,
+          sector_id: c.sector_id, zone_id: c.zone_id, store_name: c.store_name,
+          latitude: c.latitude, longitude: c.longitude, customer_type: c.customer_type,
+        });
+      }
+    });
+    return Array.from(customerMap.values());
+  }, [sectorCustomers, assignedOrders]);
+
   // Computed data - use sector_schedules for determining today's sectors
   const todaySalesSectorIds = useMemo(() => {
     const ids = new Set<string>();
@@ -722,7 +757,7 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
     return ids;
   }, [sectorSchedules, sectors, selectedDay, effectiveWorkerId, isAdmin, hasSpecificWorker, activeCoveragesForSelectedDay]);
 
-  const availableWorkerIdsForSelectedDay = useMemo(() => {
+   const availableWorkerIdsForSelectedDay = useMemo(() => {
     const workerAssignments = new Map<string, Set<string>>();
 
     const addAssignment = (workerId: string | null, key: string) => {
@@ -766,12 +801,19 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
       addAssignment(coverage.substitute_worker_id, key);
     });
 
+    // Include workers who have assigned orders today (even without sectors)
+    if (selectedDay === todayName) {
+      workerIdsWithOrdersToday.forEach(wId => {
+        addAssignment(wId, 'orders:assigned');
+      });
+    }
+
     return new Set(
       Array.from(workerAssignments.entries())
         .filter(([, assignments]) => assignments.size > 0)
         .map(([workerId]) => workerId)
     );
-  }, [sectorSchedules, sectors, selectedDay, activeCoveragesForSelectedDay]);
+  }, [sectorSchedules, sectors, selectedDay, activeCoveragesForSelectedDay, workerIdsWithOrdersToday, todayName]);
 
   // IMPORTANT: filter from all sectors using the computed IDs (which already include coverage substitutions)
   // so covered sectors appear immediately in direct-sale/delivery lists for substitute workers.
