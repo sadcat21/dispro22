@@ -7,7 +7,11 @@ import { TrendingUp, Loader2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 
-const WorkerSalesSummaryCard: React.FC = () => {
+interface WorkerSalesSummaryCardProps {
+  onOpenSalesSummary?: () => void;
+}
+
+const WorkerSalesSummaryCard: React.FC<WorkerSalesSummaryCardProps> = ({ onOpenSalesSummary }) => {
   const { workerId } = useAuth();
   const { t } = useLanguage();
 
