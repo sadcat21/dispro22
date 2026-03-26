@@ -697,7 +697,7 @@ const WorkerOrdersSummaryDialog: React.FC<Props> = ({ open, onOpenChange, worker
             </Button>
           </div>
         </div>
-        <ScrollArea className="flex-1 min-h-0">
+        <ScrollArea className="flex-1 min-h-0" style={{ maxHeight: 'calc(80dvh - 160px)' }}>
           <div className="space-y-1 pe-2">
             {uniqueCustomers.map((customer) => (
               <div
