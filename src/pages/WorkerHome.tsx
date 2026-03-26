@@ -299,6 +299,9 @@ const WorkerHome: React.FC = () => {
         </div>
       </div>
 
+      {/* Worker Sales Summary */}
+      <WorkerSalesSummaryCard />
+
       {/* Today's Customers Notification for Supervisors */}
       {isSupervisor && (
         <div className="px-4 mt-3">
