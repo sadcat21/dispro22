@@ -927,13 +927,14 @@ const WorkerOrdersSummaryDialog: React.FC<Props> = ({ open, onOpenChange, worker
           </div>
         </div>
         <div className="grid grid-cols-2 gap-2 pt-2 shrink-0">
-          <Button size="sm" onClick={() => setShowCashVanDialog(false)}>
-            تأكيد
+          <Button size="sm" onClick={async () => { await saveCashVan(); setShowCashVanDialog(false); }} disabled={cashVanSaving} className="gap-1.5">
+            <Save className="w-3.5 h-3.5" />
+            {cashVanSaving ? 'جاري الحفظ...' : 'حفظ'}
           </Button>
           <Button
             size="sm"
             variant="outline"
-            onClick={() => { setCashVanProducts({}); setShowCashVanDialog(false); }}
+            onClick={() => { setCashVanProducts({}); }}
           >
             مسح الكل
           </Button>
