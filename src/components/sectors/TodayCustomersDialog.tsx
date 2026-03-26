@@ -509,14 +509,43 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
       }
       const { data: rData } = await rQuery;
 
+      // Exclude cancelled direct sales so a cancelled sale returns to direct-sale customers
+      const orderIds = [...new Set([
+        ...(vtResults.map(v => v.order_id)),
+        ...((rData || []).map((r: any) => r.order_id)),
+      ].filter(Boolean))] as string[];
+
+      const cancelledOrderIds = new Set<string>();
+      if (orderIds.length > 0) {
+        const { data: orderStatuses } = await supabase
+          .from('orders')
+          .select('id, status')
+          .in('id', orderIds);
+
+        (orderStatuses || []).forEach((o: any) => {
+          if (o.status === 'cancelled') cancelledOrderIds.add(o.id);
+        });
+      }
+
+      const isActiveSale = (orderId?: string | null) => !orderId || !cancelledOrderIds.has(orderId);
+
       // Merge: prefer receipts data, then visit tracking for any missing customers
       const seen = new Set<string>();
       const merged: typeof vtResults = [];
       (rData || []).forEach(r => {
-        if (r.customer_id) { seen.add(r.customer_id); merged.push(r as any); }
+        if (!r.customer_id) return;
+        const receiptOrderId = (r as any).order_id;
+        if (!receiptOrderId || !isActiveSale(receiptOrderId)) return;
+        seen.add(r.customer_id);
+        merged.push(r as any);
       });
       vtResults.forEach(v => {
-        if (v.customer_id && !seen.has(v.customer_id)) { seen.add(v.customer_id); merged.push(v); }
+        if (!v.customer_id) return;
+        if (!isActiveSale(v.order_id)) return;
+        if (!seen.has(v.customer_id)) {
+          seen.add(v.customer_id);
+          merged.push(v);
+        }
       });
       return merged;
     },
@@ -2174,6 +2203,23 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
               await supabase.from('customer_debts').delete().eq('order_id', orderId);
               const { error } = await supabase.from('orders').update({ status: 'cancelled' }).eq('id', orderId);
               if (error) throw error;
+
+              const cancelledCustomerId = saleOrder?.customer?.id || saleOrder?.customer_id || null;
+              if (cancelledCustomerId) {
+                let vtUpdate = supabase
+                  .from('visit_tracking')
+                  .update({ operation_type: 'visit', notes: 'تم إلغاء البيع المباشر' })
+                  .eq('operation_type', 'direct_sale')
+                  .eq('customer_id', cancelledCustomerId)
+                  .gte('created_at', todayStart);
+
+                if (wId || effectiveWorkerId) {
+                  vtUpdate = vtUpdate.eq('worker_id', wId || effectiveWorkerId);
+                }
+
+                await vtUpdate;
+              }
+
               toast.success('تم إلغاء البيع المباشر وإرجاع المخزون بنجاح');
               queryClient.invalidateQueries({ queryKey: ['today-orders-dialog'] });
               queryClient.invalidateQueries({ queryKey: ['today-cust-assigned-orders-full'] });
