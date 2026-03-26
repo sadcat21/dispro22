@@ -2206,13 +2206,18 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
 
               const cancelledCustomerId = saleOrder?.customer?.id || saleOrder?.customer_id || null;
               if (cancelledCustomerId) {
-                await supabase
+                let vtUpdate = supabase
                   .from('visit_tracking')
                   .update({ operation_type: 'visit', notes: 'تم إلغاء البيع المباشر' })
                   .eq('operation_type', 'direct_sale')
                   .eq('customer_id', cancelledCustomerId)
-                  .gte('created_at', todayStart)
-                  .eq('worker_id', wId || effectiveWorkerId || '');
+                  .gte('created_at', todayStart);
+
+                if (wId || effectiveWorkerId) {
+                  vtUpdate = vtUpdate.eq('worker_id', wId || effectiveWorkerId);
+                }
+
+                await vtUpdate;
               }
 
               toast.success('تم إلغاء البيع المباشر وإرجاع المخزون بنجاح');
