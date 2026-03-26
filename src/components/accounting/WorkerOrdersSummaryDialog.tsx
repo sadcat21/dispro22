@@ -568,7 +568,7 @@ const WorkerOrdersSummaryDialog: React.FC<Props> = ({ open, onOpenChange, worker
 
     {/* Print Settings Dialog */}
     <Dialog open={showPrintSettings} onOpenChange={setShowPrintSettings}>
-      <DialogContent className="max-w-[95vw] sm:max-w-sm p-4" dir="rtl">
+      <DialogContent className="max-w-[95vw] sm:max-w-sm p-4 max-h-[85dvh] overflow-y-auto" dir="rtl">
         <DialogHeader className="pb-2">
           <DialogTitle className="flex items-center gap-2 text-base">
             <Printer className="w-4 h-4" />
@@ -578,9 +578,22 @@ const WorkerOrdersSummaryDialog: React.FC<Props> = ({ open, onOpenChange, worker
         <div className="space-y-3">
           {/* Summary */}
           <div className="bg-primary/10 p-3 rounded-lg text-center">
-            <p className="text-base font-bold">{currentData.reduce((s, p) => s + p.customerCount, 0)} عميل • {totalQuantity} صندوق</p>
+            <p className="text-base font-bold">{selectedCustomerIds.size} عميل • {totalQuantity} صندوق</p>
             <p className="text-xs text-muted-foreground">{activeTab === 'created' ? 'طلبياته' : 'معيّنة'} - {format(new Date(selectedDate), 'dd/MM/yyyy')}</p>
           </div>
+
+          {/* Customer Selection */}
+          <Button
+            variant="outline"
+            className="w-full gap-2"
+            onClick={() => setShowCustomerPicker(true)}
+          >
+            <Users className="w-4 h-4" />
+            تحديد العملاء ({selectedCustomerIds.size}/{uniqueCustomers.length})
+            {selectedCustomerIds.size < uniqueCustomers.length && (
+              <Badge variant="secondary" className="text-[10px] px-1.5 h-5">محدد</Badge>
+            )}
+          </Button>
 
           {/* Grouping Options */}
           <div className="bg-muted/50 p-3 rounded-lg space-y-2.5">
@@ -616,6 +629,21 @@ const WorkerOrdersSummaryDialog: React.FC<Props> = ({ open, onOpenChange, worker
             </div>
           </div>
 
+          {/* Cash Van Button */}
+          <Button
+            variant="outline"
+            className="w-full gap-2"
+            onClick={() => setShowCashVanDialog(true)}
+          >
+            <Truck className="w-4 h-4" />
+            CASH VAN - منتجات احتياطية
+            {Object.values(cashVanProducts).some(q => q > 0) && (
+              <Badge variant="secondary" className="text-[10px] px-1.5 h-5 bg-amber-100 text-amber-800">
+                {Object.values(cashVanProducts).filter(q => q > 0).length} منتج
+              </Badge>
+            )}
+          </Button>
+
           {/* Column Config Button */}
           <Button variant="outline" className="w-full gap-2" onClick={() => setShowColumnsConfig(true)}>
             <Settings2 className="w-4 h-4" />
@@ -624,7 +652,7 @@ const WorkerOrdersSummaryDialog: React.FC<Props> = ({ open, onOpenChange, worker
 
           {/* Action Buttons */}
           <div className="grid grid-cols-2 gap-2">
-            <Button onClick={handlePrint} disabled={currentData.length === 0} className="gap-2">
+            <Button onClick={handlePrint} disabled={selectedCustomerIds.size === 0} className="gap-2">
               <Printer className="w-4 h-4" />
               طباعة
             </Button>
@@ -632,6 +660,194 @@ const WorkerOrdersSummaryDialog: React.FC<Props> = ({ open, onOpenChange, worker
               إلغاء
             </Button>
           </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+
+    {/* Customer Picker Dialog */}
+    <Dialog open={showCustomerPicker} onOpenChange={setShowCustomerPicker}>
+      <DialogContent className="max-w-[95vw] sm:max-w-sm p-4 max-h-[80dvh] flex flex-col" dir="rtl">
+        <DialogHeader className="pb-2 shrink-0">
+          <DialogTitle className="flex items-center gap-2 text-base">
+            <Users className="w-4 h-4" />
+            تحديد العملاء للطباعة
+          </DialogTitle>
+        </DialogHeader>
+        <div className="flex items-center justify-between gap-2 pb-2 shrink-0">
+          <span className="text-xs text-muted-foreground">
+            {selectedCustomerIds.size}/{uniqueCustomers.length} عميل محدد
+          </span>
+          <div className="flex gap-1.5">
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 text-[11px] gap-1"
+              onClick={() => setSelectedCustomerIds(new Set(uniqueCustomers.map(c => c.id)))}
+            >
+              <Check className="w-3 h-3" />
+              تحديد الكل
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 text-[11px]"
+              onClick={() => setSelectedCustomerIds(new Set())}
+            >
+              إلغاء الكل
+            </Button>
+          </div>
+        </div>
+        <ScrollArea className="flex-1 min-h-0">
+          <div className="space-y-1 pe-2">
+            {uniqueCustomers.map((customer) => (
+              <div
+                key={customer.id}
+                className="flex items-center gap-2 p-2 rounded-lg hover:bg-muted/60 cursor-pointer"
+                onClick={() => {
+                  setSelectedCustomerIds(prev => {
+                    const next = new Set(prev);
+                    if (next.has(customer.id)) next.delete(customer.id);
+                    else next.add(customer.id);
+                    return next;
+                  });
+                }}
+              >
+                <Checkbox
+                  checked={selectedCustomerIds.has(customer.id)}
+                  onCheckedChange={() => {
+                    setSelectedCustomerIds(prev => {
+                      const next = new Set(prev);
+                      if (next.has(customer.id)) next.delete(customer.id);
+                      else next.add(customer.id);
+                      return next;
+                    });
+                  }}
+                />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{customer.storeName || customer.name}</p>
+                  {customer.storeName && (
+                    <p className="text-[11px] text-muted-foreground truncate">{customer.name}</p>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </ScrollArea>
+        <div className="pt-2 shrink-0">
+          <Button className="w-full" size="sm" onClick={() => setShowCustomerPicker(false)}>
+            تأكيد ({selectedCustomerIds.size} عميل)
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+
+    {/* Cash Van Dialog */}
+    <Dialog open={showCashVanDialog} onOpenChange={setShowCashVanDialog}>
+      <DialogContent className="max-w-[95vw] sm:max-w-sm p-4 max-h-[80dvh] flex flex-col" dir="rtl">
+        <DialogHeader className="pb-2 shrink-0">
+          <DialogTitle className="flex items-center gap-2 text-base">
+            <Truck className="w-4 h-4" />
+            CASH VAN - منتجات احتياطية
+          </DialogTitle>
+        </DialogHeader>
+        <p className="text-xs text-muted-foreground shrink-0">أضف كميات احتياطية لكل منتج. ستظهر كصف خاص في الطباعة.</p>
+        <ScrollArea className="flex-1 min-h-0 mt-2">
+          <div className="space-y-1.5 pe-2">
+            {aggregatedProducts.map((product) => {
+              const reserveQty = cashVanProducts[product.productId] || 0;
+              const totalWithReserve = product.totalQuantity + reserveQty;
+              return (
+                <div
+                  key={product.productId}
+                  className="flex items-center gap-2 p-2 rounded-lg bg-muted/30 border border-border/50"
+                >
+                  {/* Product image */}
+                  <div className="w-9 h-9 rounded-lg bg-muted overflow-hidden shrink-0">
+                    {product.imageUrl ? (
+                      <img src={product.imageUrl} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <Package className="w-4 h-4 text-muted-foreground/40" />
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Product info */}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[11px] font-semibold truncate">{product.name}</p>
+                    <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                      <span>طلبيات: <span className="font-bold text-foreground">{product.totalQuantity}</span></span>
+                      {reserveQty > 0 && (
+                        <>
+                          <span>+</span>
+                          <span className="text-amber-600 font-bold">{reserveQty}</span>
+                          <span>=</span>
+                          <span className="font-bold text-primary">{totalWithReserve}</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {/* Quantity controls */}
+                  <div className="flex items-center gap-1 shrink-0">
+                    <Button
+                      size="icon"
+                      variant="outline"
+                      className="h-7 w-7"
+                      onClick={() => {
+                        setCashVanProducts(prev => ({
+                          ...prev,
+                          [product.productId]: Math.max(0, (prev[product.productId] || 0) - 1),
+                        }));
+                      }}
+                      disabled={reserveQty <= 0}
+                    >
+                      <Minus className="w-3 h-3" />
+                    </Button>
+                    <Input
+                      type="number"
+                      min={0}
+                      value={reserveQty || ''}
+                      placeholder="0"
+                      className="w-12 h-7 text-center text-sm p-0 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value) || 0;
+                        setCashVanProducts(prev => ({
+                          ...prev,
+                          [product.productId]: Math.max(0, val),
+                        }));
+                      }}
+                    />
+                    <Button
+                      size="icon"
+                      variant="outline"
+                      className="h-7 w-7"
+                      onClick={() => {
+                        setCashVanProducts(prev => ({
+                          ...prev,
+                          [product.productId]: (prev[product.productId] || 0) + 1,
+                        }));
+                      }}
+                    >
+                      <Plus className="w-3 h-3" />
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </ScrollArea>
+        <div className="grid grid-cols-2 gap-2 pt-2 shrink-0">
+          <Button size="sm" onClick={() => setShowCashVanDialog(false)}>
+            تأكيد
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => { setCashVanProducts({}); setShowCashVanDialog(false); }}
+          >
+            مسح الكل
+          </Button>
         </div>
       </DialogContent>
     </Dialog>
