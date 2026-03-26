@@ -346,7 +346,13 @@ const WorkerOrdersSummaryDialog: React.FC<Props> = ({ open, onOpenChange, worker
         .in('status', ['pending', 'assigned', 'in_progress', 'delivered', 'completed', 'confirmed'])
         .order('created_at', { ascending: true });
 
-      const fetchedOrders = (ordersData || []) as unknown as OrderWithDetails[];
+      let fetchedOrders = (ordersData || []) as unknown as OrderWithDetails[];
+      
+      // Filter by selected customers
+      if (selectedCustomerIds.size > 0 && selectedCustomerIds.size < uniqueCustomers.length) {
+        fetchedOrders = fetchedOrders.filter(o => selectedCustomerIds.has(o.customer_id));
+      }
+      
       if (fetchedOrders.length === 0) {
         toast.info('لا توجد طلبيات للطباعة');
         setIsPrintLoading(false);
@@ -363,9 +369,21 @@ const WorkerOrdersSummaryDialog: React.FC<Props> = ({ open, onOpenChange, worker
         }
       }
 
+      // Build cash van extra row
+      const cashVanExtraRows: { label: string; productQuantities: Record<string, number>; style?: 'highlight' | 'normal' }[] = [];
+      const hasCashVan = Object.values(cashVanProducts).some(q => q > 0);
+      if (hasCashVan) {
+        cashVanExtraRows.push({
+          label: 'CASH VAN',
+          productQuantities: cashVanProducts,
+          style: 'highlight',
+        });
+      }
+
       setPrintOrders(fetchedOrders);
       setPrintOrderItems(itemsMap);
       setPrintProducts(Array.from(productMap.values()).sort((a, b) => (a.name || '').localeCompare(b.name || '')));
+      setPrintExtraRows(cashVanExtraRows);
       setIsPrintReady(true);
       isPrintingRef.current = true;
 
