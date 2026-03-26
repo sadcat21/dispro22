@@ -190,6 +190,14 @@ const WorkerOrdersSummaryDialog: React.FC<Props> = ({ open, onOpenChange, worker
   const [groupCustomers, setGroupCustomers] = useState(true);
   const [groupProducts, setGroupProducts] = useState(true);
   const [includePromoRegistre, setIncludePromoRegistre] = useState(false);
+  
+  // Customer selection state
+  const [selectedCustomerIds, setSelectedCustomerIds] = useState<Set<string>>(new Set());
+  const [showCustomerPicker, setShowCustomerPicker] = useState(false);
+  
+  // Cash Van reserve products state
+  const [showCashVanDialog, setShowCashVanDialog] = useState(false);
+  const [cashVanProducts, setCashVanProducts] = useState<Record<string, number>>({});
 
   const { columns: columnConfig, saveColumns } = usePrintColumnsConfig();
   const { data: workerPrintInfo } = useWorkerPrintInfo(workerId);
