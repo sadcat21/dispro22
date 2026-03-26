@@ -611,6 +611,24 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
     enabled: !!effectiveWorkerId && open,
   });
 
+  // Fetch distinct worker IDs that have assigned orders today (for admin worker picker)
+  const { data: workerIdsWithOrdersToday = [] } = useQuery({
+    queryKey: ['today-cust-workers-with-orders', todayDateStr, scopedBranchId],
+    queryFn: async () => {
+      let query = supabase
+        .from('orders')
+        .select('assigned_worker_id')
+        .in('status', ['pending', 'assigned', 'in_progress', 'confirmed', 'processing', 'in_transit', 'ready'])
+        .not('assigned_worker_id', 'is', null);
+      if (scopedBranchId) query = query.eq('branch_id', scopedBranchId);
+      const { data } = await query;
+      const ids = new Set<string>();
+      (data || []).forEach((o: any) => { if (o.assigned_worker_id) ids.add(o.assigned_worker_id); });
+      return Array.from(ids);
+    },
+    enabled: isAdmin && open && !targetWorkerId,
+  });
+
   // Computed data - use sector_schedules for determining today's sectors
   const todaySalesSectorIds = useMemo(() => {
     const ids = new Set<string>();
