@@ -823,8 +823,9 @@ const WorkerOrdersSummaryDialog: React.FC<Props> = ({ open, onOpenChange, worker
           </div>
         </div>
         <div className="pt-2 shrink-0">
-          <Button className="w-full" size="sm" onClick={() => setShowCustomerPicker(false)}>
-            تأكيد ({selectedCustomerIds.size} عميل)
+          <Button className="w-full gap-1.5" size="sm" onClick={async () => { await saveCustomerSelection(); setShowCustomerPicker(false); }} disabled={customersSaving}>
+            <Save className="w-3.5 h-3.5" />
+            {customersSaving ? 'جاري الحفظ...' : `حفظ (${selectedCustomerIds.size} عميل)`}
           </Button>
         </div>
       </DialogContent>
