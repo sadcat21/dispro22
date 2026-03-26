@@ -292,9 +292,35 @@ const WorkerOrdersSummaryDialog: React.FC<Props> = ({ open, onOpenChange, worker
   const createdCustomers = new Set((data?.created || []).flatMap(p => p.customers.map(c => c.customerId))).size;
   const assignedCustomers = new Set((data?.assigned || []).flatMap(p => p.customers.map(c => c.customerId))).size;
 
+  // Unique customers list for picker
+  const uniqueCustomers = useMemo(() => {
+    const map = new Map<string, { id: string; name: string; storeName: string | null }>();
+    for (const p of currentData) {
+      for (const c of p.customers) {
+        if (!map.has(c.customerId)) {
+          map.set(c.customerId, { id: c.customerId, name: c.customerName, storeName: c.storeName });
+        }
+      }
+    }
+    return Array.from(map.values());
+  }, [currentData]);
+
+  // Aggregated product quantities for cash van reference
+  const aggregatedProducts = useMemo(() => {
+    return currentData.map(p => ({
+      productId: p.productId,
+      name: p.name,
+      imageUrl: p.imageUrl,
+      totalQuantity: p.quantity,
+    })).sort((a, b) => a.name.localeCompare(b.name));
+  }, [currentData]);
+
   // Open print settings dialog instead of printing directly
   const handlePrintClick = () => {
     if (!workerId || currentData.length === 0) return;
+    // Initialize all customers as selected
+    const allIds = new Set(uniqueCustomers.map(c => c.id));
+    setSelectedCustomerIds(allIds);
     setShowPrintSettings(true);
   };
 
