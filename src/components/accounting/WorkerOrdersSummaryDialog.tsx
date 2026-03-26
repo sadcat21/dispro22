@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useRef } from 'react';
+import React, { useMemo, useState, useRef, useEffect, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { ClipboardList, Package, User, Calendar, ChevronLeft, ChevronRight, Loader2, ShoppingCart, UserCheck, Printer, Settings2, Layers, Gift, Users, Truck, Minus, Plus, Check } from 'lucide-react';
+import { ClipboardList, Package, User, Calendar, ChevronLeft, ChevronRight, Loader2, ShoppingCart, UserCheck, Printer, Settings2, Layers, Gift, Users, Truck, Minus, Plus, Check, Save } from 'lucide-react';
 import { format, addDays, subDays } from 'date-fns';
 import OrdersPrintView from '@/components/print/OrdersPrintView';
 import type { PrintColumnConfig } from '@/components/print/OrdersPrintView';
@@ -20,6 +20,7 @@ import { OrderWithDetails, Product } from '@/types/database';
 import { useWorkerPrintInfo } from '@/hooks/useWorkerPrintInfo';
 import GiftsPrintView from '@/components/accounting/GiftsPrintView';
 import { toast } from 'sonner';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface Props {
   open: boolean;
@@ -199,9 +200,97 @@ const WorkerOrdersSummaryDialog: React.FC<Props> = ({ open, onOpenChange, worker
   // Cash Van reserve products state
   const [showCashVanDialog, setShowCashVanDialog] = useState(false);
   const [cashVanProducts, setCashVanProducts] = useState<Record<string, number>>({});
+  const [cashVanSaving, setCashVanSaving] = useState(false);
+  const [customersSaving, setCustomersSaving] = useState(false);
+  const [loadedFromDb, setLoadedFromDb] = useState(false);
 
+  const { activeBranch } = useAuth();
   const { columns: columnConfig, saveColumns } = usePrintColumnsConfig();
   const { data: workerPrintInfo } = useWorkerPrintInfo(workerId);
+
+  // DB keys for persistence
+  const cashVanKey = workerId ? `cashvan_${workerId}_${selectedDate}` : '';
+  const customerSelKey = workerId ? `print_customers_${workerId}_${selectedDate}` : '';
+
+  // Load saved Cash Van & customer selection from DB
+  useEffect(() => {
+    if (!open || !workerId) return;
+    setLoadedFromDb(false);
+    const load = async () => {
+      try {
+        const { data: settings } = await supabase
+          .from('app_settings')
+          .select('key, value')
+          .in('key', [cashVanKey, customerSelKey]);
+        
+        if (settings) {
+          for (const s of settings) {
+            if (s.key === cashVanKey) {
+              try { setCashVanProducts(JSON.parse(s.value)); } catch {}
+            }
+            if (s.key === customerSelKey) {
+              try { setSelectedCustomerIds(new Set(JSON.parse(s.value))); } catch {}
+            }
+          }
+        }
+      } catch (e) {
+        console.error('Failed to load saved settings:', e);
+      }
+      setLoadedFromDb(true);
+    };
+    load();
+  }, [open, workerId, selectedDate, cashVanKey, customerSelKey]);
+
+  // Save Cash Van to DB
+  const saveCashVan = useCallback(async () => {
+    if (!cashVanKey) return;
+    setCashVanSaving(true);
+    try {
+      const { data: existing } = await supabase
+        .from('app_settings')
+        .select('id')
+        .eq('key', cashVanKey)
+        .maybeSingle();
+      
+      if (existing) {
+        await supabase.from('app_settings').update({ value: JSON.stringify(cashVanProducts), updated_at: new Date().toISOString() }).eq('id', existing.id);
+      } else {
+        await supabase.from('app_settings').insert({ key: cashVanKey, value: JSON.stringify(cashVanProducts), branch_id: activeBranch?.id || null });
+      }
+      toast.success('تم حفظ كميات CASH VAN');
+    } catch (e) {
+      console.error(e);
+      toast.error('حدث خطأ أثناء الحفظ');
+    } finally {
+      setCashVanSaving(false);
+    }
+  }, [cashVanKey, cashVanProducts, activeBranch]);
+
+  // Save customer selection to DB
+  const saveCustomerSelection = useCallback(async () => {
+    if (!customerSelKey) return;
+    setCustomersSaving(true);
+    try {
+      const value = JSON.stringify(Array.from(selectedCustomerIds));
+      const { data: existing } = await supabase
+        .from('app_settings')
+        .select('id')
+        .eq('key', customerSelKey)
+        .maybeSingle();
+      
+      if (existing) {
+        await supabase.from('app_settings').update({ value, updated_at: new Date().toISOString() }).eq('id', existing.id);
+      } else {
+        await supabase.from('app_settings').insert({ key: customerSelKey, value, branch_id: activeBranch?.id || null });
+      }
+      toast.success('تم حفظ تحديد العملاء');
+    } catch (e) {
+      console.error(e);
+      toast.error('حدث خطأ أثناء الحفظ');
+    } finally {
+      setCustomersSaving(false);
+    }
+  }, [customerSelKey, selectedCustomerIds, activeBranch]);
 
   const { data, isLoading } = useQuery({
     queryKey: ['worker-orders-summary', workerId, selectedDate],
@@ -319,9 +408,11 @@ const WorkerOrdersSummaryDialog: React.FC<Props> = ({ open, onOpenChange, worker
   // Open print settings dialog instead of printing directly
   const handlePrintClick = () => {
     if (!workerId || currentData.length === 0) return;
-    // Initialize all customers as selected
-    const allIds = new Set(uniqueCustomers.map(c => c.id));
-    setSelectedCustomerIds(allIds);
+    // Only initialize all customers if no saved selection exists
+    if (selectedCustomerIds.size === 0) {
+      const allIds = new Set(uniqueCustomers.map(c => c.id));
+      setSelectedCustomerIds(allIds);
+    }
     setShowPrintSettings(true);
   };
 
@@ -734,8 +825,9 @@ const WorkerOrdersSummaryDialog: React.FC<Props> = ({ open, onOpenChange, worker
           </div>
         </div>
         <div className="pt-2 shrink-0">
-          <Button className="w-full" size="sm" onClick={() => setShowCustomerPicker(false)}>
-            تأكيد ({selectedCustomerIds.size} عميل)
+          <Button className="w-full gap-1.5" size="sm" onClick={async () => { await saveCustomerSelection(); setShowCustomerPicker(false); }} disabled={customersSaving}>
+            <Save className="w-3.5 h-3.5" />
+            {customersSaving ? 'جاري الحفظ...' : `حفظ (${selectedCustomerIds.size} عميل)`}
           </Button>
         </div>
       </DialogContent>
@@ -838,13 +930,14 @@ const WorkerOrdersSummaryDialog: React.FC<Props> = ({ open, onOpenChange, worker
           </div>
         </div>
         <div className="grid grid-cols-2 gap-2 pt-2 shrink-0">
-          <Button size="sm" onClick={() => setShowCashVanDialog(false)}>
-            تأكيد
+          <Button size="sm" onClick={async () => { await saveCashVan(); setShowCashVanDialog(false); }} disabled={cashVanSaving} className="gap-1.5">
+            <Save className="w-3.5 h-3.5" />
+            {cashVanSaving ? 'جاري الحفظ...' : 'حفظ'}
           </Button>
           <Button
             size="sm"
             variant="outline"
-            onClick={() => { setCashVanProducts({}); setShowCashVanDialog(false); }}
+            onClick={() => { setCashVanProducts({}); }}
           >
             مسح الكل
           </Button>
