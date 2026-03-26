@@ -180,6 +180,7 @@ const WorkerOrdersSummaryDialog: React.FC<Props> = ({ open, onOpenChange, worker
   const [printOrders, setPrintOrders] = useState<OrderWithDetails[]>([]);
   const [printOrderItems, setPrintOrderItems] = useState<Map<string, any[]>>(new Map());
   const [printProducts, setPrintProducts] = useState<Product[]>([]);
+  const [printExtraRows, setPrintExtraRows] = useState<{ label: string; productQuantities: Record<string, number>; totalAmount?: number; style?: 'highlight' | 'normal' }[]>([]);
   const [isPrintLoading, setIsPrintLoading] = useState(false);
   const isPrintingRef = useRef(false);
   const printRef = useRef<HTMLDivElement>(null);
