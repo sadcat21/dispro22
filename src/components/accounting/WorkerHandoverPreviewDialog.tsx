@@ -35,7 +35,7 @@ const WorkerHandoverPreviewDialog: React.FC<WorkerHandoverPreviewDialogProps> = 
         .eq('status', 'completed')
         .order('period_end', { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
       return data?.period_end || null;
     },
     enabled: open && !!effectiveWorkerId,
