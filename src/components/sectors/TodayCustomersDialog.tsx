@@ -172,7 +172,7 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
   const { data: workersList = [] } = useQuery({
     queryKey: ['today-cust-workers-list', activeBranch?.id],
     queryFn: async () => {
-      let query = supabase.from('workers').select('id, full_name, username').eq('is_active', true);
+      let query = supabase.from('workers').select('id, full_name, username, is_active');
       if (activeBranch && role === 'branch_admin') query = query.eq('branch_id', activeBranch.id);
       const { data } = await query.order('full_name');
       return data || [];
@@ -599,7 +599,7 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
       let query = supabase
         .from('orders')
         .select('*, customer:customers(*), items:order_items(*, product:products(*))')
-        .in('status', ['pending', 'assigned', 'in_progress']);
+        .in('status', ['pending', 'assigned', 'in_progress', 'confirmed', 'processing', 'in_transit', 'ready']);
       if (!isAdmin || hasSpecificWorker) {
         query = query.in('assigned_worker_id', workerIds);
       } else if (scopedBranchId) {
@@ -609,24 +609,6 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
       return (data || []) as OrderWithDetails[];
     },
     enabled: !!effectiveWorkerId && open,
-  });
-
-  // Fetch distinct worker IDs that have assigned orders today (for admin worker picker)
-  const { data: workerIdsWithOrdersToday = [] } = useQuery({
-    queryKey: ['today-cust-workers-with-orders', todayDateStr, scopedBranchId],
-    queryFn: async () => {
-      let query = supabase
-        .from('orders')
-        .select('assigned_worker_id')
-        .in('status', ['pending', 'assigned', 'in_progress', 'confirmed', 'processing', 'in_transit', 'ready'])
-        .not('assigned_worker_id', 'is', null);
-      if (scopedBranchId) query = query.eq('branch_id', scopedBranchId);
-      const { data } = await query;
-      const ids = new Set<string>();
-      (data || []).forEach((o: any) => { if (o.assigned_worker_id) ids.add(o.assigned_worker_id); });
-      return Array.from(ids);
-    },
-    enabled: isAdmin && open && !targetWorkerId,
   });
 
   // Merge sector customers with customers from assigned orders (who may lack a sector)
@@ -801,19 +783,22 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
       addAssignment(coverage.substitute_worker_id, key);
     });
 
-    // Include workers who have assigned orders today (even without sectors)
-    if (selectedDay === todayName) {
-      workerIdsWithOrdersToday.forEach(wId => {
-        addAssignment(wId, 'orders:assigned');
-      });
-    }
+    // Include workers who have assigned orders for the selected day (even without sectors)
+    const selectedDateStr = selectedDayBounds.start.slice(0, 10);
+    assignedOrders.forEach((order) => {
+      if (!order.assigned_worker_id) return;
+      const isForSelectedDay =
+        (order.delivery_date && order.delivery_date.startsWith(selectedDateStr)) ||
+        (!order.delivery_date && order.created_at >= selectedDayBounds.start && order.created_at <= selectedDayBounds.end);
+      if (isForSelectedDay) addAssignment(order.assigned_worker_id, 'orders:assigned');
+    });
 
     return new Set(
       Array.from(workerAssignments.entries())
         .filter(([, assignments]) => assignments.size > 0)
         .map(([workerId]) => workerId)
     );
-  }, [sectorSchedules, sectors, selectedDay, activeCoveragesForSelectedDay, workerIdsWithOrdersToday, todayName]);
+  }, [sectorSchedules, sectors, selectedDay, activeCoveragesForSelectedDay, assignedOrders, selectedDayBounds.start, selectedDayBounds.end]);
 
   // IMPORTANT: filter from all sectors using the computed IDs (which already include coverage substitutions)
   // so covered sectors appear immediately in direct-sale/delivery lists for substitute workers.
