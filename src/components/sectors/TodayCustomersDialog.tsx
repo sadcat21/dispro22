@@ -2130,6 +2130,16 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
           onClose={() => setOrderDetailsDialog(null)}
           onCancelOrder={async (orderId: string) => {
             try {
+              const { data: oItems } = await supabase.from('order_items').select('product_id, quantity').eq('order_id', orderId);
+              const { data: oData } = await supabase.from('orders').select('assigned_worker_id, status').eq('id', orderId).single();
+              if (oData && oData.status === 'delivered' && oData.assigned_worker_id && oItems) {
+                for (const item of oItems) {
+                  const { data: ws } = await supabase.from('worker_stock').select('id, quantity').eq('worker_id', oData.assigned_worker_id).eq('product_id', item.product_id).maybeSingle();
+                  if (ws) await supabase.from('worker_stock').update({ quantity: ws.quantity + item.quantity }).eq('id', ws.id);
+                  await supabase.from('stock_movements').delete().eq('order_id', orderId).eq('product_id', item.product_id).eq('movement_type', 'delivery');
+                }
+              }
+              await supabase.from('customer_debts').delete().eq('order_id', orderId);
               const { error } = await supabase
                 .from('orders')
                 .update({ status: 'cancelled' })
@@ -2138,9 +2148,43 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
               toast.success('تم إلغاء الطلبية بنجاح');
               queryClient.invalidateQueries({ queryKey: ['today-orders-dialog'] });
               queryClient.invalidateQueries({ queryKey: ['today-cust-assigned-orders-full'] });
+              queryClient.invalidateQueries({ queryKey: ['my-worker-stock'] });
+              queryClient.invalidateQueries({ queryKey: ['worker-truck-stock'] });
+              queryClient.invalidateQueries({ queryKey: ['today-delivered-dialog'] });
+              queryClient.invalidateQueries({ queryKey: ['today-direct-sales-dialog'] });
               setOrderDetailsDialog(null);
             } catch {
               toast.error('فشل في إلغاء الطلبية');
+            }
+          }}
+          onCancelDirectSale={async (saleOrder: any) => {
+            try {
+              const orderId = saleOrder.id;
+              if (!orderId) throw new Error('No order ID');
+              const { data: oItems } = await supabase.from('order_items').select('product_id, quantity').eq('order_id', orderId);
+              const { data: oData } = await supabase.from('orders').select('assigned_worker_id, created_by').eq('id', orderId).single();
+              const wId = oData?.assigned_worker_id || oData?.created_by;
+              if (wId && oItems) {
+                for (const item of oItems) {
+                  const { data: ws } = await supabase.from('worker_stock').select('id, quantity').eq('worker_id', wId).eq('product_id', item.product_id).maybeSingle();
+                  if (ws) await supabase.from('worker_stock').update({ quantity: ws.quantity + item.quantity }).eq('id', ws.id);
+                  await supabase.from('stock_movements').delete().eq('order_id', orderId).eq('product_id', item.product_id);
+                }
+              }
+              await supabase.from('customer_debts').delete().eq('order_id', orderId);
+              const { error } = await supabase.from('orders').update({ status: 'cancelled' }).eq('id', orderId);
+              if (error) throw error;
+              toast.success('تم إلغاء البيع المباشر وإرجاع المخزون بنجاح');
+              queryClient.invalidateQueries({ queryKey: ['today-orders-dialog'] });
+              queryClient.invalidateQueries({ queryKey: ['today-cust-assigned-orders-full'] });
+              queryClient.invalidateQueries({ queryKey: ['my-worker-stock'] });
+              queryClient.invalidateQueries({ queryKey: ['worker-truck-stock'] });
+              queryClient.invalidateQueries({ queryKey: ['today-delivered-dialog'] });
+              queryClient.invalidateQueries({ queryKey: ['today-direct-sales-dialog'] });
+              queryClient.invalidateQueries({ queryKey: ['today-direct-sale-visits-dialog'] });
+              setOrderDetailsDialog(null);
+            } catch {
+              toast.error('فشل في إلغاء البيع المباشر');
             }
           }}
         />
@@ -2294,7 +2338,7 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
 };
 
 // Order Details Dialog - shows order/sale details similar to receipt content
-const OrderDetailsDialog: React.FC<{ order: any; onClose: () => void; onCancelOrder?: (orderId: string) => void }> = ({ order, onClose, onCancelOrder }) => {
+const OrderDetailsDialog: React.FC<{ order: any; onClose: () => void; onCancelOrder?: (orderId: string) => void; onCancelDirectSale?: (order: any) => Promise<void> }> = ({ order, onClose, onCancelOrder, onCancelDirectSale }) => {
   const { user } = useAuth();
   const [showReceiptDialog, setShowReceiptDialog] = useState(false);
   const [showModifyDialog, setShowModifyDialog] = useState(false);
@@ -2459,6 +2503,9 @@ const OrderDetailsDialog: React.FC<{ order: any; onClose: () => void; onCancelOr
             طباعة الوصل
           </Button>
           {order.id && onCancelOrder && order._isOrderRequest && (
+            <></>
+          )}
+          {order.id && (onCancelOrder || onCancelDirectSale) && (isDirectSale || order._isOrderRequest || order.status === 'delivered') && (
             <Button
               className="w-full gap-2"
               variant="destructive"
@@ -2466,7 +2513,11 @@ const OrderDetailsDialog: React.FC<{ order: any; onClose: () => void; onCancelOr
               onClick={async () => {
                 setCancelling(true);
                 try {
-                  await onCancelOrder(order.id);
+                  if (isDirectSale && onCancelDirectSale) {
+                    await onCancelDirectSale(order);
+                  } else if (onCancelOrder) {
+                    await onCancelOrder(order.id);
+                  }
                   onClose();
                 } finally {
                   setCancelling(false);
@@ -2474,7 +2525,7 @@ const OrderDetailsDialog: React.FC<{ order: any; onClose: () => void; onCancelOr
               }}
             >
               {cancelling ? <Loader2 className="w-4 h-4 animate-spin" /> : <X className="w-4 h-4" />}
-              إلغاء الطلبية
+              {isDirectSale ? 'إلغاء البيع المباشر' : 'إلغاء الطلبية'}
             </Button>
           )}
         </div>
