@@ -603,7 +603,7 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
       if (!isAdmin || hasSpecificWorker) {
         query = query.in('assigned_worker_id', workerIds);
       } else if (scopedBranchId) {
-        query = query.eq('branch_id', scopedBranchId);
+        query = query.or(`branch_id.eq.${scopedBranchId},branch_id.is.null`);
       }
       const { data } = await query;
       return (data || []) as OrderWithDetails[];
