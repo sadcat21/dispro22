@@ -541,8 +541,13 @@ const WorkerHome: React.FC = () => {
         open={showFactoryDelivery}
         onOpenChange={setShowFactoryDelivery}
       />
+      <WorkerSalesSummaryDialog
+        open={showSalesSummary}
+        onOpenChange={setShowSalesSummary}
+        workerId={workerId || undefined}
+        workerName={user?.full_name}
+      />
 
-      {/* Stock Management Hub Dialog */}
       {showStockManagement && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-end justify-center" onClick={() => setShowStockManagement(false)}>
           <div className="bg-background rounded-t-2xl w-full max-w-lg p-5 pb-8 space-y-3 animate-in slide-in-from-bottom" onClick={e => e.stopPropagation()}>
