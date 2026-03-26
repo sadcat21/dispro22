@@ -534,7 +534,8 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
       const merged: typeof vtResults = [];
       (rData || []).forEach(r => {
         if (!r.customer_id) return;
-        if (!isActiveSale((r as any).order_id)) return;
+        const receiptOrderId = (r as any).order_id;
+        if (!receiptOrderId || !isActiveSale(receiptOrderId)) return;
         seen.add(r.customer_id);
         merged.push(r as any);
       });
@@ -2202,6 +2203,18 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
               await supabase.from('customer_debts').delete().eq('order_id', orderId);
               const { error } = await supabase.from('orders').update({ status: 'cancelled' }).eq('id', orderId);
               if (error) throw error;
+
+              const cancelledCustomerId = saleOrder?.customer?.id || saleOrder?.customer_id || null;
+              if (cancelledCustomerId) {
+                await supabase
+                  .from('visit_tracking')
+                  .update({ operation_type: 'visit', notes: 'تم إلغاء البيع المباشر' })
+                  .eq('operation_type', 'direct_sale')
+                  .eq('customer_id', cancelledCustomerId)
+                  .gte('created_at', todayStart)
+                  .eq('worker_id', wId || effectiveWorkerId || '');
+              }
+
               toast.success('تم إلغاء البيع المباشر وإرجاع المخزون بنجاح');
               queryClient.invalidateQueries({ queryKey: ['today-orders-dialog'] });
               queryClient.invalidateQueries({ queryKey: ['today-cust-assigned-orders-full'] });
