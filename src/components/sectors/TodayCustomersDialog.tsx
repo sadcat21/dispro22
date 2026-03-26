@@ -599,7 +599,7 @@ const TodayCustomersDialog: React.FC<TodayCustomersDialogProps> = ({
       let query = supabase
         .from('orders')
         .select('*, customer:customers(*), items:order_items(*, product:products(*))')
-        .in('status', ['pending', 'assigned', 'in_progress']);
+        .in('status', ['pending', 'assigned', 'in_progress', 'confirmed', 'processing', 'in_transit', 'ready']);
       if (!isAdmin || hasSpecificWorker) {
         query = query.in('assigned_worker_id', workerIds);
       } else if (scopedBranchId) {
