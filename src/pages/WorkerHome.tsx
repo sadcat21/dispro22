@@ -28,6 +28,7 @@ import TodayCustomersDialog from '@/components/sectors/TodayCustomersDialog';
 import PalletCalculatorDialog from '@/components/stock/PalletCalculatorDialog';
 import AttendanceButton from '@/components/attendance/AttendanceButton';
 import ManualPromoEntryDialog from '@/components/offers/ManualPromoEntryDialog';
+import WorkerSalesSummaryCard from '@/components/workers/WorkerSalesSummaryCard';
 
 const WorkerHome: React.FC = () => {
   const { user, workerId, role, activeRole, activeBranch } = useAuth();
@@ -297,6 +298,9 @@ const WorkerHome: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Worker Sales Summary */}
+      <WorkerSalesSummaryCard />
 
       {/* Today's Customers Notification for Supervisors */}
       {isSupervisor && (
