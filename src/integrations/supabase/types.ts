@@ -6717,6 +6717,18 @@ export type Database = {
         Args: { p_session_id: string }
         Returns: Json
       }
+      quick_load_to_worker_atomic: {
+        Args: { p_items: Json; p_target_worker_id: string }
+        Returns: Json
+      }
+      start_loading_session_atomic: {
+        Args: { p_notes?: string | null; p_worker_id: string }
+        Returns: Json
+      }
+      unload_worker_stock_atomic: {
+        Args: { p_unloading_details: Json; p_worker_id: string }
+        Returns: Json
+      }
       get_customer_account_id: { Args: never; Returns: string }
       get_customer_sales_rep_statuses: {
         Args: {
