@@ -1465,7 +1465,7 @@ const LoadStock: React.FC = () => {
                     variant="outline"
                     className="h-10 rounded-xl text-xs text-destructive border-destructive/30 px-5"
                     onClick={() => handleDeleteSession(activeSessionId!)}
-                    disabled={deleteSession.isPending}
+                    disabled={deleteSession.isPending || isConfirmingSession}
                   >
                     <X className="w-4 h-4 me-1" />
                     إلغاء
