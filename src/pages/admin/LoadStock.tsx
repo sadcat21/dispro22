@@ -1427,7 +1427,7 @@ const LoadStock: React.FC = () => {
             ) : (
               <>
                 <div className="flex gap-2">
-                  <Button onClick={handleOpenAddProduct} className="flex-1 h-10 rounded-xl text-xs font-bold shadow-sm">
+                  <Button onClick={handleOpenAddProduct} className="flex-1 h-10 rounded-xl text-xs font-bold shadow-sm" disabled={isConfirmingSession}>
                     <Plus className="w-4 h-4 me-1" />
                     إضافة
                   </Button>
