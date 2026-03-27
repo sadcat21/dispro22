@@ -1446,7 +1446,7 @@ const LoadStock: React.FC = () => {
                     variant="outline"
                     className="w-full h-9 rounded-xl text-[10px] border-destructive/40 text-destructive bg-destructive/5"
                     onClick={() => setShowBulkLoadNeeds(true)}
-                    disabled={isSaving}
+                    disabled={isSaving || isConfirmingSession}
                   >
                     <AlertTriangle className="w-3.5 h-3.5 me-1" />
                     احتياج ({totalDeficit})
