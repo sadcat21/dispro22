@@ -1387,8 +1387,8 @@ const LoadStock: React.FC = () => {
                     {hasReviewToday ? <CheckCircle className="w-4 h-4 me-1" /> : <Search className="w-4 h-4 me-1" />}
                     {hasReviewToday ? 'مراجعة ✓' : 'مراجعة'}
                   </Button>
-                  <Button onClick={handleStartSession} className="flex-1 h-10 rounded-xl text-xs font-bold shadow-sm" disabled={createSession.isPending || !hasReviewToday}>
-                    {createSession.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4 me-1" />}
+                  <Button onClick={handleStartSession} className="flex-1 h-10 rounded-xl text-xs font-bold shadow-sm" disabled={createSession.isPending || isStartingSession || isConfirmingSession || !hasReviewToday}>
+                    {(createSession.isPending || isStartingSession) ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4 me-1" />}
                     بدء شحن
                   </Button>
                 </div>
