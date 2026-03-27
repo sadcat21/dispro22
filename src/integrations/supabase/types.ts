@@ -6713,6 +6713,10 @@ export type Database = {
         Args: { p_worker_id: string }
         Returns: boolean
       }
+      confirm_loading_session_atomic: {
+        Args: { p_session_id: string }
+        Returns: Json
+      }
       get_customer_account_id: { Args: never; Returns: string }
       get_customer_sales_rep_statuses: {
         Args: {
