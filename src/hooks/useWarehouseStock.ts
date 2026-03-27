@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Product } from '@/types/database';
@@ -55,6 +55,7 @@ export const useWarehouseStock = () => {
   const [workers, setWorkers] = useState<{ id: string; full_name: string; username: string }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [workerBranchId, setWorkerBranchId] = useState<string | null>(null);
+  const inFlightLoadKeysRef = useRef(new Set<string>());
 
   // Fallback: fetch worker's branch_id if activeBranch is not set
   useEffect(() => {
