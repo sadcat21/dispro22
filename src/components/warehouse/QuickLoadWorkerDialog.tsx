@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -37,6 +37,7 @@ const QuickLoadWorkerDialog: React.FC<QuickLoadWorkerDialogProps> = ({
   const [items, setItems] = useState<LoadItem[]>([{ product_id: '', quantity: 1 }]);
   const [isSaving, setIsSaving] = useState(false);
   const [productPickerIndex, setProductPickerIndex] = useState<number | null>(null);
+  const saveLockRef = useRef(false);
 
   const addItem = () => setItems(prev => [...prev, { product_id: '', quantity: 1 }]);
 
