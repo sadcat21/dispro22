@@ -68,6 +68,7 @@ const QuickLoadWorkerDialog: React.FC<QuickLoadWorkerDialogProps> = ({
       return;
     }
 
+    saveLockRef.current = true;
     setIsSaving(true);
     try {
       await loadToWorker(selectedWorker, validItems.map(i => ({
@@ -81,6 +82,7 @@ const QuickLoadWorkerDialog: React.FC<QuickLoadWorkerDialogProps> = ({
     } catch (error: any) {
       toast.error(error.message || t('common.error'));
     } finally {
+      saveLockRef.current = false;
       setIsSaving(false);
     }
   };
