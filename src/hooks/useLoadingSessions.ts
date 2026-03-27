@@ -30,7 +30,7 @@ export interface LoadingSessionItem {
 
 export const useLoadingSessions = (workerId: string | null) => {
   const queryClient = useQueryClient();
-  const { workerId: currentManagerId, activeBranch } = useAuth();
+  useAuth();
 
   const sessionsQuery = useQuery({
     queryKey: ['loading-sessions', workerId],
