@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -41,6 +41,7 @@ const QuickLoadDialog: React.FC<QuickLoadDialogProps> = ({
   const [entries, setEntries] = useState<LoadEntry[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [markingProduct, setMarkingProduct] = useState<string | null>(null);
+  const confirmLockRef = useRef(false);
 
   const handleMarkUnavailable = async (productId: string, productName: string) => {
     setMarkingProduct(productId);
@@ -105,10 +106,12 @@ const QuickLoadDialog: React.FC<QuickLoadDialogProps> = ({
   const totalItems = validEntries.reduce((s, e) => s + e.quantity, 0);
 
   const handleConfirm = async () => {
+    if (confirmLockRef.current || isSaving) return;
     if (validEntries.length === 0) {
       toast.error(t('stock.add_products'));
       return;
     }
+    confirmLockRef.current = true;
     setIsSaving(true);
     try {
       const loadItems = validEntries.map(e => ({
@@ -125,6 +128,7 @@ const QuickLoadDialog: React.FC<QuickLoadDialogProps> = ({
     } catch (error: any) {
       toast.error(error.message || t('common.error'));
     } finally {
+      confirmLockRef.current = false;
       setIsSaving(false);
     }
   };
