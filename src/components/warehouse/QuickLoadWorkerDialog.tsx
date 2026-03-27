@@ -57,6 +57,7 @@ const QuickLoadWorkerDialog: React.FC<QuickLoadWorkerDialogProps> = ({
   const selectedWorkerName = workers.find(w => w.id === selectedWorker)?.full_name;
 
   const handleSave = async () => {
+    if (saveLockRef.current || isSaving) return;
     if (!selectedWorker) {
       toast.error('اختر العامل أولاً');
       return;
