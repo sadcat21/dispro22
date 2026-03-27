@@ -1456,9 +1456,9 @@ const LoadStock: React.FC = () => {
                   <Button
                     className="flex-1 h-10 rounded-xl text-xs font-bold shadow-sm"
                     onClick={handleCompleteSession}
-                    disabled={sessionItems.length === 0 || completeSession.isPending}
+                    disabled={sessionItems.length === 0 || completeSession.isPending || isConfirmingSession}
                   >
-                    {completeSession.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4 me-1" />}
+                    {(completeSession.isPending || isConfirmingSession) ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4 me-1" />}
                     تأكيد الشحن
                   </Button>
                   <Button
