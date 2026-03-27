@@ -1401,7 +1401,7 @@ const LoadStock: React.FC = () => {
                     variant="outline"
                     className="h-9 rounded-xl text-[10px] px-1 text-destructive border-destructive/30 flex flex-col items-center gap-0.5 py-1"
                     onClick={handleEmptyTruckPreview}
-                    disabled={isEmptying || !hasReviewToday}
+                    disabled={isEmptying || isStartingSession || isConfirmingSession || !hasReviewToday}
                   >
                     <PackageX className="w-3.5 h-3.5" />
                     <span>تفريغ</span>
