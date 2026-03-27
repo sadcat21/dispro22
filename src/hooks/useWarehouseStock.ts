@@ -370,6 +370,25 @@ export const useWarehouseStock = () => {
   ) => {
     if (!workerId || !branchId) throw new Error('Missing worker or branch');
 
+    const operationKey = JSON.stringify({
+      targetWorkerId,
+      items: [...items]
+        .map(item => ({
+          product_id: item.product_id,
+          quantity: item.quantity,
+          notes: item.notes || '',
+        }))
+        .sort((a, b) => a.product_id.localeCompare(b.product_id)),
+    });
+
+    if (inFlightLoadKeysRef.current.has(operationKey)) {
+      throw new Error('عملية الشحن قيد التنفيذ بالفعل');
+    }
+
+    inFlightLoadKeysRef.current.add(operationKey);
+
+    try {
+
     for (const item of items) {
       const warehouseItem = warehouseStock.find(s => s.product_id === item.product_id);
       if (!warehouseItem || warehouseItem.quantity < item.quantity) {
@@ -418,6 +437,9 @@ export const useWarehouseStock = () => {
     }
 
     await loadAll();
+    } finally {
+      inFlightLoadKeysRef.current.delete(operationKey);
+    }
   };
 
   return {
